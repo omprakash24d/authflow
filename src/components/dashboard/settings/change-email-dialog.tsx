@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { verifyBeforeUpdateEmail } from 'firebase/auth'; 
 import { firestore } from '@/lib/firebase/config'; 
-import { doc, setDoc } from 'firebase/firestore'; 
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; 
 import { ChangeEmailSchema, type ChangeEmailFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; 
@@ -25,8 +25,8 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { FormAlert } from '@/components/ui/form-alert'; // New import
-import { Loader2, Eye, EyeOff, Mail } from 'lucide-react'; // Removed AlertTriangle
+import { FormAlert } from '@/components/ui/form-alert';
+import { Loader2, Eye, EyeOff, Mail } from 'lucide-react';
 
 interface ChangeEmailDialogProps {
   open: boolean;
@@ -54,6 +54,13 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
       toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
+     if (!firestore) {
+      setFormError('Database service is not available. Cannot update email profile data.');
+      toast({ title: "Configuration Error", description: "Database service unavailable.", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+
 
     setIsLoading(true);
     setFormError(null);
@@ -62,17 +69,17 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
       await reauthenticateCurrentUser(user, values.currentPassword); 
       await verifyBeforeUpdateEmail(user, values.newEmail);
 
-      if (firestore) {
-        const userProfileRef = doc(firestore, 'users', user.uid);
-        await setDoc(userProfileRef,
-          {
-            email: user.email, // This should actually be the new email once verified, or track pending
-            emailChangePendingTo: values.newEmail, // More accurate
-            updatedAt: new Date()
-          },
-          { merge: true }
-        );
-      }
+      // Firestore is checked for null above
+      const userProfileRef = doc(firestore, 'users', user.uid);
+      await setDoc(userProfileRef,
+        {
+          // email: user.email, // Keep current email in main field until verified
+          emailChangePendingTo: values.newEmail, 
+          updatedAt: serverTimestamp() 
+        },
+        { merge: true }
+      );
+      
 
       toast({
         title: 'Verification Email Sent',
@@ -171,7 +178,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || !firestore}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Send Verification Email
               </Button>

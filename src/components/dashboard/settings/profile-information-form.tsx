@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { doc, getDoc, writeBatch, serverTimestamp, type WriteBatch, type Firestore } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase/config';
 import { updateProfile, type User as FirebaseUser } from 'firebase/auth';
-import Image from 'next/image'; // Import next/image
+import Image from 'next/image';
 import { ProfileSettingsSchema, type ProfileSettingsFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 
@@ -25,7 +25,7 @@ async function prepareUsernameUpdates(
   currentUsername: string | null,
   userId: string,
   userEmail: string | null,
-  db: Firestore
+  db: Firestore // Made non-nullable as it will be checked before calling
 ): Promise<{ success: boolean; error?: string; usernameChanged: boolean; batchOperations?: (batch: WriteBatch) => void }> {
   const newUsernameLower = newUsername.toLowerCase();
   const currentUsernameLower = currentUsername?.toLowerCase();
@@ -75,6 +75,8 @@ export function ProfileInformationForm() {
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isFirestoreAvailable, setIsFirestoreAvailable] = useState(false);
+
 
   const profileForm = useForm<ProfileSettingsFormValues>({
     resolver: zodResolver(ProfileSettingsSchema),
@@ -86,13 +88,20 @@ export function ProfileInformationForm() {
   });
 
   useEffect(() => {
+    if (firestore) {
+        setIsFirestoreAvailable(true);
+    } else {
+        setIsFirestoreAvailable(false);
+        setProfileError("Database service is not available. Profile data cannot be loaded or saved.");
+        toast({ title: "Configuration Error", description: "Database service is not available. Profile functions will be limited.", variant: "destructive" });
+    }
+
     if (user) {
-      // Set initial photo preview from user.photoURL if available
       if (user.photoURL) {
         setProfilePhotoPreview(user.photoURL);
       }
 
-      if (firestore) {
+      if (firestore) { // Proceed only if Firestore is available
         const fetchUserProfile = async () => {
           try {
             const userProfileRef = doc(firestore, 'users', user.uid);
@@ -107,12 +116,9 @@ export function ProfileInformationForm() {
                 username: profileData.username || user.displayName || '',
               });
               fetchedUsername = profileData.username || user.displayName || '';
-              // Also update preview if Firestore has a more specific photoURL
-              // (This part would be more relevant if photoURL is stored in Firestore profile doc)
               if (profileData.photoURL && profileData.photoURL !== user.photoURL) {
                  setProfilePhotoPreview(profileData.photoURL);
               }
-
             } else {
                console.warn(`User profile document not found for UID: ${user.uid}. Initializing form with Auth display name.`);
               profileForm.reset({
@@ -129,9 +135,6 @@ export function ProfileInformationForm() {
           }
         };
         fetchUserProfile();
-      } else if (!firestore) {
-          setProfileError("Firestore is not available. Profile data cannot be loaded or saved.");
-          toast({ title: "Configuration Error", description: "Firestore is not available.", variant: "destructive" });
       }
     }
   }, [user, profileForm, toast]);
@@ -173,8 +176,8 @@ export function ProfileInformationForm() {
       return;
     }
     if (!firestore) {
-      setProfileError("Firestore is not available. Profile cannot be saved.");
-      toast({ title: "Configuration Error", description: "Firestore is not available, cannot save profile.", variant: "destructive" });
+      setProfileError("Database service is not available. Profile cannot be saved.");
+      toast({ title: "Configuration Error", description: "Database service is not available, cannot save profile.", variant: "destructive" });
       return;
     }
 
@@ -184,23 +187,8 @@ export function ProfileInformationForm() {
     const currentUser = auth.currentUser;
     const newUsername = values.username.trim();
     let authDisplayNameUpdated = false;
-    // let newPhotoURL: string | null = user.photoURL; // Start with current or null
 
-    // Placeholder for actual image upload logic
     if (profilePhotoFile) {
-        // const storage = getStorage(firebaseApp!); // Get storage instance
-        // const photoRef = ref(storage, `profilePhotos/${currentUser.uid}/${profilePhotoFile.name}`);
-        // try {
-        //   const uploadTaskSnapshot = await uploadBytes(photoRef, profilePhotoFile);
-        //   newPhotoURL = await getDownloadURL(uploadTaskSnapshot.ref);
-        //   toast({ title: "Photo Uploaded (Simulated)", description: "Photo uploaded and URL obtained (Simulated for now)." });
-        // } catch (uploadError: any) {
-        //   console.error("Error uploading profile photo:", uploadError);
-        //   setProfileError(`Failed to upload photo: ${getFirebaseAuthErrorMessage(uploadError.code)}`);
-        //   toast({ title: "Photo Upload Error", description: `Photo upload failed. ${getFirebaseAuthErrorMessage(uploadError.code)}`, variant: "destructive" });
-        //   setProfileSaving(false);
-        //   return;
-        // }
         console.log("Profile photo selected, actual upload to Firebase Storage needs implementation.", profilePhotoFile.name);
         toast({
             title: "Profile Photo (Pending Backend)",
@@ -209,13 +197,13 @@ export function ProfileInformationForm() {
         });
     }
 
-
+    // Pass the non-null firestore instance to prepareUsernameUpdates
     const usernameUpdateResult = await prepareUsernameUpdates(
       newUsername,
       initialUsername,
       currentUser.uid,
       currentUser.email,
-      firestore
+      firestore // Known to be non-null here
     );
 
     if (!usernameUpdateResult.success) {
@@ -225,11 +213,10 @@ export function ProfileInformationForm() {
       return;
     }
 
-    if (usernameUpdateResult.usernameChanged) { //  || (newPhotoURL && newPhotoURL !== user.photoURL)
+    if (usernameUpdateResult.usernameChanged) {
       try {
         await updateProfile(currentUser, {
             displayName: newUsername,
-            // photoURL: newPhotoURL, // Update Auth profile photo if changed
         });
         authDisplayNameUpdated = true;
       } catch (authError: any) {
@@ -243,7 +230,7 @@ export function ProfileInformationForm() {
     }
 
     try {
-      const batch = writeBatch(firestore);
+      const batch = writeBatch(firestore); // Known to be non-null here
       const userProfileRef = doc(firestore, 'users', currentUser.uid);
 
       const profileUpdateData: any = {
@@ -251,7 +238,6 @@ export function ProfileInformationForm() {
         lastName: values.lastName,
         username: newUsername,
         email: currentUser.email,
-        // photoURL: newPhotoURL, // Save new photo URL to Firestore profile
         updatedAt: serverTimestamp(),
       };
       batch.set(userProfileRef, profileUpdateData, { merge: true });
@@ -298,7 +284,6 @@ export function ProfileInformationForm() {
     return <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
-  const isFirestoreUnavailableError = profileError && profileError.includes("Firestore is not available");
 
   return (
     <section>
@@ -306,11 +291,12 @@ export function ProfileInformationForm() {
         <UserIcon className="mr-2 h-5 w-5" /> Profile Information
       </h2>
 
-      {isFirestoreUnavailableError ? (
-         <FormAlert title="Configuration Error" message={profileError} variant="destructive" className="mb-4" />
-      ) : (
-         <FormAlert title="Profile Error" message={profileError} variant="destructive" className="mb-4" />
+      <FormAlert title="Profile Error" message={profileError} variant="destructive" className="mb-4" />
+      
+      {!isFirestoreAvailable && !profileError && (
+         <FormAlert title="Configuration Error" message="Database service is not available. Profile data cannot be loaded or saved." variant="destructive" className="mb-4" />
       )}
+
 
       <Form {...profileForm}>
         <form onSubmit={profileForm.handleSubmit(onSubmitProfile)} className="space-y-4">
@@ -322,7 +308,7 @@ export function ProfileInformationForm() {
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your first name" {...field} disabled={profileSaving || !firestore} />
+                    <Input placeholder="Your first name" {...field} disabled={profileSaving || !isFirestoreAvailable} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -335,7 +321,7 @@ export function ProfileInformationForm() {
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your last name" {...field} disabled={profileSaving || !firestore} />
+                    <Input placeholder="Your last name" {...field} disabled={profileSaving || !isFirestoreAvailable} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -349,7 +335,7 @@ export function ProfileInformationForm() {
               <FormItem>
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input placeholder="Your username" {...field} disabled={profileSaving || !firestore} />
+                  <Input placeholder="Your username" {...field} disabled={profileSaving || !isFirestoreAvailable} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -383,7 +369,7 @@ export function ProfileInformationForm() {
                 type="button"
                 variant="outline"
                 onClick={handlePhotoUploadClick}
-                disabled={profileSaving || !firestore}
+                disabled={profileSaving || !isFirestoreAvailable}
               >
                 <UploadCloud className="mr-2 h-4 w-4" />
                 {profilePhotoPreview ? 'Change Photo' : 'Upload Photo'}
@@ -403,7 +389,7 @@ export function ProfileInformationForm() {
             </p>
           </div>
 
-          <Button type="submit" disabled={profileSaving || !firestore}>
+          <Button type="submit" disabled={profileSaving || !isFirestoreAvailable}>
             {(profileSaving) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Profile Changes
           </Button>

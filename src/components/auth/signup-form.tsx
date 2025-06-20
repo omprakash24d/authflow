@@ -29,8 +29,6 @@ import { Loader2 } from 'lucide-react';
 
 export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
-  // const [showPassword, setShowPassword] = useState(false); // Removed
-  // const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Removed
   const [formError, setFormError] = useState<string | null>(null);
   const [breachWarning, setBreachWarning] = useState<{ count: number; formValues: SignUpFormValues } | null>(null);
 
@@ -56,8 +54,16 @@ export function SignUpForm() {
   async function executeRegistration(registrationValues: SignUpFormValues) {
     setIsLoading(true);
     setFormError(null);
+
+    if (!auth) {
+      setFormError("Authentication service is not available. Please try again later or contact support.");
+      toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth!, registrationValues.email, registrationValues.password); // auth! assumes it's initialized
+      const userCredential = await createUserWithEmailAndPassword(auth, registrationValues.email, registrationValues.password);
       const user = userCredential.user;
 
       await updateProfile(user, {
@@ -65,24 +71,41 @@ export function SignUpForm() {
       });
 
       if (firestore) {
-        const usernameDocRef = doc(firestore, 'usernames', registrationValues.username.toLowerCase());
-        await setDoc(usernameDocRef, {
-          uid: user.uid,
-          email: user.email,
-          username: registrationValues.username,
-          createdAt: serverTimestamp(),
-        });
-
-        const userProfileDocRef = doc(firestore, 'users', user.uid);
-        await setDoc(userProfileDocRef, {
-            firstName: registrationValues.firstName,
-            lastName: registrationValues.lastName,
+        try {
+            const usernameDocRef = doc(firestore, 'usernames', registrationValues.username.toLowerCase());
+            await setDoc(usernameDocRef, {
+            uid: user.uid,
             email: user.email,
             username: registrationValues.username,
             createdAt: serverTimestamp(),
-        }, { merge: true });
+            });
+
+            const userProfileDocRef = doc(firestore, 'users', user.uid);
+            await setDoc(userProfileDocRef, {
+                firstName: registrationValues.firstName,
+                lastName: registrationValues.lastName,
+                email: user.email,
+                username: registrationValues.username,
+                createdAt: serverTimestamp(),
+            }, { merge: true });
+        } catch (dbError: any) {
+            console.error("Firestore error during sign up:", dbError);
+            toast({
+                title: "Profile Save Warning",
+                description: "Account created, but there was an issue saving some profile details to the database. You can update them in settings later.",
+                variant: "default", // More of a warning than destructive error for sign up itself
+                duration: 7000,
+            });
+            // Do not setFormError here as the auth account is created.
+        }
       } else {
         console.warn("Firestore client not available, skipping username/profile document creation.");
+        toast({
+            title: "Firestore Unavailable",
+            description: "Account created, but profile and username details could not be saved to the database at this time. Please try updating them in settings later.",
+            variant: "default",
+            duration: 7000,
+        });
       }
 
       await sendEmailVerification(user);
@@ -309,7 +332,7 @@ export function SignUpForm() {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading || !auth}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sign Up
           </Button>

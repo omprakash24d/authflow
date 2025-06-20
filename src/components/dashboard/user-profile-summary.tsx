@@ -18,31 +18,39 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
   const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user && firestore) {
-      const fetchUserProfile = async () => {
-        setProfileLoading(true);
-        setProfileError(null);
-        try {
-          const userProfileRef = doc(firestore, 'users', user.uid);
-          const docSnap = await getDoc(userProfileRef);
-          if (docSnap.exists()) {
-            const profileData = docSnap.data();
-            setFirstName(profileData.firstName || null);
-            setLastName(profileData.lastName || null);
-          } else {
-            console.warn(`User profile document not found for UID: ${user.uid}`);
-            setFirstName(null);
-            setLastName(null);
+    if (user) {
+      if (firestore) {
+        const fetchUserProfile = async () => {
+          setProfileLoading(true);
+          setProfileError(null);
+          try {
+            const userProfileRef = doc(firestore, 'users', user.uid);
+            const docSnap = await getDoc(userProfileRef);
+            if (docSnap.exists()) {
+              const profileData = docSnap.data();
+              setFirstName(profileData.firstName || null);
+              setLastName(profileData.lastName || null);
+            } else {
+              console.warn(`User profile document not found for UID: ${user.uid}`);
+              setFirstName(null); // Explicitly set to null if not found
+              setLastName(null);
+            }
+          } catch (error: any) {
+            console.error("Error fetching user profile:", error);
+            setProfileError("Could not load profile information from database.");
+          } finally {
+            setProfileLoading(false);
           }
-        } catch (error: any) {
-          console.error("Error fetching user profile:", error);
-          setProfileError("Could not load profile information.");
-        } finally {
-          setProfileLoading(false);
-        }
-      };
-      fetchUserProfile();
-    } else if (!user) {
+        };
+        fetchUserProfile();
+      } else {
+        // Firestore is not available
+        setProfileLoading(false);
+        setProfileError("Database service is not available for profile information.");
+        setFirstName(null); 
+        setLastName(null);
+      }
+    } else { // No user
       setFirstName(null);
       setLastName(null);
       setProfileLoading(false);

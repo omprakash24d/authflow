@@ -53,3 +53,4 @@ if (!auth) {
 if (!firestore) {
   console.warn("Firebase Firestore instance is not available.");
 }
+

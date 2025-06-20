@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Keep for specific alerts
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
 import { SocialLogins } from './social-logins';
@@ -75,7 +75,13 @@ export function SignInForm() {
 
 
   async function handleSignIn(emailToUse: string, passwordToUse: string, currentIdentifier: string) {
-    const userCredential = await signInWithEmailAndPassword(auth!, emailToUse, passwordToUse); 
+    if (!auth) {
+        setFormError("Authentication service is not available. Sign-in failed.");
+        toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
+        setIsLoading(false);
+        throw new Error("Auth service unavailable"); // Prevent further execution
+    }
+    const userCredential = await signInWithEmailAndPassword(auth, emailToUse, passwordToUse); 
     const firebaseUser = userCredential.user;
 
     if (firebaseUser && !firebaseUser.emailVerified) {
@@ -120,7 +126,6 @@ export function SignInForm() {
       title: 'Signed In!',
       description: 'Welcome back!',
     });
-    // Use window.location.assign for a full page reload to ensure middleware and context align
     window.location.assign('/dashboard');
   }
 
@@ -133,14 +138,14 @@ export function SignInForm() {
 
     let emailToUse = values.identifier;
 
-    try {
-      if (!auth) { 
-        setFormError("Authentication service is not available. Please try again later.");
-        toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
-        setIsLoading(false);
-        return;
-      }
+    if (!auth) { 
+      setFormError("Authentication service is not available. Please try again later.");
+      toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
+      setIsLoading(false);
+      return;
+    }
 
+    try {
       if (!values.identifier.includes('@')) {
         const usernameLookupResponse = await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`);
         if (!usernameLookupResponse.ok) {
@@ -169,6 +174,7 @@ export function SignInForm() {
       
       if (auth && emailToUse && (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found')) {
         try {
+          // auth is already checked above, so it's safe to use here
           const signInMethods = await fetchSignInMethodsForEmail(auth, emailToUse);
           if (signInMethods.includes(GoogleAuthProvider.PROVIDER_ID)) {
             errorMessage += " Tip: This email may be linked to Google Sign-In. Consider trying that method.";
@@ -186,22 +192,17 @@ export function SignInForm() {
         description: formError || errorMessage, 
         variant: 'destructive',
       });
-    } finally {
-      if(formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE && !(unverifiedUser && !unverifiedUser.emailVerified) ) {
-        // Only set loading to false if we are not in the unverified email state,
-        // as handleSignIn will manage isLoading in that specific path.
-        // Also, if window.location.assign is called, this finally block might not fully execute as expected
-        // before navigation, so direct isLoading management within handleSignIn for the redirect path is safer.
-        if (typeof window !== 'undefined' && !window.location.pathname.endsWith('/dashboard')) {
-             setIsLoading(false);
-        }
+      // Ensure isLoading is false if not in unverified state and not redirecting
+      if (typeof window !== 'undefined' && !window.location.pathname.endsWith('/dashboard') && !(unverifiedUser && !unverifiedUser.emailVerified)) {
+        setIsLoading(false);
       }
-    }
+    } 
+    // Removed finally block as isLoading is managed within try/catch/handleSignIn
   }
 
   async function handleResendVerificationEmail() {
     if (!unverifiedUser || !auth) { 
-      toast({ title: 'Error', description: 'Cannot resend verification email at this time.', variant: 'destructive'});
+      toast({ title: 'Error', description: 'Cannot resend verification email at this time. Auth service or user details missing.', variant: 'destructive'});
       return;
     }
     setIsResendingVerification(true);
@@ -317,7 +318,7 @@ export function SignInForm() {
               Remember me
             </Label>
           </div>
-          <Button type="submit" className="w-full" disabled={anyLoading}>
+          <Button type="submit" className="w-full" disabled={anyLoading || !auth}>
             {(isLoading && !(unverifiedUser && !unverifiedUser.emailVerified)) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sign In
           </Button>

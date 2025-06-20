@@ -4,15 +4,15 @@
 import { useRouter } from 'next/navigation';
 import { 
   GoogleAuthProvider, 
-  GithubAuthProvider, // Added
-  OAuthProvider,    // Added
+  GithubAuthProvider,
+  OAuthProvider,
   signInWithPopup, 
   type UserCredential, 
   type User as FirebaseUser, 
   getAdditionalUserInfo 
 } from 'firebase/auth';
 import { auth, firestore } from '@/lib/firebase/config';
-import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore'; // Added getDoc
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -74,11 +74,11 @@ export function SocialLogins() {
         setIsLoadingState = setIsGoogleLoading;
         break;
       case 'GitHub':
-        provider = new GithubAuthProvider(); // Use GithubAuthProvider
+        provider = new GithubAuthProvider();
         setIsLoadingState = setIsGithubLoading;
         break;
       case 'Microsoft':
-        provider = new OAuthProvider('microsoft.com'); // Use OAuthProvider for Microsoft
+        provider = new OAuthProvider('microsoft.com');
         setIsLoadingState = setIsMicrosoftLoading;
         break;
       default:
@@ -89,7 +89,7 @@ export function SocialLogins() {
     setIsLoadingState(true);
 
     if (!auth) {
-      toast({ title: 'Service Unavailable', description: 'Authentication service is not configured.', variant: 'destructive' });
+      toast({ title: 'Service Unavailable', description: 'Authentication service is not configured. Social login unavailable.', variant: 'destructive' });
       setIsLoadingState(false);
       return;
     }
@@ -99,66 +99,79 @@ export function SocialLogins() {
       const user = result.user;
       const additionalInfo = getAdditionalUserInfo(result);
 
-      if (user && firestore) {
-        try {
-          const userProfileRef = doc(firestore, 'users', user.uid);
-          const usernameKey = user.email ? user.email.toLowerCase() : `social_${user.uid}`;
-          const usernameDocRef = doc(firestore, 'usernames', usernameKey);
+      if (user) { // User exists after successful popup
+        if (firestore) { // Firestore is available
+            try {
+            const userProfileRef = doc(firestore, 'users', user.uid);
+            // Use email as key for username if available, otherwise a unique ID
+            const usernameKey = user.email ? user.email.toLowerCase() : `social_${user.uid}`;
+            const usernameDocRef = doc(firestore, 'usernames', usernameKey);
 
-          const batch = writeBatch(firestore);
+            const batch = writeBatch(firestore);
 
-          let firstName = '';
-          let lastName = '';
-          if (user.displayName) {
-            const nameParts = user.displayName.split(' ');
-            firstName = nameParts[0] || '';
-            lastName = nameParts.slice(1).join(' ') || '';
-          }
-          
-          const profileDataToSet: any = {
-            firstName,
-            lastName,
-            email: user.email,
-            username: user.email || `user_${user.uid.substring(0,8)}`,
-            photoURL: user.photoURL || null,
-            providerId: result.providerId, 
-            updatedAt: serverTimestamp(),
-          };
-
-          if (additionalInfo?.isNewUser) {
-            profileDataToSet.createdAt = serverTimestamp();
-          }
-
-          batch.set(userProfileRef, profileDataToSet, { merge: true });
-          
-          if (user.email) {
-            const usernameDataToSet: any = {
-              uid: user.uid,
-              email: user.email,
-              username: user.email, 
-              updatedAt: serverTimestamp(),
+            let firstName = '';
+            let lastName = '';
+            if (user.displayName) {
+                const nameParts = user.displayName.split(' ');
+                firstName = nameParts[0] || '';
+                lastName = nameParts.slice(1).join(' ') || '';
+            }
+            
+            // Set profile data
+            const profileDataToSet: any = {
+                firstName,
+                lastName,
+                email: user.email,
+                // Use email for username field by default, or a fallback
+                username: user.email || `user_${user.uid.substring(0,8)}`, 
+                photoURL: user.photoURL || null,
+                providerId: result.providerId, 
+                updatedAt: serverTimestamp(),
             };
             if (additionalInfo?.isNewUser) {
-              usernameDataToSet.createdAt = serverTimestamp();
+                profileDataToSet.createdAt = serverTimestamp();
             }
-            batch.set(usernameDocRef, usernameDataToSet, { merge: true });
-          } else {
-            console.warn(`User ${user.uid} lacks an email from social provider ${providerName}, skipping username document creation.`);
-          }
-          
-          await batch.commit();
+            batch.set(userProfileRef, profileDataToSet, { merge: true });
+            
+            // Set username document if email exists
+            if (user.email) {
+                const usernameDataToSet: any = {
+                uid: user.uid,
+                email: user.email,
+                username: user.email, // Store the email also as the username value here
+                updatedAt: serverTimestamp(),
+                };
+                if (additionalInfo?.isNewUser) {
+                usernameDataToSet.createdAt = serverTimestamp();
+                }
+                batch.set(usernameDocRef, usernameDataToSet, { merge: true });
+            } else {
+                 console.warn(`User ${user.uid} lacks an email from social provider ${providerName}, skipping username document creation.`);
+            }
+            
+            await batch.commit();
 
-        } catch (dbError: any) {
-          console.error(`Error updating/creating Firestore profile for ${providerName} login:`, dbError);
-          toast({
-            title: "Profile Sync Issue",
-            description: "Your profile details couldn't be fully synced. You are logged in.",
-            variant: "default", 
-            duration: 7000,
-          });
+            } catch (dbError: any) {
+            console.error(`Error updating/creating Firestore profile for ${providerName} login:`, dbError);
+            toast({
+                title: "Profile Sync Issue",
+                description: "Your profile details couldn't be fully synced with the database. You are logged in.",
+                variant: "default", 
+                duration: 7000,
+            });
+            // Continue with login even if DB sync fails partially
+            }
+        } else { // Firestore is NOT available
+            console.warn("Firestore client not available, skipping profile/username document creation for social login.");
+            toast({
+                title: "Firestore Unavailable",
+                description: "Profile and username details could not be synced with the database at this time. You are logged in.",
+                variant: "default",
+                duration: 7000,
+            });
         }
-      } else if (!firestore) {
-        console.warn("Firestore client not available, skipping profile/username document creation for social login.");
+      } else { // Should not happen if signInWithPopup was successful
+        throw new Error("User object not found after social sign-in.");
       }
       
       await createSessionCookie(user);
@@ -167,7 +180,9 @@ export function SocialLogins() {
         title: `Signed In with ${providerName}!`,
         description: `Welcome, ${user.displayName || user.email}!`,
       });
-      router.push('/dashboard');
+      // router.push('/dashboard'); // Replaced by window.location.assign for full reload
+      window.location.assign('/dashboard');
+
 
     } catch (error: any) {
       console.error(`Error during ${providerName} sign-in:`, error);
@@ -235,4 +250,3 @@ export function SocialLogins() {
     </>
   );
 }
-
