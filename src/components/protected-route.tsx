@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, type ReactNode, memo } from 'react'; // Import memo
+import { useEffect, type ReactNode } from 'react'; // Removed memo
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2 } from 'lucide-react';
@@ -10,23 +10,21 @@ interface ProtectedRouteProps {
   children: ReactNode;
 }
 
-// Internal component logic
-const ProtectedRouteLogic = ({ children }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    // Only redirect if loading is complete and there's no user.
     if (!loading && !user) {
-      // You could add a query parameter here if you want the sign-in page
-      // to display a specific message, e.g., router.push('/signin?reason=protected');
       router.push('/signin');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router]); // Dependencies are correct.
 
   if (loading) {
     return (
       <div
-        className="flex min-h-screen items-center justify-center"
+        className="flex min-h-screen items-center justify-center bg-background"
         role="status"
         aria-live="polite"
       >
@@ -36,15 +34,23 @@ const ProtectedRouteLogic = ({ children }: ProtectedRouteProps) => {
     );
   }
 
+  // If not loading and still no user, the useEffect will handle redirection.
+  // Return a loader (or null) here to prevent rendering children prematurely
+  // while the redirect is in progress.
   if (!user) {
-    // This case should ideally not be reached due to the useEffect redirect,
-    // but it's a fallback. The router.push in useEffect will handle navigation.
-    return null;
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center bg-background"
+        role="status"
+        aria-live="polite"
+      >
+        <Loader2 className="h-12 w-12 animate-spin text-primary" aria-hidden="true" />
+        <span className="sr-only">Redirecting to sign-in...</span>
+      </div>
+    );
   }
 
+  // If loading is false and user exists, render children.
   return <>{children}</>;
 };
-
-// Export the memoized component
-export const ProtectedRoute = memo(ProtectedRouteLogic);
 
