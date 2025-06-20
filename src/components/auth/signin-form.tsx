@@ -37,7 +37,7 @@ const REMEMBER_ME_STORAGE_KEY = 'authFlowRememberedIdentifier';
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResendingVerification, setIsResendingVerification] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  // const [showPassword, setShowPassword] = useState(false); // Removed, PasswordInput handles its state
   const [formError, setFormError] = useState<string | null>(null);
   const [showVerificationMessageFromSignUp, setShowVerificationMessageFromSignUp] = useState(false);
   const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null);
@@ -293,8 +293,6 @@ export function SignInForm() {
                     field={field}
                     placeholder="••••••••"
                     disabled={anyLoading}
-                    showPasswordState={showPassword}
-                    toggleShowPasswordState={() => setShowPassword(!showPassword)}
                     autoComplete="current-password"
                   />
                 </FormControl>

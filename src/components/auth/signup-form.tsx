@@ -29,8 +29,8 @@ import { Loader2 } from 'lucide-react';
 
 export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // const [showPassword, setShowPassword] = useState(false); // Removed
+  // const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Removed
   const [formError, setFormError] = useState<string | null>(null);
   const [breachWarning, setBreachWarning] = useState<{ count: number; formValues: SignUpFormValues } | null>(null);
 
@@ -249,8 +249,6 @@ export function SignUpForm() {
                             }}}
                             placeholder="••••••••"
                             disabled={isLoading}
-                            showPasswordState={showPassword}
-                            toggleShowPasswordState={() => setShowPassword(!showPassword)}
                             autoComplete="new-password"
                         />
                     </div>
@@ -274,8 +272,6 @@ export function SignUpForm() {
                     field={field}
                     placeholder="••••••••"
                     disabled={isLoading}
-                    showPasswordState={showConfirmPassword}
-                    toggleShowPasswordState={() => setShowConfirmPassword(!showConfirmPassword)}
                     autoComplete="new-password"
                   />
                 </FormControl>

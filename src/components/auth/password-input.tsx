@@ -5,6 +5,7 @@ import type { ControllerRenderProps, FieldValues, FieldPath } from 'react-hook-f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
 
 interface PasswordInputProps<
   TAppFieldValues extends FieldValues = FieldValues,
@@ -13,8 +14,6 @@ interface PasswordInputProps<
   field: ControllerRenderProps<TAppFieldValues, TFieldName>;
   placeholder?: string;
   disabled?: boolean;
-  showPasswordState: boolean;
-  toggleShowPasswordState: () => void;
   inputClassName?: string;
   autoComplete?: string;
 }
@@ -26,15 +25,17 @@ export function PasswordInput<
   field,
   placeholder,
   disabled,
-  showPasswordState,
-  toggleShowPasswordState,
   inputClassName,
   autoComplete,
 }: PasswordInputProps<TAppFieldValues, TFieldName>) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  const toggleShowPassword = () => setShowPassword(!showPassword);
+
   return (
     <div className="relative">
       <Input
-        type={showPasswordState ? 'text' : 'password'}
+        type={showPassword ? 'text' : 'password'}
         placeholder={placeholder}
         {...field}
         disabled={disabled}
@@ -46,11 +47,11 @@ export function PasswordInput<
         variant="ghost"
         size="sm"
         className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-        onClick={toggleShowPasswordState}
-        aria-label={showPasswordState ? "Hide password" : "Show password"}
+        onClick={toggleShowPassword}
+        aria-label={showPassword ? "Hide password" : "Show password"}
         disabled={disabled}
       >
-        {showPasswordState ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </Button>
     </div>
   );

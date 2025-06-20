@@ -23,10 +23,10 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { FormAlert } from '@/components/ui/form-alert'; // New import
+import { FormAlert } from '@/components/ui/form-alert'; 
 import { PasswordInput } from '@/components/auth/password-input'; 
 import { PasswordStrengthIndicator } from '@/components/auth/password-strength-indicator';
-import { Loader2 } from 'lucide-react'; // Removed AlertTriangle
+import { Loader2 } from 'lucide-react'; 
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -38,9 +38,9 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  // const [showCurrentPassword, setShowCurrentPassword] = useState(false); // Removed
+  // const [showNewPassword, setShowNewPassword] = useState(false); // Removed
+  // const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false); // Removed
 
   const form = useForm<ChangePasswordFormValues>({
     resolver: zodResolver(ChangePasswordSchema),
@@ -72,9 +72,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         description: 'Your password has been changed successfully.',
       });
       form.reset();
-      setShowCurrentPassword(false);
-      setShowNewPassword(false);
-      setShowConfirmNewPassword(false);
+      // No need to reset showPassword states as they are internal to PasswordInput now
       onOpenChange(false);
     } catch (error: any) {
       console.error('Change Password Error:', error);
@@ -94,9 +92,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     if (!isOpen) {
       form.reset();
       setFormError(null);
-      setShowCurrentPassword(false);
-      setShowNewPassword(false);
-      setShowConfirmNewPassword(false);
+      // No need to reset showPassword states
       setIsLoading(false);
     }
     onOpenChange(isOpen);
@@ -125,8 +121,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                       field={field}
                       placeholder="••••••••"
                       disabled={isLoading}
-                      showPasswordState={showCurrentPassword}
-                      toggleShowPasswordState={() => setShowCurrentPassword(!showCurrentPassword)}
                       autoComplete="current-password"
                     />
                   </FormControl>
@@ -145,8 +139,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                       field={field}
                       placeholder="••••••••"
                       disabled={isLoading}
-                      showPasswordState={showNewPassword}
-                      toggleShowPasswordState={() => setShowNewPassword(!showNewPassword)}
                       autoComplete="new-password"
                     />
                   </FormControl>
@@ -168,8 +160,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                       field={field}
                       placeholder="••••••••"
                       disabled={isLoading}
-                      showPasswordState={showConfirmNewPassword}
-                      toggleShowPasswordState={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
                       autoComplete="new-password"
                     />
                   </FormControl>
