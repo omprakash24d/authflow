@@ -17,8 +17,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
 import { SocialLogins } from './social-logins';
+import { PasswordInput } from './password-input'; // Import the new component
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, AlertTriangle, Loader2, MailCheck, Send } from 'lucide-react';
+import { AlertTriangle, Loader2, MailCheck, Send } from 'lucide-react';
 
 const UNVERIFIED_EMAIL_ERROR_MESSAGE = "Your email address is not verified. Please check your inbox for the verification link we sent you. If you don't see it, be sure to check your spam or junk folder. You can also click below to resend the verification link.";
 
@@ -38,11 +39,8 @@ export function SignInForm() {
   useEffect(() => {
     if (searchParams.get('verificationEmailSent') === 'true') {
       setShowVerificationMessageFromSignUp(true);
-      // Create a new URLSearchParams object from the current one
       const newSearchParams = new URLSearchParams(searchParams.toString());
-      // Delete the specific parameter
       newSearchParams.delete('verificationEmailSent');
-      // Construct the new path. If there are no search params left, don't append '?'
       const newPath = newSearchParams.toString()
         ? `${pathname}?${newSearchParams.toString()}`
         : pathname;
@@ -71,8 +69,8 @@ export function SignInForm() {
         description: "Check your inbox for a verification link or use the resend option.",
         variant: 'destructive',
       });
-      setIsLoading(false); // Ensure loading is stopped here
-      return; // Stop further execution
+      setIsLoading(false); 
+      return; 
     }
     
     if (firebaseUser) {
@@ -112,7 +110,7 @@ export function SignInForm() {
     let emailToUse = values.identifier;
 
     try {
-      if (!values.identifier.includes('@')) { // Assume it's a username
+      if (!values.identifier.includes('@')) { 
         const usernameLookupResponse = await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`);
         if (!usernameLookupResponse.ok) {
           const errorData = await usernameLookupResponse.json().catch(() => ({}));
@@ -137,13 +135,12 @@ export function SignInForm() {
     } catch (error: any) {
       console.error("Sign In Error:", error);
       const errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
-      // Ensure specific username lookup errors from above aren't overwritten by generic Firebase errors if possible
-      if (!form.formState.errors.identifier && !formError) { // Check if a specific error was not already set
+      if (!form.formState.errors.identifier && !formError) { 
          setFormError(errorMessage);
       }
        toast({
         title: 'Sign In Failed',
-        description: formError || errorMessage, // Prefer already set formError if it exists
+        description: formError || errorMessage, 
         variant: 'destructive',
       });
     } finally {
@@ -221,6 +218,7 @@ export function SignInForm() {
                     placeholder="om@example.com or omprakash24d" 
                     {...field} 
                     disabled={anyLoading}
+                    autoComplete="username"
                   />
                 </FormControl>
                 <FormMessage />
@@ -239,25 +237,14 @@ export function SignInForm() {
                   </Link>
                 </div>
                 <FormControl>
-                  <div className="relative">
-                    <Input 
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••" 
-                      {...field} 
-                      disabled={anyLoading}
-                    />
-                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      disabled={anyLoading}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <PasswordInput
+                    field={field}
+                    placeholder="••••••••"
+                    disabled={anyLoading}
+                    showPasswordState={showPassword}
+                    toggleShowPasswordState={() => setShowPassword(!showPassword)}
+                    autoComplete="current-password"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

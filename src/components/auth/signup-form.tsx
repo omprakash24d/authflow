@@ -19,10 +19,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
+import { PasswordInput } from './password-input'; // Import the new component
 import { PasswordStrengthIndicator } from './password-strength-indicator';
 import { SocialLogins } from './social-logins';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
 import {
   AlertDialog,
@@ -44,7 +45,7 @@ export function SignUpForm() {
   
   const router = useRouter();
   const { toast } = useToast();
-  const passwordInputRef = useRef<HTMLInputElement | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement | null>(null); // Still useful for focusing
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(SignUpSchema),
@@ -69,14 +70,14 @@ export function SignUpForm() {
       const user = userCredential.user;
 
       await updateProfile(user, {
-        displayName: registrationValues.username, // Set displayName to username
+        displayName: registrationValues.username, 
       });
       
       if (firestore) {
         const usernameDocRef = doc(firestore, 'usernames', registrationValues.username.toLowerCase());
         await setDoc(usernameDocRef, {
           uid: user.uid,
-          email: user.email, // Store email for username lookup
+          email: user.email, 
           username: registrationValues.username,
           createdAt: serverTimestamp(),
         });
@@ -85,8 +86,8 @@ export function SignUpForm() {
         await setDoc(userProfileDocRef, {
             firstName: registrationValues.firstName,
             lastName: registrationValues.lastName,
-            email: user.email, // Ensure email is stored
-            username: registrationValues.username, // Ensure username is stored
+            email: user.email, 
+            username: registrationValues.username, 
             createdAt: serverTimestamp(),
         }, { merge: true });
       } else {
@@ -154,7 +155,7 @@ export function SignUpForm() {
     setBreachWarning(null);
     form.setValue('password', '');
     form.setValue('confirmPassword', '');
-    passwordInputRef.current?.focus();
+    passwordInputRef.current?.focus(); // Focus the password input
     toast({
         title: 'Choose a New Password',
         description: 'Please enter a new, secure password.',
@@ -191,7 +192,7 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Om" {...field} disabled={isLoading} />
+                    <Input placeholder="Om" {...field} disabled={isLoading} autoComplete="given-name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -204,7 +205,7 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Prakash" {...field} disabled={isLoading} />
+                    <Input placeholder="Prakash" {...field} disabled={isLoading} autoComplete="family-name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -218,7 +219,7 @@ export function SignUpForm() {
               <FormItem>
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input placeholder="omprakash24d" {...field} disabled={isLoading} />
+                  <Input placeholder="omprakash24d" {...field} disabled={isLoading} autoComplete="username" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -231,7 +232,7 @@ export function SignUpForm() {
               <FormItem>
                 <FormLabel>Email Address</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="om@gmail.com" {...field} disabled={isLoading} />
+                  <Input type="email" placeholder="om@gmail.com" {...field} disabled={isLoading} autoComplete="email" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -241,33 +242,26 @@ export function SignUpForm() {
             control={form.control}
             name="password"
             render={({ field }) => {
+              // Capture the ref from the field for focusing
               const { ref: fieldRef, ...otherFieldProps } = field;
               return (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Input
-                        ref={(e: HTMLInputElement | null) => {
-                          fieldRef(e);
-                          passwordInputRef.current = e;
-                        }}
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        {...otherFieldProps}
-                        disabled={isLoading}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                        disabled={isLoading}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
+                     {/* Assign the ref to the PasswordInput's underlying Input if possible, or wrap it */}
+                     {/* For now, PasswordInput doesn't directly expose the inner input's ref prop, so we focus the wrapper or the RHF controlled input */}
+                    <div ref={passwordInputRef}> {/* Attach ref here for focusing the general area */}
+                        <PasswordInput
+                            field={{...otherFieldProps, ref: (el) => {
+                                fieldRef(el); // RHF's ref
+                                // passwordInputRef.current = el; // This would work if PasswordInput forwards ref to its Input
+                            }}}
+                            placeholder="••••••••"
+                            disabled={isLoading}
+                            showPasswordState={showPassword}
+                            toggleShowPasswordState={() => setShowPassword(!showPassword)}
+                            autoComplete="new-password"
+                        />
                     </div>
                   </FormControl>
                   {watchedPassword && watchedPassword.length > 0 && (
@@ -285,25 +279,14 @@ export function SignUpForm() {
               <FormItem>
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
-                 <div className="relative">
-                    <Input 
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder="••••••••" 
-                      {...field} 
-                      disabled={isLoading}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                      disabled={isLoading}
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <PasswordInput
+                    field={field}
+                    placeholder="••••••••"
+                    disabled={isLoading}
+                    showPasswordState={showConfirmPassword}
+                    toggleShowPasswordState={() => setShowConfirmPassword(!showConfirmPassword)}
+                    autoComplete="new-password"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -384,5 +367,3 @@ export function SignUpForm() {
     </AuthFormWrapper>
   );
 }
-
-    

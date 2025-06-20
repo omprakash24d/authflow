@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+// Input is no longer directly used here, PasswordInput handles it
 import {
   Dialog,
   DialogContent,
@@ -24,8 +24,9 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { PasswordInput } from '@/components/auth/password-input'; // Import the new component
 import { PasswordStrengthIndicator } from '@/components/auth/password-strength-indicator';
-import { Loader2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -55,6 +56,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   async function onSubmit(values: ChangePasswordFormValues) {
     if (!user || !user.email) {
       setFormError('User not found or email is missing.');
+      toast({ title: 'Error', description: 'User not found or email is missing.', variant: 'destructive'});
       return;
     }
 
@@ -71,7 +73,10 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         description: 'Your password has been changed successfully.',
       });
       form.reset();
-      onOpenChange(false); // Close the dialog
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmNewPassword(false);
+      onOpenChange(false); 
     } catch (error: any) {
       console.error('Change Password Error:', error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code);
@@ -90,7 +95,10 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     if (!isOpen) {
       form.reset();
       setFormError(null);
-      setIsLoading(false);
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmNewPassword(false);
+      setIsLoading(false); 
     }
     onOpenChange(isOpen);
   };
@@ -120,25 +128,14 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>Current Password</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showCurrentPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                        aria-label={showCurrentPassword ? "Hide password" : "Show password"}
-                        disabled={isLoading}
-                      >
-                        {showCurrentPassword ? <EyeOff /> : <Eye />}
-                      </Button>
-                    </div>
+                    <PasswordInput
+                      field={field}
+                      placeholder="••••••••"
+                      disabled={isLoading}
+                      showPasswordState={showCurrentPassword}
+                      toggleShowPasswordState={() => setShowCurrentPassword(!showCurrentPassword)}
+                      autoComplete="current-password"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -151,25 +148,14 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>New Password</FormLabel>
                   <FormControl>
-                     <div className="relative">
-                      <Input
-                        type={showNewPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        aria-label={showNewPassword ? "Hide password" : "Show password"}
-                        disabled={isLoading}
-                      >
-                        {showNewPassword ? <EyeOff /> : <Eye />}
-                      </Button>
-                    </div>
+                     <PasswordInput
+                      field={field}
+                      placeholder="••••••••"
+                      disabled={isLoading}
+                      showPasswordState={showNewPassword}
+                      toggleShowPasswordState={() => setShowNewPassword(!showNewPassword)}
+                      autoComplete="new-password"
+                    />
                   </FormControl>
                   {watchedNewPassword && watchedNewPassword.length > 0 && (
                     <PasswordStrengthIndicator password={watchedNewPassword} />
@@ -185,25 +171,14 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>Confirm New Password</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showConfirmNewPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-                        aria-label={showConfirmNewPassword ? "Hide password" : "Show password"}
-                        disabled={isLoading}
-                      >
-                        {showConfirmNewPassword ? <EyeOff /> : <Eye />}
-                      </Button>
-                    </div>
+                    <PasswordInput
+                      field={field}
+                      placeholder="••••••••"
+                      disabled={isLoading}
+                      showPasswordState={showConfirmNewPassword}
+                      toggleShowPasswordState={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                      autoComplete="new-password"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
