@@ -1,18 +1,18 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile, User } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { SignUpSchema, type SignUpFormValues } from '@/lib/validators/auth';
 import { checkPasswordBreach } from '@/ai/flows/password-breach-detector';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -22,13 +22,27 @@ import { SocialLogins } from './social-logins';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, AlertTriangle, Loader2 } from 'lucide-react';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [breachWarning, setBreachWarning] = useState<{ count: number; formValues: SignUpFormValues } | null>(null);
+  
   const router = useRouter();
   const { toast } = useToast();
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(SignUpSchema),
@@ -45,34 +59,17 @@ export function SignUpForm() {
 
   const watchedPassword = form.watch('password');
 
-  async function onSubmit(values: SignUpFormValues) {
+  async function executeRegistration(registrationValues: SignUpFormValues) {
     setIsLoading(true);
-    setFormError(null);
-
+    setFormError(null); 
     try {
-      // Check for password breach
-      const breachResult = await checkPasswordBreach({ password: values.password });
-      if (breachResult.isBreached) {
-        setFormError(`This password has been found in ${breachResult.breachCount} data breaches. Please choose a different password.`);
-        setIsLoading(false);
-        toast({
-          title: 'Compromised Password',
-          description: `This password has been found in ${breachResult.breachCount} data breaches. Please choose a different password.`,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, registrationValues.email, registrationValues.password);
       const user = userCredential.user;
 
       await updateProfile(user, {
-        displayName: `${values.firstName} ${values.lastName}`, // Firebase typically uses displayName for full name
+        displayName: `${registrationValues.firstName} ${registrationValues.lastName}`,
       });
-      // Here you would typically also save username and other details to your Firestore database
-      // For now, we'll just log it.
-      console.log('User created. Username:', values.username);
-
+      console.log('User created. Username:', registrationValues.username);
 
       await sendEmailVerification(user);
       toast({
@@ -87,18 +84,51 @@ export function SignUpForm() {
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'This email address is already in use.';
       } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'The password is too weak.';
+        errorMessage = 'The password is too weak. Please ensure it meets all complexity requirements.';
       }
       setFormError(errorMessage);
-      toast({
-        title: 'Sign Up Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
     } finally {
       setIsLoading(false);
     }
   }
+
+  async function onSubmit(values: SignUpFormValues) {
+    setIsLoading(true);
+    setFormError(null);
+    setBreachWarning(null); 
+
+    try {
+      const breachResult = await checkPasswordBreach({ password: values.password });
+      if (breachResult.isBreached && (breachResult.breachCount || 0) > 0) {
+        setBreachWarning({ count: breachResult.breachCount || 0, formValues: values });
+        setIsLoading(false);
+        return; 
+      }
+      await executeRegistration(values);
+    } catch (error: any) {
+      console.error("Error during password breach check:", error);
+      setFormError("Could not verify password security. Please try again.");
+      setIsLoading(false);
+    }
+  }
+
+  const handleProceedWithBreachedPassword = () => {
+    if (breachWarning?.formValues) {
+      executeRegistration(breachWarning.formValues);
+    }
+    setBreachWarning(null);
+  };
+
+  const handleChooseNewPassword = () => {
+    setBreachWarning(null);
+    form.setValue('password', '');
+    form.setValue('confirmPassword', '');
+    passwordInputRef.current?.focus();
+    toast({
+        title: 'Choose a New Password',
+        description: 'Please enter a new, secure password.',
+    });
+  };
 
   return (
     <AuthFormWrapper
@@ -185,6 +215,13 @@ export function SignUpForm() {
                 <FormControl>
                   <div className="relative">
                     <Input 
+                      ref={(e) => {
+                        field.ref(e);
+                        if (e) {
+                           // @ts-ignore
+                           passwordInputRef.current = e;
+                        }
+                      }}
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••" 
                       {...field} 
@@ -271,6 +308,43 @@ export function SignUpForm() {
         </form>
       </Form>
       <SocialLogins />
+
+      {breachWarning && (
+        <AlertDialog open={breachWarning !== null} onOpenChange={(isOpen) => {
+          if (!isOpen && breachWarning) { // Check breachWarning to prevent issues if it becomes null
+             handleChooseNewPassword(); // Default to choosing new password if closed via Esc/overlay
+          }
+        }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="h-6 w-6 text-destructive" />
+                <AlertDialogTitle>Compromised Password Warning</AlertDialogTitle>
+              </div>
+              <AlertDialogDescription className="pt-2">
+                The password you entered has been found in {breachWarning.count} known data breaches.
+                Using this password significantly increases the risk of your account being compromised.
+                We strongly recommend choosing a different, unique password.
+                <br /><br />
+                Do you want to proceed with this password anyway?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleChooseNewPassword}>
+                Choose a New Password
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleProceedWithBreachedPassword}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                Proceed Anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </AuthFormWrapper>
   );
 }
+
+    
