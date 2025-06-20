@@ -1,4 +1,4 @@
-import { TwitterIcon, GithubIcon, LinkedinIcon } from 'lucide-react'; // Use the updated icon names
+import { TwitterIcon, GithubIcon, LinkedinIcon } from 'lucide-react'; 
 
 export function AuthFooter() {
   const developerLinks = [

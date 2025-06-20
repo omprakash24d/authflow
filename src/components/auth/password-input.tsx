@@ -1,13 +1,16 @@
 
 'use client';
 
-import type { ControllerRenderProps, FieldValues } from 'react-hook-form';
+import type { ControllerRenderProps, FieldValues, FieldPath } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
 
-interface PasswordInputProps {
-  field: ControllerRenderProps<FieldValues, any>; // Use 'any' for field name, RHF handles types
+interface PasswordInputProps<
+  TAppFieldValues extends FieldValues = FieldValues,
+  TFieldName extends FieldPath<TAppFieldValues> = FieldPath<TAppFieldValues>
+> {
+  field: ControllerRenderProps<TAppFieldValues, TFieldName>;
   placeholder?: string;
   disabled?: boolean;
   showPasswordState: boolean;
@@ -16,7 +19,10 @@ interface PasswordInputProps {
   autoComplete?: string;
 }
 
-export function PasswordInput({
+export function PasswordInput<
+  TAppFieldValues extends FieldValues = FieldValues,
+  TFieldName extends FieldPath<TAppFieldValues> = FieldPath<TAppFieldValues>
+>({
   field,
   placeholder,
   disabled,
@@ -24,7 +30,7 @@ export function PasswordInput({
   toggleShowPasswordState,
   inputClassName,
   autoComplete,
-}: PasswordInputProps) {
+}: PasswordInputProps<TAppFieldValues, TFieldName>) {
   return (
     <div className="relative">
       <Input
