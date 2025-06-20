@@ -2,17 +2,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { GoogleAuthProvider, signInWithPopup, type UserCredential } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, type UserCredential, type User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
-import { Chrome, Github } from 'lucide-react'; // Chrome used as a generic browser/Google icon
+import { Chrome, Github } from 'lucide-react'; 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
-// Basic SVG for Microsoft icon
 const MicrosoftIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 0H7.5V7.5H0V0Z" />
@@ -30,6 +29,20 @@ export function SocialLogins() {
   const [isGithubLoading, setIsGithubLoading] = useState(false);
   const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
 
+  const createSessionCookie = async (user: FirebaseUser) => {
+    const idToken = await user.getIdToken();
+    const response = await fetch('/api/auth/session-login', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create session via social login.');
+    }
+  };
+
   const handleSocialLogin = async (providerName: 'Google' | 'GitHub' | 'Microsoft') => {
     let provider;
     let setIsLoadingState: React.Dispatch<React.SetStateAction<boolean>>;
@@ -39,7 +52,6 @@ export function SocialLogins() {
         provider = new GoogleAuthProvider();
         setIsLoadingState = setIsGoogleLoading;
         break;
-      // TODO: Implement GitHub and Microsoft providers similarly
       case 'GitHub':
         setIsLoadingState = setIsGithubLoading;
         toast({ title: 'GitHub Login', description: 'GitHub login is not yet implemented.', variant: 'default' });
@@ -58,6 +70,10 @@ export function SocialLogins() {
     try {
       const result: UserCredential = await signInWithPopup(auth, provider);
       const user = result.user;
+
+      if (user) {
+        await createSessionCookie(user);
+      }
       
       toast({
         title: `Signed In with ${providerName}!`,
@@ -67,7 +83,7 @@ export function SocialLogins() {
 
     } catch (error: any) {
       console.error(`Error during ${providerName} sign-in:`, error);
-      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      const errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
       toast({
         title: `${providerName} Sign-In Failed`,
         description: errorMessage,

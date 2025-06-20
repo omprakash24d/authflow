@@ -55,11 +55,12 @@ export function SignInForm() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
-      
-      if (userCredential.user && !userCredential.user.emailVerified) {
+      const firebaseUser = userCredential.user;
+
+      if (firebaseUser && !firebaseUser.emailVerified) {
         const verifyErrorMsg = 'Your email address is not verified. Please check your inbox for the verification link we sent you, or click below to resend.';
         setFormError(verifyErrorMsg);
-        setUnverifiedUser(userCredential.user);
+        setUnverifiedUser(firebaseUser);
         toast({
           title: 'Email Not Verified',
           description: "Check your inbox for a verification link or use the resend option.",
@@ -69,16 +70,30 @@ export function SignInForm() {
         return;
       }
       
+      if (firebaseUser) {
+        const idToken = await firebaseUser.getIdToken();
+        const response = await fetch('/api/auth/session-login', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create session.');
+        }
+      }
+      
       toast({
         title: 'Signed In!',
         description: 'Welcome back!',
       });
       router.push('/dashboard');
 
-    } catch (error: any)
-{
+    } catch (error: any) {
       console.error("Sign In Error:", error);
-      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      const errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
       setFormError(errorMessage);
        toast({
         title: 'Sign In Failed',
@@ -94,7 +109,7 @@ export function SignInForm() {
     if (!unverifiedUser) return;
 
     setIsResendingVerification(true);
-    setFormError(null); // Clear previous error about needing verification
+    setFormError(null); 
 
     try {
       await sendEmailVerification(unverifiedUser);
@@ -102,12 +117,10 @@ export function SignInForm() {
         title: 'Verification Email Sent',
         description: 'A new verification email has been sent to your address. Please check your inbox.',
       });
-      // Optionally, clear unverifiedUser or disable button for a while
-      // setUnverifiedUser(null); // This would remove the resend button
     } catch (error: any) {
       console.error("Error resending verification email:", error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code);
-      setFormError(errorMessage); // Show resend error specifically
+      setFormError(errorMessage); 
       toast({
         title: 'Resend Failed',
         description: errorMessage,
@@ -140,7 +153,7 @@ export function SignInForm() {
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
-          {showVerificationMessage && !formError && ( // Hide if there's a more specific error
+          {showVerificationMessage && !formError && ( 
             <Alert variant="default" className="bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300">
               <MailCheck className="h-5 w-5 text-green-500 dark:text-green-400" />
               <AlertTitle className="font-semibold">Verification Email Sent During Sign Up</AlertTitle>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -8,7 +9,6 @@ import { useRouter } from 'next/navigation';
 
 interface User extends FirebaseUser {
   // Add custom user properties here if needed in the future
-  // e.g. username, firstName, lastName from Firestore
 }
 
 interface AuthContextType {
@@ -39,12 +39,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      // Clear the session cookie by calling the API route
+      await fetch('/api/auth/session-logout', { method: 'POST' });
+      // Sign out from Firebase client-side
       await firebaseSignOut(auth);
-      setUser(null);
+      setUser(null); // Explicitly set user to null
       router.push('/signin');
     } catch (error) {
       console.error('Error signing out: ', error);
       // Handle error appropriately, e.g., show a toast notification
+      // Fallback: still try to sign out client-side if API call fails
+      try {
+        await firebaseSignOut(auth);
+      } finally {
+        setUser(null);
+        router.push('/signin');
+      }
     }
   };
 
