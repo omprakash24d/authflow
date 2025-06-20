@@ -10,6 +10,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } 
 import { auth } from '@/lib/firebase/config';
 import { SignUpSchema, type SignUpFormValues } from '@/lib/validators/auth';
 import { checkPasswordBreach } from '@/ai/flows/password-breach-detector';
+import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +70,9 @@ export function SignUpForm() {
       await updateProfile(user, {
         displayName: `${registrationValues.firstName} ${registrationValues.lastName}`,
       });
-      console.log('User created. Username:', registrationValues.username);
+      // Username is not directly stored in Firebase Auth user profile by default.
+      // You would typically store this in a Firestore/RTDB document alongside the user's UID.
+      console.log('User created. Username (client-side):', registrationValues.username);
 
       await sendEmailVerification(user);
       toast({
@@ -79,14 +82,14 @@ export function SignUpForm() {
       router.push('/signin?verificationEmailSent=true');
 
     } catch (error: any) {
-      console.error(error);
-      let errorMessage = 'An unexpected error occurred. Please try again.';
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'This email address is already in use.';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'The password is too weak. Please ensure it meets all complexity requirements.';
-      }
+      console.error("Registration Error:", error);
+      const errorMessage = getFirebaseAuthErrorMessage(error.code);
       setFormError(errorMessage);
+       toast({
+        title: 'Sign Up Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +110,13 @@ export function SignUpForm() {
       await executeRegistration(values);
     } catch (error: any) {
       console.error("Error during password breach check:", error);
-      setFormError("Could not verify password security. Please try again.");
+      const breachCheckErrorMsg = getFirebaseAuthErrorMessage(error.code) || "Could not verify password security. Please try again.";
+      setFormError(breachCheckErrorMsg);
+      toast({
+        title: 'Security Check Failed',
+        description: breachCheckErrorMsg,
+        variant: 'destructive',
+      });
       setIsLoading(false);
     }
   }

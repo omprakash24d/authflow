@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { SignInSchema, type SignInFormValues } from '@/lib/validators/auth';
+import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,10 +56,11 @@ export function SignInForm() {
       const userCredential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
       
       if (userCredential.user && !userCredential.user.emailVerified) {
-        setFormError('Please verify your email address before signing in. Check your inbox for a verification link.');
+        const verifyErrorMsg = 'Please verify your email address before signing in. Check your inbox for a verification link.';
+        setFormError(verifyErrorMsg);
         toast({
           title: 'Email Not Verified',
-          description: 'Please verify your email address. A new verification email can be sent if needed.',
+          description: verifyErrorMsg,
           variant: 'destructive',
         });
         // Optionally, offer to resend verification email here
@@ -72,13 +75,8 @@ export function SignInForm() {
       router.push('/dashboard');
 
     } catch (error: any) {
-      console.error(error);
-      let errorMessage = 'Invalid email/username or password.';
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = 'Invalid email/username or password.';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many failed login attempts. Please try again later or reset your password.';
-      }
+      console.error("Sign In Error:", error);
+      const errorMessage = getFirebaseAuthErrorMessage(error.code);
       setFormError(errorMessage);
        toast({
         title: 'Sign In Failed',

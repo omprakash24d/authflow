@@ -1,8 +1,16 @@
+
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { GoogleAuthProvider, signInWithPopup, type UserCredential } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 import { Chrome, Github } from 'lucide-react'; // Chrome used as a generic browser/Google icon
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 // Basic SVG for Microsoft icon
 const MicrosoftIcon = () => (
@@ -16,9 +24,58 @@ const MicrosoftIcon = () => (
 
 
 export function SocialLogins() {
-  // TODO: Implement actual social login handlers
-  const handleSocialLogin = (provider: string) => {
-    alert(`Login with ${provider} (not implemented)`);
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGithubLoading, setIsGithubLoading] = useState(false);
+  const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
+
+  const handleSocialLogin = async (providerName: 'Google' | 'GitHub' | 'Microsoft') => {
+    let provider;
+    let setIsLoadingState: React.Dispatch<React.SetStateAction<boolean>>;
+
+    switch (providerName) {
+      case 'Google':
+        provider = new GoogleAuthProvider();
+        setIsLoadingState = setIsGoogleLoading;
+        break;
+      // TODO: Implement GitHub and Microsoft providers similarly
+      case 'GitHub':
+        setIsLoadingState = setIsGithubLoading;
+        toast({ title: 'GitHub Login', description: 'GitHub login is not yet implemented.', variant: 'default' });
+        return;
+      case 'Microsoft':
+        setIsLoadingState = setIsMicrosoftLoading;
+        toast({ title: 'Microsoft Login', description: 'Microsoft login is not yet implemented.', variant: 'default' });
+        return;
+      default:
+        toast({ title: 'Error', description: 'Unknown social login provider.', variant: 'destructive' });
+        return;
+    }
+
+    setIsLoadingState(true);
+
+    try {
+      const result: UserCredential = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      toast({
+        title: `Signed In with ${providerName}!`,
+        description: `Welcome, ${user.displayName || user.email}!`,
+      });
+      router.push('/dashboard');
+
+    } catch (error: any) {
+      console.error(`Error during ${providerName} sign-in:`, error);
+      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      toast({
+        title: `${providerName} Sign-In Failed`,
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingState(false);
+    }
   };
 
   return (
@@ -30,14 +87,17 @@ export function SocialLogins() {
         </span>
       </div>
       <div className="space-y-3">
-        <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('Google')}>
-          <Chrome className="mr-2 h-4 w-4" /> Google
+        <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('Google')} disabled={isGoogleLoading || isGithubLoading || isMicrosoftLoading}>
+          {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Chrome className="mr-2 h-4 w-4" />} 
+          Google
         </Button>
-        <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('GitHub')}>
-          <Github className="mr-2 h-4 w-4" /> GitHub
+        <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('GitHub')} disabled={isGoogleLoading || isGithubLoading || isMicrosoftLoading}>
+          {isGithubLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Github className="mr-2 h-4 w-4" />}
+           GitHub
         </Button>
-        <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('Microsoft')}>
-          <MicrosoftIcon /> <span className="ml-2">Microsoft</span>
+        <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('Microsoft')} disabled={isGoogleLoading || isGithubLoading || isMicrosoftLoading}>
+          {isMicrosoftLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MicrosoftIcon />} 
+          <span className="ml-2">Microsoft</span>
         </Button>
       </div>
     </>
