@@ -1,12 +1,13 @@
+
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
+import LoadingComponent from './loading'; // Import the main loading component
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -22,13 +23,9 @@ export default function HomePage() {
   }, [user, loading, router]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingComponent />; // Use the standardized loading component
   }
-  
+
   // If not loading and no user, show landing content
   if (!user) {
     return (
@@ -58,12 +55,7 @@ export default function HomePage() {
     );
   }
 
-  // If user is logged in, ProtectedRoute on /dashboard will handle it.
-  // This return is mostly a fallback or if the redirect hasn't happened yet.
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      <p className="ml-4 text-lg">Loading your experience...</p>
-    </div>
-  );
+  // If user is logged in, but redirect hasn't happened yet (e.g., useEffect still running)
+  // or as a fallback if ProtectedRoute on /dashboard is also rendering its loader.
+  return <LoadingComponent />; // Use the standardized loading component
 }
