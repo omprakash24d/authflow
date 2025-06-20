@@ -78,8 +78,8 @@ export function SignInForm() {
     if (!auth) {
         setFormError("Authentication service is not available. Sign-in failed.");
         toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
-        setIsLoading(false);
-        throw new Error("Auth service unavailable"); // Prevent further execution
+        setIsLoading(false); // Ensure isLoading is false
+        throw new Error("Auth service unavailable"); 
     }
     const userCredential = await signInWithEmailAndPassword(auth, emailToUse, passwordToUse); 
     const firebaseUser = userCredential.user;
@@ -107,10 +107,17 @@ export function SignInForm() {
 
       if (!response.ok) {
         let errorData = { error: 'Failed to create session. Server response not in expected format.' };
-        try {
-          errorData = await response.json();
-        } catch (jsonError) {
-          // Keep default error
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            try {
+                errorData = await response.json();
+            } catch (jsonError) {
+                console.error("Failed to parse JSON error response from /api/auth/session-login (SignInForm):", jsonError);
+            }
+        } else {
+            const textResponse = await response.text();
+            console.error("Non-JSON response from /api/auth/session-login (SignInForm):", textResponse);
+            if (textResponse.length < 200) errorData.error = textResponse; // Use text if it's short
         }
         throw new Error(errorData.error || 'Failed to create session.');
       }
@@ -174,7 +181,6 @@ export function SignInForm() {
       
       if (auth && emailToUse && (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found')) {
         try {
-          // auth is already checked above, so it's safe to use here
           const signInMethods = await fetchSignInMethodsForEmail(auth, emailToUse);
           if (signInMethods.includes(GoogleAuthProvider.PROVIDER_ID)) {
             errorMessage += " Tip: This email may be linked to Google Sign-In. Consider trying that method.";
@@ -184,20 +190,21 @@ export function SignInForm() {
         }
       }
       
-      if (errorMessage !== UNVERIFIED_EMAIL_ERROR_MESSAGE && !form.formState.errors.identifier && !formError) {
+      // If the error is not the unverified email message (handled in handleSignIn)
+      // and not already handled by form field validation.
+      if (errorMessage !== UNVERIFIED_EMAIL_ERROR_MESSAGE) {
          setFormError(errorMessage);
-      }
-       toast({
-        title: 'Sign In Failed',
-        description: formError || errorMessage, 
-        variant: 'destructive',
-      });
-      // Ensure isLoading is false if not in unverified state and not redirecting
-      if (typeof window !== 'undefined' && !window.location.pathname.endsWith('/dashboard') && !(unverifiedUser && !unverifiedUser.emailVerified)) {
+         toast({
+            title: 'Sign In Failed',
+            description: errorMessage, 
+            variant: 'destructive',
+          });
+          setIsLoading(false); // Error occurred, stop loading indicator
+      } else if (!unverifiedUser) {
+        // This case handles errors from handleSignIn if it didn't set unverifiedUser (e.g. session creation failed)
         setIsLoading(false);
       }
-    } 
-    // Removed finally block as isLoading is managed within try/catch/handleSignIn
+    }
   }
 
   async function handleResendVerificationEmail() {
@@ -319,7 +326,7 @@ export function SignInForm() {
             </Label>
           </div>
           <Button type="submit" className="w-full" disabled={anyLoading || !auth}>
-            {(isLoading && !(unverifiedUser && !unverifiedUser.emailVerified)) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sign In
           </Button>
         </form>
@@ -328,3 +335,4 @@ export function SignInForm() {
     </AuthFormWrapper>
   );
 }
+
