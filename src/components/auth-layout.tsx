@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import { Logo } from '@/components/logo';
 import { AuthFooter } from '@/components/auth/auth-footer'; // Import the new footer

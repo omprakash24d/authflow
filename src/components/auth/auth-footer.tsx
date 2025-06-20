@@ -1,3 +1,4 @@
+
 import { TwitterIcon, GithubIcon, LinkedinIcon } from 'lucide-react'; 
 
 export function AuthFooter() {
