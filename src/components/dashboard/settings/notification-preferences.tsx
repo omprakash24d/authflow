@@ -1,12 +1,33 @@
 
 'use client';
 
+import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 export function NotificationPreferences() {
+  const { toast } = useToast();
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
+  const [smsNotificationsEnabled, setSmsNotificationsEnabled] = useState(false);
+
+  const handleEmailNotificationChange = (checked: boolean) => {
+    setEmailNotificationsEnabled(checked);
+    toast({
+      title: 'Notification Preference Updated',
+      description: `Email notifications ${checked ? 'enabled' : 'disabled'}. (Simulated save)`,
+    });
+  };
+
+  const handleSmsNotificationChange = (checked: boolean) => {
+    setSmsNotificationsEnabled(checked);
+    toast({
+      title: 'Notification Preference Updated',
+      description: `SMS notifications ${checked ? 'enabled' : 'disabled'}. (Simulated save)`,
+    });
+  };
+
   return (
     <section>
       <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
@@ -14,7 +35,7 @@ export function NotificationPreferences() {
       </h2>
       <div className="space-y-6">
         <p className="text-sm text-muted-foreground">
-          Manage how you receive notifications from us. Full configuration options are coming soon.
+          Manage how you receive notifications from us.
         </p>
 
         <div className="space-y-4">
@@ -27,20 +48,12 @@ export function NotificationPreferences() {
               <p className="text-sm text-muted-foreground max-w-md">
                 Receive important account updates, newsletters, and promotional emails.
               </p>
-              <TooltipProvider>
-                <Tooltip delayDuration={300}>
-                  <TooltipTrigger asChild>
-                    <Switch
-                      id="email-notifications"
-                      disabled
-                      aria-label="Email notifications toggle (coming soon)"
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Configuration coming soon</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Switch
+                id="email-notifications"
+                checked={emailNotificationsEnabled}
+                onCheckedChange={handleEmailNotificationChange}
+                aria-label="Toggle email notifications"
+              />
             </div>
           </div>
 
@@ -53,20 +66,12 @@ export function NotificationPreferences() {
               <p className="text-sm text-muted-foreground max-w-md">
                 Receive critical alerts and verification codes via text message.
               </p>
-              <TooltipProvider>
-                <Tooltip delayDuration={300}>
-                  <TooltipTrigger asChild>
-                    <Switch
-                      id="sms-notifications"
-                      disabled
-                      aria-label="SMS notifications toggle (coming soon)"
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Configuration coming soon</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Switch
+                id="sms-notifications"
+                checked={smsNotificationsEnabled}
+                onCheckedChange={handleSmsNotificationChange}
+                aria-label="Toggle SMS notifications"
+              />
             </div>
           </div>
         </div>
@@ -74,3 +79,4 @@ export function NotificationPreferences() {
     </section>
   );
 }
+
