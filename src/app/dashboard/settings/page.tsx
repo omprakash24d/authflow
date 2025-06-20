@@ -1,6 +1,6 @@
-
-import type { Metadata } from 'next';
-import SettingsPageContent from '@/components/dashboard/settings-page-content';
+// import type { Metadata } from 'next';
+// import SettingsPageContent from '@/components/dashboard/settings-page-content';
+// import { ProtectedRoute } from '@/components/protected-route';
 
 // export const metadata: Metadata = {
 //   title: 'Account Settings | AuthFlow Profile Management',
@@ -9,6 +9,9 @@ import SettingsPageContent from '@/components/dashboard/settings-page-content';
 
 export default function SettingsPage() {
   return (
-    <SettingsPageContent />
+    <div>
+      <h1>Minimal Settings Page</h1>
+      <p>If you see this, the basic page is rendering.</p>
+    </div>
   );
 }
