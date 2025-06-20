@@ -37,25 +37,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const signOut = async () => {
+  const signOut = async (): Promise<void> => {
     try {
-      // Clear the session cookie by calling the API route
+      // Attempt to clear the session cookie by calling the API route
       await fetch('/api/auth/session-logout', { method: 'POST' });
+    } catch (error) {
+      // Log if API call fails, but proceed with client-side logout
+      console.error('Error clearing session cookie via /api/auth/session-logout: ', error);
+      // Optionally: show a toast to the user that server-side session might still be active,
+      // but client-side logout will proceed.
+    }
+
+    try {
       // Sign out from Firebase client-side
       await firebaseSignOut(auth);
-      setUser(null); // Explicitly set user to null
-      router.push('/signin');
-    } catch (error) {
-      console.error('Error signing out: ', error);
-      // Handle error appropriately, e.g., show a toast notification
-      // Fallback: still try to sign out client-side if API call fails
-      try {
-        await firebaseSignOut(auth);
-      } finally {
-        setUser(null);
-        router.push('/signin');
-      }
+    } catch (clientSignOutError) {
+      // Log if client-side sign-out fails
+      console.error('Error signing out from Firebase client: ', clientSignOutError);
+      // Optionally: show a toast to the user about client-side logout failure.
     }
+    
+    // Always update client state and redirect.
+    setUser(null);
+    router.push('/signin');
   };
 
   return (
