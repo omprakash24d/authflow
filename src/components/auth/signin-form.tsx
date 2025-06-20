@@ -37,7 +37,6 @@ const REMEMBER_ME_STORAGE_KEY = 'authFlowRememberedIdentifier';
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResendingVerification, setIsResendingVerification] = useState(false);
-  // const [showPassword, setShowPassword] = useState(false); // Removed, PasswordInput handles its state
   const [formError, setFormError] = useState<string | null>(null);
   const [showVerificationMessageFromSignUp, setShowVerificationMessageFromSignUp] = useState(false);
   const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null);
@@ -121,7 +120,8 @@ export function SignInForm() {
       title: 'Signed In!',
       description: 'Welcome back!',
     });
-    router.push('/dashboard');
+    // Use window.location.assign for a full page reload to ensure middleware and context align
+    window.location.assign('/dashboard');
   }
 
 
@@ -188,7 +188,13 @@ export function SignInForm() {
       });
     } finally {
       if(formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE && !(unverifiedUser && !unverifiedUser.emailVerified) ) {
-        setIsLoading(false);
+        // Only set loading to false if we are not in the unverified email state,
+        // as handleSignIn will manage isLoading in that specific path.
+        // Also, if window.location.assign is called, this finally block might not fully execute as expected
+        // before navigation, so direct isLoading management within handleSignIn for the redirect path is safer.
+        if (typeof window !== 'undefined' && !window.location.pathname.endsWith('/dashboard')) {
+             setIsLoading(false);
+        }
       }
     }
   }
