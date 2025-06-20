@@ -75,12 +75,12 @@ export default function SettingsPageContent() {
       await setDoc(userProfileRef, {
         firstName: values.firstName,
         lastName: values.lastName,
-        updatedAt: serverTimestamp(), // Keep track of updates
+        updatedAt: serverTimestamp(), 
       }, { merge: true });
 
       toast({
         title: 'Profile Updated',
-        description: 'Your profile information has been saved.',
+        description: 'Your first and last name have been saved.',
       });
     } catch (error: any) {
       console.error("Error updating profile:", error);
@@ -136,7 +136,7 @@ export default function SettingsPageContent() {
           <Card className="w-full shadow-xl">
             <CardHeader>
               <CardTitle className="text-2xl font-headline">Account Settings</CardTitle>
-              <CardDescription>Manage your profile, security, and notification preferences.</CardDescription>
+              <CardDescription>Manage your profile, security, and other preferences.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
               <section>
@@ -183,12 +183,12 @@ export default function SettingsPageContent() {
                      <div>
                       <Label htmlFor="usernameDisplay">Username</Label>
                       <Input id="usernameDisplay" type="text" value={user.displayName || 'N/A'} disabled />
-                       <p className="text-xs text-muted-foreground mt-1">Username cannot be changed here.</p>
+                       <p className="text-xs text-muted-foreground mt-1">Username cannot be changed here. It is set during sign up.</p>
                     </div>
                     <div>
                       <Label htmlFor="emailDisplay">Email Address</Label>
                       <Input id="emailDisplay" type="email" value={user.email || 'N/A'} disabled />
-                       <p className="text-xs text-muted-foreground mt-1">Email address cannot be changed here.</p>
+                       <p className="text-xs text-muted-foreground mt-1">Email address cannot be changed through this form.</p>
                     </div>
                      <div className="space-y-2">
                         <Label>Profile Photo</Label>
@@ -199,7 +199,7 @@ export default function SettingsPageContent() {
                             <Button 
                                 type="button" 
                                 variant="outline" 
-                                onClick={() => toast({ title: 'Coming Soon', description: 'Profile photo upload will be implemented later.'})}
+                                onClick={() => toast({ title: 'Coming Soon', description: 'Profile photo upload will be implemented in a future update.'})}
                                 disabled={profileSaving}
                             >
                                 Upload Photo
@@ -225,10 +225,10 @@ export default function SettingsPageContent() {
                   <Button variant="outline" className="w-full justify-start" onClick={() => setIsChangePasswordDialogOpen(true)}>
                     Change Password
                   </Button>
-                  <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Two-Factor Authentication (2FA) will be added soon.'})}>
+                  <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Two-Factor Authentication (2FA) will be added in a future update.'})}>
                     Enable Two-Factor Authentication (2FA)
                   </Button>
-                  <Button variant="link" className="text-primary p-0 h-auto" onClick={() => toast({ title: 'Coming Soon', description: 'Login history view will be added soon.'})}>View login history</Button>
+                  <Button variant="link" className="text-primary p-0 h-auto" onClick={() => toast({ title: 'Coming Soon', description: 'Login history view will be added in a future update.'})}>View login history</Button>
                 </div>
               </section>
               
@@ -239,11 +239,11 @@ export default function SettingsPageContent() {
                   <Bell className="mr-2 h-5 w-5" /> Notification Preferences
                 </h2>
                 <div className="space-y-2">
-                  <p className="text-sm">Manage how you receive notifications from us.</p>
-                  <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Email notification settings will be added soon.'})}>
+                  <p className="text-sm">Manage how you receive notifications from us (coming soon).</p>
+                  <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Email notification settings will be added in a future update.'})}>
                     Configure Email Notifications
                   </Button>
-                  <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'SMS notification settings will be added soon.'})}>
+                  <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'SMS notification settings will be added in a future update.'})}>
                     Configure SMS Notifications
                   </Button>
                 </div>
@@ -256,8 +256,8 @@ export default function SettingsPageContent() {
                   <Palette className="mr-2 h-5 w-5" /> Appearance
                 </h2>
                 <div className="space-y-2">
-                  <p className="text-sm">Customize the look and feel of the application.</p>
-                  <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Dark/Light mode toggle will be added soon.'})}>
+                  <p className="text-sm">Customize the look and feel of the application (coming soon).</p>
+                  <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Dark/Light mode toggle will be added in a future update.'})}>
                     Toggle Dark/Light Mode
                   </Button>
                 </div>
@@ -271,3 +271,5 @@ export default function SettingsPageContent() {
     </>
   );
 }
+
+    

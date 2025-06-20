@@ -66,19 +66,24 @@ async (input) => {
 const checkPasswordBreachPrompt = ai.definePrompt({
   name: 'checkPasswordBreachPrompt',
   tools: [haveIBeenPwnedTool],
-  input: {schema: CheckPasswordBreachInputSchema},
-  output: {schema: CheckPasswordBreachOutputSchema},
-  prompt: `You are a security expert helping users choose secure passwords.
+  input: { schema: CheckPasswordBreachInputSchema },
+  output: { schema: CheckPasswordBreachOutputSchema },
+  prompt: `You are a security expert assisting users in selecting secure passwords.
 
-  I will provide a password to you. You MUST use the haveIBeenPwned tool to check if this password has been breached.
+  I will provide you with a password. Your task is to use the haveIBeenPwned tool to check if this password has been involved in any data breaches.
 
-  Based on the result from the tool:
-  - If the breach count returned by the tool is greater than 0, set isBreached to true.
-  - If the breach count returned by the tool is 0, set isBreached to false.
-  - Always return the breachCount exactly as provided by the tool's output. If the tool does not provide a breachCount (e.g., if it's undefined or null, though it should always return a number), then do not include the breachCount field in your output.
+  Please follow these steps:
+  1. Check the breach count returned by the tool.
+  2. If the breach count is greater than 0, set isBreached to true.
+  3. If the breach count is 0, set isBreached to false.
+  4. Always return the breachCount exactly as provided by the tool's output. 
+     - If the breachCount is undefined or null, do not include the breachCount field in your output.
+
+  **Important:** A breached password means it has been exposed in a data leak, which can compromise user security. Always encourage users to choose strong, unique passwords.
 
   Password: {{{password}}}`,
 });
+
 
 const checkPasswordBreachFlow = ai.defineFlow(
   {
