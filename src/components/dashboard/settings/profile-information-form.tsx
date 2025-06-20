@@ -25,7 +25,7 @@ async function prepareUsernameUpdates(
   currentUsername: string | null,
   userId: string,
   userEmail: string | null,
-  db: Firestore // Made non-nullable as it will be checked before calling
+  db: Firestore // Expects a non-null Firestore instance
 ): Promise<{ success: boolean; error?: string; usernameChanged: boolean; batchOperations?: (batch: WriteBatch) => void }> {
   const newUsernameLower = newUsername.toLowerCase();
   const currentUsernameLower = currentUsername?.toLowerCase();
@@ -88,12 +88,18 @@ export function ProfileInformationForm() {
   });
 
   useEffect(() => {
-    if (firestore) {
-        setIsFirestoreAvailable(true);
-    } else {
+    if (!firestore) {
         setIsFirestoreAvailable(false);
         setProfileError("Database service is not available. Profile data cannot be loaded or saved.");
-        toast({ title: "Configuration Error", description: "Database service is not available. Profile functions will be limited.", variant: "destructive" });
+        // Avoid toast in useEffect directly if it can cause loops, but for init it's okay.
+        // Consider if toast is needed here or if FormAlert is sufficient.
+        // toast({ title: "Configuration Error", description: "Database service is not available. Profile functions will be limited.", variant: "destructive" });
+        return; // Early exit
+    }
+    // If we reach here, firestore is non-null for this effect run
+    setIsFirestoreAvailable(true);
+    if (profileError === "Database service is not available. Profile data cannot be loaded or saved.") {
+      setProfileError(null); // Clear the specific "service unavailable" error if it's now available
     }
 
     if (user) {
@@ -101,43 +107,42 @@ export function ProfileInformationForm() {
         setProfilePhotoPreview(user.photoURL);
       }
 
-      if (firestore) { // Proceed only if Firestore is available
-        const fetchUserProfile = async () => {
-          try {
-            const userProfileRef = doc(firestore, 'users', user.uid);
-            const docSnap = await getDoc(userProfileRef);
-            let fetchedUsername = user.displayName || '';
+      // firestore is guaranteed to be non-null here due to the check above
+      const fetchUserProfile = async () => {
+        try {
+          const userProfileRef = doc(firestore, 'users', user.uid);
+          const docSnap = await getDoc(userProfileRef);
+          let fetchedUsername = user.displayName || '';
 
-            if (docSnap.exists()) {
-              const profileData = docSnap.data();
-              profileForm.reset({
-                firstName: profileData.firstName || '',
-                lastName: profileData.lastName || '',
-                username: profileData.username || user.displayName || '',
-              });
-              fetchedUsername = profileData.username || user.displayName || '';
-              if (profileData.photoURL && profileData.photoURL !== user.photoURL) {
-                 setProfilePhotoPreview(profileData.photoURL);
-              }
-            } else {
-               console.warn(`User profile document not found for UID: ${user.uid}. Initializing form with Auth display name.`);
-              profileForm.reset({
-                firstName: '',
-                lastName: '',
-                username: user.displayName || '',
-              });
+          if (docSnap.exists()) {
+            const profileData = docSnap.data();
+            profileForm.reset({
+              firstName: profileData.firstName || '',
+              lastName: profileData.lastName || '',
+              username: profileData.username || user.displayName || '',
+            });
+            fetchedUsername = profileData.username || user.displayName || '';
+            if (profileData.photoURL && profileData.photoURL !== user.photoURL) {
+               setProfilePhotoPreview(profileData.photoURL);
             }
-            setInitialUsername(fetchedUsername);
-          } catch (error: any) {
-            console.error("Error fetching user profile for settings:", error);
-            setProfileError("Could not load your profile data.");
-            toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
+          } else {
+             console.warn(`User profile document not found for UID: ${user.uid}. Initializing form with Auth display name.`);
+            profileForm.reset({
+              firstName: '',
+              lastName: '',
+              username: user.displayName || '',
+            });
           }
-        };
-        fetchUserProfile();
-      }
+          setInitialUsername(fetchedUsername);
+        } catch (error: any) {
+          console.error("Error fetching user profile for settings:", error);
+          setProfileError("Could not load your profile data.");
+          toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
+        }
+      };
+      fetchUserProfile();
     }
-  }, [user, profileForm, toast]);
+  }, [user, profileForm, toast, firestore]); // Added firestore to dependency array
 
 
   const handlePhotoUploadClick = () => {
@@ -175,7 +180,7 @@ export function ProfileInformationForm() {
       toast({ title: "Authentication Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
-    if (!firestore) {
+    if (!firestore) { // Guard for non-null firestore
       setProfileError("Database service is not available. Profile cannot be saved.");
       toast({ title: "Configuration Error", description: "Database service is not available, cannot save profile.", variant: "destructive" });
       return;
@@ -203,7 +208,7 @@ export function ProfileInformationForm() {
       initialUsername,
       currentUser.uid,
       currentUser.email,
-      firestore // Known to be non-null here
+      firestore // `firestore` is known to be non-null here
     );
 
     if (!usernameUpdateResult.success) {
@@ -230,8 +235,8 @@ export function ProfileInformationForm() {
     }
 
     try {
-      const batch = writeBatch(firestore); // Known to be non-null here
-      const userProfileRef = doc(firestore, 'users', currentUser.uid);
+      const batch = writeBatch(firestore); // `firestore` is known to be non-null here
+      const userProfileRef = doc(firestore, 'users', currentUser.uid); // `firestore` is known to be non-null here
 
       const profileUpdateData: any = {
         firstName: values.firstName,
@@ -280,7 +285,7 @@ export function ProfileInformationForm() {
     }
   }
 
-  if (!user) {
+  if (!user && !isFirestoreAvailable) { // Show loader if user or firestore status is initially unknown
     return <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
@@ -293,7 +298,7 @@ export function ProfileInformationForm() {
 
       <FormAlert title="Profile Error" message={profileError} variant="destructive" className="mb-4" />
       
-      {!isFirestoreAvailable && !profileError && (
+      {!isFirestoreAvailable && !profileError && ( // This condition might be redundant if profileError is set when !isFirestoreAvailable
          <FormAlert title="Configuration Error" message="Database service is not available. Profile data cannot be loaded or saved." variant="destructive" className="mb-4" />
       )}
 
@@ -343,7 +348,7 @@ export function ProfileInformationForm() {
           />
           <div>
             <Label htmlFor="emailDisplay">Email Address</Label>
-            <Input id="emailDisplay" type="email" value={user.email || 'N/A'} disabled className="bg-muted/50" />
+            <Input id="emailDisplay" type="email" value={user?.email || 'N/A'} disabled className="bg-muted/50" />
             <p className="text-xs text-muted-foreground mt-1">
               Your email address is managed in the Security section.
             </p>
@@ -398,3 +403,4 @@ export function ProfileInformationForm() {
     </section>
   );
 }
+
