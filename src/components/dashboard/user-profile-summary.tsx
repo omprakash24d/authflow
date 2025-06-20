@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { firestore } from '@/lib/firebase/config';
+import { firestore } from '@/lib/firebase/config'; // Import firestore
 import { doc, getDoc } from 'firebase/firestore';
 import { Loader2, User as UserIcon } from 'lucide-react';
 
@@ -19,7 +19,7 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
 
   useEffect(() => {
     if (user) {
-      if (firestore) {
+      if (firestore) { // Check if firestore instance is available
         const fetchUserProfile = async () => {
           setProfileLoading(true);
           setProfileError(null);
@@ -32,7 +32,7 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
               setLastName(profileData.lastName || null);
             } else {
               console.warn(`User profile document not found for UID: ${user.uid}`);
-              setFirstName(null); // Explicitly set to null if not found
+              setFirstName(null); 
               setLastName(null);
             }
           } catch (error: any) {
@@ -56,7 +56,7 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
       setProfileLoading(false);
       setProfileError(null);
     }
-  }, [user]);
+  }, [user, firestore]); // Added firestore to dependency array
 
   return (
     <div className="space-y-3 text-sm">

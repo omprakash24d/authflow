@@ -57,7 +57,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
      if (!firestore) {
       setFormError('Database service is not available. Cannot update email profile data.');
       toast({ title: "Configuration Error", description: "Database service unavailable.", variant: "destructive" });
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading state is reset
       return;
     }
 
@@ -69,7 +69,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
       await reauthenticateCurrentUser(user, values.currentPassword); 
       await verifyBeforeUpdateEmail(user, values.newEmail);
 
-      // Firestore is checked for null above
+      // Firestore is confirmed non-null by the check above
       const userProfileRef = doc(firestore, 'users', user.uid);
       await setDoc(userProfileRef,
         {
