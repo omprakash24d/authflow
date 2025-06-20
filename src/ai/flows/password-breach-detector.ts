@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Implements a password breach detection system using the HaveIBeenPwned API.
@@ -30,7 +31,7 @@ export async function checkPasswordBreach(input: CheckPasswordBreachInput): Prom
 
 const haveIBeenPwnedTool = ai.defineTool({
   name: 'haveIBeenPwned',
-  description: 'Checks if a password has been compromised using the HaveIBeenPwned API.',
+  description: 'Checks if a password has been compromised using the HaveIBeenPwned API. Returns the number of times the password has been found in breaches.',
   inputSchema: z.object({
     password: z.string().describe('The password to check.'),
   }),
@@ -47,7 +48,7 @@ async (input) => {
 
   const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    throw new Error(`Failed to fetch breach data from HaveIBeenPwned API: ${response.status} ${response.statusText}`);
   }
   const responseText = await response.text();
   const matches = responseText.split('\r\n').map(line => line.split(':'))
@@ -69,9 +70,12 @@ const checkPasswordBreachPrompt = ai.definePrompt({
   output: {schema: CheckPasswordBreachOutputSchema},
   prompt: `You are a security expert helping users choose secure passwords.
 
-  I will provide a password to you, and you must check if this password has been breached using the haveIBeenPwned tool.
+  I will provide a password to you. You MUST use the haveIBeenPwned tool to check if this password has been breached.
 
-  Return isBreached as true if the password has been breached, and false otherwise. Also, return the breachCount from the tool, if present.
+  Based on the result from the tool:
+  - If the breach count returned by the tool is greater than 0, set isBreached to true.
+  - If the breach count returned by the tool is 0, set isBreached to false.
+  - Always return the breachCount exactly as provided by the tool's output. If the tool does not provide a breachCount (e.g., if it's undefined or null, though it should always return a number), then do not include the breachCount field in your output.
 
   Password: {{{password}}}`,
 });
@@ -82,8 +86,9 @@ const checkPasswordBreachFlow = ai.defineFlow(
     inputSchema: CheckPasswordBreachInputSchema,
     outputSchema: CheckPasswordBreachOutputSchema,
   },
-  async input => {
+  async (input: CheckPasswordBreachInput) => {
     const {output} = await checkPasswordBreachPrompt(input);
     return output!;
   }
 );
+
