@@ -80,7 +80,20 @@ export function SignInForm() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          // Attempt to parse error only if content type suggests JSON
+          let errorData = { error: 'Failed to create session. The server did not provide a valid JSON response.' };
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.indexOf("application/json") !== -1) {
+            try {
+              errorData = await response.json();
+            } catch (jsonError) {
+              console.error("Failed to parse JSON error response:", jsonError);
+            }
+          } else {
+             // If not JSON, it might be HTML (error page)
+             const textResponse = await response.text();
+             console.error("Non-JSON response from /api/auth/session-login:", textResponse);
+          }
           throw new Error(errorData.error || 'Failed to create session.');
         }
       }
@@ -182,10 +195,8 @@ export function SignInForm() {
               <FormItem>
                 <div className="flex items-center justify-between">
                   <FormLabel>Password</FormLabel>
-                  <Link href="/forgot-password" passHref legacyBehavior>
-                    <a className="text-sm font-medium text-primary hover:underline">
-                      Forgot password?
-                    </a>
+                  <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                    Forgot password?
                   </Link>
                 </div>
                 <FormControl>
