@@ -1,13 +1,18 @@
 
-// This is an intentionally minimal page for debugging.
-// If this page still doesn't load after clearing the .next folder and restarting the dev server,
-// the issue is likely deeper within the Next.js build or server state for this specific route.
+// import type { Metadata } from 'next'; // Keep commented out for now
+import SettingsPageContent from '@/components/dashboard/settings-page-content';
+// import { ProtectedRoute } from '@/components/protected-route'; // Keep commented out for now
+
+// export const metadata: Metadata = { // Keep commented out for now
+//   title: 'Account Settings | AuthFlow',
+//   description: 'Manage your AuthFlow account settings, profile, security, and notification preferences.',
+// };
 
 export default function SettingsPage() {
-  return (
-    <div>
-      <h1>Minimal Settings Page</h1>
-      <p>If you see this, the basic page is rendering.</p>
-    </div>
-  );
+  // return ( // Keep ProtectedRoute commented out for now
+  //   <ProtectedRoute>
+  //     <SettingsPageContent />
+  //   </ProtectedRoute>
+  // );
+  return <SettingsPageContent />;
 }

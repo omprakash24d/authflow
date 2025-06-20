@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Corrected import
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -27,7 +27,6 @@ export default function SettingsPageContent() {
   }
 
   if (!user) {
-    // This case should ideally be handled by ProtectedRoute, but as a fallback:
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="max-w-md text-center">
@@ -44,7 +43,6 @@ export default function SettingsPageContent() {
     );
   }
 
-  // If execution reaches here, user is authenticated and auth is not loading.
   return (
     <div className="flex min-h-screen flex-col items-center bg-background p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-2xl">
@@ -75,7 +73,7 @@ export default function SettingsPageContent() {
                   <Input id="emailDisplay" type="email" value={user.email || 'N/A'} disabled />
                 </div>
                  <p className="text-xs text-muted-foreground mt-1">
-                    First Name, Last Name, and Profile Photo editing will be available soon.
+                    Full profile editing (First Name, Last Name, Profile Photo) will be implemented later.
                  </p>
               </div>
             </section>
