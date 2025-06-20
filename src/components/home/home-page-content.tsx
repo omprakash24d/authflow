@@ -1,32 +1,31 @@
 
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+// useEffect and useRouter are no longer needed for redirection here
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
-import LoadingComponent from '@/app/loading'; // Adjusted path
+import LoadingComponent from '@/app/loading'; 
 
 export default function HomePageContent() {
   const { user, loading } = useAuth();
-  const router = useRouter();
+  // const router = useRouter(); // No longer needed
 
-  useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
-      }
-      // If not loading and no user, stay on this page (landing page)
-    }
-  }, [user, loading, router]);
+  // useEffect for redirection has been removed as middleware now handles it.
+  // useEffect(() => {
+  //   if (!loading) {
+  //     if (user) {
+  //       router.replace('/dashboard');
+  //     }
+  //   }
+  // }, [user, loading, router]);
 
   if (loading) {
-    return <LoadingComponent />; // Use the standardized loading component
+    return <LoadingComponent />;
   }
 
-  // If not loading and no user, show landing content
+  // If middleware has not redirected (i.e., user is not authenticated), show landing content.
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8 text-center">
@@ -55,7 +54,9 @@ export default function HomePageContent() {
     );
   }
 
-  // If user is logged in, but redirect hasn't happened yet (e.g., useEffect still running)
-  // or as a fallback if ProtectedRoute on /dashboard is also rendering its loader.
-  return <LoadingComponent />; // Use the standardized loading component
+  // If user is logged in, middleware should have redirected.
+  // This state (loading is false, user exists) should ideally not be reached for long on the homepage.
+  // Showing a loader here is a fallback during the brief period before middleware effect or if something unexpected occurs.
+  return <LoadingComponent />;
 }
+
