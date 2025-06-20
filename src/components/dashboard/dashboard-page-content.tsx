@@ -4,7 +4,7 @@
 import { ProtectedRoute } from '@/components/protected-route';
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import LoadingComponent from '@/app/loading'; // Import the global loading component
 
 import { DashboardHeader } from './dashboard-header';
 import { UserProfileSummary } from './user-profile-summary';
@@ -14,23 +14,16 @@ import { AccountManagementActions } from './account-management-actions';
 export default function DashboardPageContent() {
   const { user, signOut, loading: authLoading } = useAuth();
 
-  if (authLoading || (!user && !authLoading)) {
-     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
+  if (authLoading) {
+    return <LoadingComponent />; // Use the global loading component
   }
   
   // This case should ideally be handled by ProtectedRoute redirecting,
   // but as a fallback, prevent rendering dashboard content if user is null after loading.
+  // Or, if not loading and user is null, ProtectedRoute will handle redirect.
   if (!user) { 
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Redirecting to sign-in...</p>
-        <Loader2 className="ml-2 h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    // ProtectedRoute will handle the redirect, this return is a fallback or during transition.
+    return <LoadingComponent />; // Show loader while redirecting
   }
 
   return (
