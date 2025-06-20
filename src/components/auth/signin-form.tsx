@@ -27,9 +27,9 @@ import { AuthFormWrapper } from './auth-form-wrapper';
 import { SocialLogins } from './social-logins';
 import { PasswordInput } from './password-input';
 import { EmailVerificationAlert } from './email-verification-alert';
-import { FormAlert } from '@/components/ui/form-alert'; // New import
+import { FormAlert } from '@/components/ui/form-alert'; 
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, MailCheck } from 'lucide-react'; // Removed AlertTriangle
+import { Loader2, MailCheck } from 'lucide-react'; 
 
 const UNVERIFIED_EMAIL_ERROR_MESSAGE = "Your email address is not verified. Please check your inbox for the verification link we sent you. If you don't see it, be sure to check your spam or junk folder. You can also click below to resend the verification link.";
 const REMEMBER_ME_STORAGE_KEY = 'authFlowRememberedIdentifier';
@@ -289,7 +289,7 @@ export function SignInForm() {
                   </Link>
                 </div>
                 <FormControl>
-                  <PasswordInput<SignInFormValues, "password">
+                  <PasswordInput
                     field={field}
                     placeholder="••••••••"
                     disabled={anyLoading}

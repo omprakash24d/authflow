@@ -13,9 +13,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from '@/components/auth/auth-form-wrapper';
-import { FormAlert } from '@/components/ui/form-alert'; // New import
+import { FormAlert } from '@/components/ui/form-alert'; 
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Loader2 } from 'lucide-react'; // Removed AlertTriangle, CheckCircle
+import { Mail, Loader2 } from 'lucide-react'; 
 
 const ForgotPasswordSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),

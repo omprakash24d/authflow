@@ -22,9 +22,9 @@ import { PasswordInput } from './password-input';
 import { PasswordStrengthIndicator } from './password-strength-indicator';
 import { SocialLogins } from './social-logins';
 import { PasswordBreachDialog } from './password-breach-dialog';
-import { FormAlert } from '@/components/ui/form-alert'; // New Import
+import { FormAlert } from '@/components/ui/form-alert'; 
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react'; // Removed AlertTriangle
+import { Loader2 } from 'lucide-react'; 
 
 
 export function SignUpForm() {
@@ -243,7 +243,7 @@ export function SignUpForm() {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <div ref={passwordInputRef}>
-                        <PasswordInput<SignUpFormValues, "password">
+                        <PasswordInput
                             field={{...otherFieldProps, ref: (el) => {
                                 fieldRef(el);
                             }}}
@@ -270,7 +270,7 @@ export function SignUpForm() {
               <FormItem>
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
-                  <PasswordInput<SignUpFormValues, "confirmPassword">
+                  <PasswordInput
                     field={field}
                     placeholder="••••••••"
                     disabled={isLoading}
