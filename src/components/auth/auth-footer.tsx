@@ -1,4 +1,4 @@
-import { Twitter, Github, LinkedinIcon } from 'lucide-react';
+import { TwitterIcon, GithubIcon, LinkedinIcon } from 'lucide-react'; // Use the updated icon names
 
 export function AuthFooter() {
   const developerLinks = [
@@ -9,12 +9,12 @@ export function AuthFooter() {
     },
     {
       href: "https://github.com/omprakash24d",
-      icon: <Github className="h-5 w-5" />,
+      icon: <GithubIcon className="h-5 w-5" />,
       label: "GitHub"
     },
     {
       href: "https://twitter.com/omprakash25d",
-      icon: <Twitter className="h-5 w-5" />,
+      icon: <TwitterIcon className="h-5 w-5" />,
       label: "Twitter"
     },
   ];
