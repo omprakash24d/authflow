@@ -13,7 +13,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <footer className="mt-12 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} AuthFlow. All rights reserved.</p>
         <p className="mt-1">
-          Built with Firebase & Next.js by Firebase Studio.
+          Built with Firebase & Next.js by Om Prakash.
         </p>
       </footer>
     </div>
