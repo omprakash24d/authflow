@@ -68,22 +68,21 @@ export function SignUpForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, registrationValues.email, registrationValues.password);
       const user = userCredential.user;
 
+      // Set displayName to username for Firebase Auth user
       await updateProfile(user, {
-        displayName: registrationValues.username, // Set displayName to username
+        displayName: registrationValues.username,
       });
       
-      // Store username in Firestore for lookup
-      // Ensure Firestore is initialized and available
+      // Store username and user profile in Firestore
       if (firestore) {
         const usernameDocRef = doc(firestore, 'usernames', registrationValues.username.toLowerCase());
         await setDoc(usernameDocRef, {
           uid: user.uid,
           email: user.email,
-          username: registrationValues.username, // Store original casing for display if needed elsewhere
+          username: registrationValues.username, 
           createdAt: serverTimestamp(),
         });
         
-        // Optionally, store first/last name in a user profile collection
         const userProfileDocRef = doc(firestore, 'users', user.uid);
         await setDoc(userProfileDocRef, {
             firstName: registrationValues.firstName,
@@ -91,11 +90,11 @@ export function SignUpForm() {
             email: user.email,
             username: registrationValues.username,
             createdAt: serverTimestamp(),
-        }, { merge: true }); // Merge true if you might add other profile data later
+        }, { merge: true });
       } else {
         console.warn("Firestore client not available, skipping username/profile document creation.");
+        // Potentially inform the user or log this more formally if profile data is critical
       }
-
 
       await sendEmailVerification(user);
       toast({
@@ -108,7 +107,7 @@ export function SignUpForm() {
       console.error("Registration Error:", error);
       let errorMessage = getFirebaseAuthErrorMessage(error.code);
       if (error.code === 'firestore/permission-denied') {
-        errorMessage = 'Failed to save username. Please try again or contact support.';
+        errorMessage = 'Account created, but failed to save username/profile due to database permissions. Please contact support or check your Firestore security rules.';
       }
       setFormError(errorMessage);
        toast({
@@ -126,22 +125,8 @@ export function SignUpForm() {
     setFormError(null);
     setBreachWarning(null); 
 
-    // Basic client-side check for existing username before attempting Firebase Auth creation
-    // This is NOT a substitute for proper Firestore security rules or a server-side check
-    if (firestore) {
-        try {
-            const usernameLower = values.username.toLowerCase();
-            // A real implementation might use a cloud function for a secure check or rely on Firestore rules heavily.
-            // For now, this is a placeholder idea - directly checking for username existence client-side before Auth creation is tricky due to rules.
-            // It's better to let Firebase Auth create the user, then try to create the username doc.
-            // If username doc creation fails due to a uniqueness constraint (enforced by Firestore rules or a Cloud Function),
-            // then you'd need to handle that (e.g., delete the Auth user, ask user for new username).
-            // For simplicity in this step, we proceed and will rely on the setDoc to potentially fail if rules were set up for uniqueness (which they aren't explicitly here for now).
-        } catch (e) {
-            // Firestore check error - proceed with caution or handle
-        }
-    }
-
+    // Client-side username check or other pre-flight checks are omitted for brevity
+    // but would be important in a production app (e.g., calling an API to check username availability).
 
     try {
       const breachResult = await checkPasswordBreach({ password: values.password });
@@ -152,7 +137,8 @@ export function SignUpForm() {
       }
       await executeRegistration(values);
     } catch (error: any) {
-      console.error("Error during password breach check:", error);
+      // This catch block is for errors primarily from checkPasswordBreach or unexpected issues before executeRegistration
+      console.error("Error during pre-registration checks (e.g., password breach):", error);
       const breachCheckErrorMsg = getFirebaseAuthErrorMessage(error.code) || "Could not verify password security. Please try again.";
       setFormError(breachCheckErrorMsg);
       toast({
