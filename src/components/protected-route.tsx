@@ -1,10 +1,11 @@
 
 'use client';
 
-import { useEffect, type ReactNode } from 'react'; // Removed memo
-import { useRouter } from 'next/navigation';
+import { useEffect, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2 } from 'lucide-react';
+// useRouter is no longer needed if we use window.location.assign
+// import { useRouter } from 'next/navigation';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -12,14 +13,16 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
-  const router = useRouter();
+  // const router = useRouter(); // No longer needed
 
   useEffect(() => {
-    // Only redirect if loading is complete and there's no user.
     if (!loading && !user) {
-      router.push('/signin');
+      // Use window.location.assign for a full page reload to /signin
+      if (typeof window !== 'undefined') {
+        window.location.assign('/signin');
+      }
     }
-  }, [user, loading, router]); // Dependencies are correct.
+  }, [user, loading]); // Dependencies remain correct.
 
   if (loading) {
     return (
@@ -34,9 +37,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // If not loading and still no user, the useEffect will handle redirection.
-  // Return a loader (or null) here to prevent rendering children prematurely
-  // while the redirect is in progress.
+  // If not loading and user is null, the useEffect will handle redirection.
+  // Render a loader (or null) to prevent children rendering while redirect is in progress.
   if (!user) {
     return (
       <div
@@ -53,4 +55,3 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // If loading is false and user exists, render children.
   return <>{children}</>;
 };
-
