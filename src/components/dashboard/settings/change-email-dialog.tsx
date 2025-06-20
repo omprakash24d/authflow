@@ -4,11 +4,12 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { EmailAuthProvider, reauthenticateWithCredential, verifyBeforeUpdateEmail } from 'firebase/auth';
-import { auth, firestore } from '@/lib/firebase/config'; // Added firestore
+import { verifyBeforeUpdateEmail } from 'firebase/auth'; // Removed reauthenticateWithCredential, EmailAuthProvider
+import { firestore } from '@/lib/firebase/config'; // Added firestore
 import { doc, setDoc } from 'firebase/firestore'; // Added for Firestore updates
 import { ChangeEmailSchema, type ChangeEmailFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
+import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; // New import
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,9 +49,9 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
   });
 
   async function onSubmit(values: ChangeEmailFormValues) {
-    if (!user || !user.email) {
-      setFormError('User not found or current email is missing.');
-      toast({ title: "Error", description: "User not found or current email is missing.", variant: "destructive" });
+    if (!user) { // Simplified check
+      setFormError('User not authenticated.');
+      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
 
@@ -58,24 +59,17 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
     setFormError(null);
 
     try {
-      const credential = EmailAuthProvider.credential(user.email, values.currentPassword);
-      await reauthenticateWithCredential(user, credential);
-      
-      // User re-authenticated, now verify and update email
+      await reauthenticateCurrentUser(user, values.currentPassword); // Use utility function
       await verifyBeforeUpdateEmail(user, values.newEmail);
 
-      // Optionally, update the email in Firestore `users/{uid}` document with a pending status
-      // or wait for a Cloud Function triggered by Auth email change event.
-      // For now, we inform the user and encourage them to verify.
-      // A more robust solution might also update the 'usernames' collection if it stores emails.
       if (firestore) {
         const userProfileRef = doc(firestore, 'users', user.uid);
-        await setDoc(userProfileRef, 
-          { 
-            email: user.email, // Keep old email until verified, or new one if strategy dictates
-            emailChangePendingTo: values.newEmail, // Indicate pending change
-            updatedAt: new Date() // Or serverTimestamp
-          }, 
+        await setDoc(userProfileRef,
+          {
+            email: user.email,
+            emailChangePendingTo: values.newEmail,
+            updatedAt: new Date()
+          },
           { merge: true }
         );
       }
@@ -83,14 +77,14 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
       toast({
         title: 'Verification Email Sent',
         description: `A verification email has been sent to ${values.newEmail}. Please check your inbox and verify to complete the email change. Your current email remains active until then.`,
-        duration: 9000, // Longer duration for this important message
+        duration: 9000,
       });
-      
+
       form.reset();
-      onOpenChange(false); // Close the dialog
+      onOpenChange(false);
     } catch (error: any) {
       console.error('Change Email Error:', error);
-      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      const errorMessage = getFirebaseAuthErrorMessage(error.code || (error.message.includes("User not found") ? 'auth/user-not-found' : undefined));
       setFormError(errorMessage);
       toast({
         title: 'Error Changing Email',
@@ -106,8 +100,8 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
     if (!isOpen) {
       form.reset();
       setFormError(null);
-      setShowCurrentPassword(false); // Reset password visibility
-      setIsLoading(false); // Ensure loading state is reset
+      setShowCurrentPassword(false);
+      setIsLoading(false);
     }
     onOpenChange(isOpen);
   };

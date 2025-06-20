@@ -4,10 +4,11 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { updatePassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { ChangePasswordSchema, type ChangePasswordFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
+import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; // New import
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,9 +55,9 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   const watchedNewPassword = form.watch('newPassword');
 
   async function onSubmit(values: ChangePasswordFormValues) {
-    if (!user || !user.email) {
-      setFormError('User not found or email is missing.');
-      toast({ title: 'Error', description: 'User not found or email is missing.', variant: 'destructive'});
+    if (!user) { // Simplified check as user.email is handled by reauthenticateCurrentUser
+      setFormError('User not authenticated.');
+      toast({ title: 'Error', description: 'User not authenticated.', variant: 'destructive'});
       return;
     }
 
@@ -64,8 +65,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     setFormError(null);
 
     try {
-      const credential = EmailAuthProvider.credential(user.email, values.currentPassword);
-      await reauthenticateWithCredential(user, credential);
+      await reauthenticateCurrentUser(user, values.currentPassword); // Use utility function
       await updatePassword(user, values.newPassword);
 
       toast({
@@ -76,10 +76,10 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       setShowCurrentPassword(false);
       setShowNewPassword(false);
       setShowConfirmNewPassword(false);
-      onOpenChange(false); 
+      onOpenChange(false);
     } catch (error: any) {
       console.error('Change Password Error:', error);
-      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      const errorMessage = getFirebaseAuthErrorMessage(error.code || (error.message.includes("User not found") ? 'auth/user-not-found' : undefined));
       setFormError(errorMessage);
       toast({
         title: 'Error Changing Password',
@@ -98,7 +98,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       setShowCurrentPassword(false);
       setShowNewPassword(false);
       setShowConfirmNewPassword(false);
-      setIsLoading(false); 
+      setIsLoading(false);
     }
     onOpenChange(isOpen);
   };
