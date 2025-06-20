@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings, Trash2, ShieldCheck, Clock, Loader2, WifiOff, MapPin } from 'lucide-react';
+import { LogOut, Settings, Trash2, ShieldCheck, Clock, Loader2, WifiOff, MapPin, User as UserIcon } from 'lucide-react'; // Added UserIcon
 import { useToast } from '@/hooks/use-toast';
 import { deleteUser } from 'firebase/auth';
 import { format } from 'date-fns';
@@ -33,6 +33,8 @@ export default function DashboardPageContent() {
   const [location, setLocation] = useState<string | null>('Loading...');
   const [activityLoading, setActivityLoading] = useState<boolean>(true);
   const [activityError, setActivityError] = useState<string | null>(null);
+
+  // TODO: Fetch firstName and lastName from Firestore user profile in a useEffect if needed for display
 
   useEffect(() => {
     const fetchActivityDetails = async () => {
@@ -64,8 +66,10 @@ export default function DashboardPageContent() {
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return '??';
+    // If name is a username (e.g., "johndoe"), take first 2 chars.
+    // If it were "John Doe", it would take "JD".
     const names = name.split(' ');
-    if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
+    if (names.length === 1) return name.substring(0, 2).toUpperCase();
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
   };
 
@@ -99,12 +103,11 @@ export default function DashboardPageContent() {
     ? format(new Date(user.metadata.lastSignInTime), "PPpp") 
     : 'N/A';
 
-  if (!user && !useAuth().loading) { // Check loading state from context as well
-    // This should be handled by ProtectedRoute, but as a fallback:
+  if (!user && !useAuth().loading) { 
     return <div className="flex min-h-screen items-center justify-center">Redirecting...</div>;
   }
   
-  if (useAuth().loading || !user) { // Show loader if auth is loading or user is still null
+  if (useAuth().loading || !user) { 
      return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -129,8 +132,11 @@ export default function DashboardPageContent() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3 text-sm">
-              <h3 className="text-lg font-semibold font-headline text-primary">Account Information</h3>
-              <p><strong>Display Name:</strong> {user.displayName || 'Not set'}</p>
+              <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
+                <UserIcon className="mr-2 h-5 w-5" /> Account Information
+              </h3>
+              <p><strong>Username:</strong> {user.displayName || 'Not set'}</p>
+              {/* <p><strong>Full Name:</strong> {firstName && lastName ? `${firstName} ${lastName}` : 'Not set (Update in Settings)'}</p> */}
               <p><strong>Email:</strong> {user.email}</p>
               <p><strong>Email Verified:</strong> {user.emailVerified ? 
                 <span className="text-green-600 dark:text-green-400 font-medium">Yes</span> : 

@@ -36,7 +36,6 @@ export function SignInForm() {
   useEffect(() => {
     if (searchParams.get('verificationEmailSent') === 'true') {
       setShowVerificationMessageFromSignUp(true);
-      // Clean the URL, but only if the router is ready to prevent issues during initial load/HMR
       if (router) {
         const current = new URL(window.location.href);
         current.searchParams.delete('verificationEmailSent');
@@ -54,69 +53,91 @@ export function SignInForm() {
     },
   });
 
+  async function handleSignIn(emailToUse: string, passwordToUse: string) {
+    const userCredential = await signInWithEmailAndPassword(auth, emailToUse, passwordToUse);
+    const firebaseUser = userCredential.user;
+
+    if (firebaseUser && !firebaseUser.emailVerified) {
+      setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE);
+      setUnverifiedUser(firebaseUser);
+      toast({
+        title: 'Email Not Verified',
+        description: "Check your inbox for a verification link or use the resend option.",
+        variant: 'destructive',
+      });
+      setIsLoading(false); // Ensure loading is stopped here
+      return; // Stop further execution
+    }
+    
+    if (firebaseUser) {
+      const idToken = await firebaseUser.getIdToken();
+      const response = await fetch('/api/auth/session-login', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        let errorData = { error: 'Failed to create session. Server response not in expected format.' };
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          // Keep default error
+        }
+        throw new Error(errorData.error || 'Failed to create session.');
+      }
+    }
+    
+    toast({
+      title: 'Signed In!',
+      description: 'Welcome back!',
+    });
+    router.push('/dashboard');
+  }
+
+
   async function onSubmit(values: SignInFormValues) {
     setIsLoading(true);
     setFormError(null);
-    setShowVerificationMessageFromSignUp(false); // Clear this if user tries to submit again
+    setShowVerificationMessageFromSignUp(false); 
     setUnverifiedUser(null);
 
+    let emailToUse = values.identifier;
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
-      const firebaseUser = userCredential.user;
-
-      if (firebaseUser && !firebaseUser.emailVerified) {
-        setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE);
-        setUnverifiedUser(firebaseUser);
-        toast({
-          title: 'Email Not Verified',
-          description: "Check your inbox for a verification link or use the resend option.",
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      if (firebaseUser) {
-        const idToken = await firebaseUser.getIdToken();
-        const response = await fetch('/api/auth/session-login', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${idToken}`,
-          },
-        });
-
-        if (!response.ok) {
-          let errorData = { error: 'Failed to create session. Server response not in expected format.' };
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.indexOf("application/json") !== -1) {
-            try {
-              errorData = await response.json();
-            } catch (jsonError) {
-              console.error("Failed to parse JSON error response from /api/auth/session-login:", jsonError);
-            }
-          } else {
-             const textResponse = await response.text();
-             console.error("Non-JSON response from /api/auth/session-login:", textResponse);
-             // Use textResponse as error if it seems like a plain error message
-             if (textResponse.length < 200) errorData.error = textResponse;
-          }
-          throw new Error(errorData.error || 'Failed to create session.');
+      if (!values.identifier.includes('@')) { // Assume it's a username
+        const usernameLookupResponse = await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`);
+        if (!usernameLookupResponse.ok) {
+          const errorData = await usernameLookupResponse.json().catch(() => ({}));
+          const specificMessage = errorData.error || 'Invalid username or credentials.';
+          setFormError(specificMessage);
+          toast({ title: 'Sign In Failed', description: specificMessage, variant: 'destructive' });
+          setIsLoading(false);
+          return;
         }
+        const { email } = await usernameLookupResponse.json();
+        if (!email) {
+          setFormError('Could not find email for the provided username.');
+          toast({ title: 'Sign In Failed', description: 'Could not find email for the provided username.', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+        emailToUse = email;
       }
       
-      toast({
-        title: 'Signed In!',
-        description: 'Welcome back!',
-      });
-      router.push('/dashboard');
+      await handleSignIn(emailToUse, values.password);
 
     } catch (error: any) {
       console.error("Sign In Error:", error);
       const errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
-      setFormError(errorMessage);
+      // Ensure specific username lookup errors from above aren't overwritten by generic Firebase errors if possible
+      if (!form.formState.errors.identifier && !formError) { // Check if a specific error was not already set
+         setFormError(errorMessage);
+      }
        toast({
         title: 'Sign In Failed',
-        description: errorMessage,
+        description: formError || errorMessage, // Prefer already set formError if it exists
         variant: 'destructive',
       });
     } finally {
@@ -126,17 +147,14 @@ export function SignInForm() {
 
   async function handleResendVerificationEmail() {
     if (!unverifiedUser) return;
-
     setIsResendingVerification(true);
     setFormError(null); 
-
     try {
       await sendEmailVerification(unverifiedUser);
       toast({
         title: 'Verification Email Sent',
         description: 'A new verification email has been sent to your address. Please check your inbox.',
       });
-      // Clear the unverified user and specific error message after successfully sending
       setUnverifiedUser(null); 
     } catch (error: any) {
       console.error("Error resending verification email:", error);

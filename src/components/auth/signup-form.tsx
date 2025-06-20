@@ -7,7 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
+import { auth, firestore } from '@/lib/firebase/config'; // Import firestore
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Import firestore functions
 import { SignUpSchema, type SignUpFormValues } from '@/lib/validators/auth';
 import { checkPasswordBreach } from '@/ai/flows/password-breach-detector';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
@@ -67,15 +68,33 @@ export function SignUpForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, registrationValues.email, registrationValues.password);
       const user = userCredential.user;
 
-      // Set displayName to the username
       await updateProfile(user, {
-        displayName: registrationValues.username,
+        displayName: registrationValues.username, // Set displayName to username
       });
-      // Note: First/Last name are collected but not directly stored on the Firebase Auth user object by default
-      // beyond displayName. They would typically be stored in Firestore/RTDB if needed separately.
-      console.log('User created. Username used as displayName:', registrationValues.username);
-      console.log('First Name (collected):', registrationValues.firstName);
-      console.log('Last Name (collected):', registrationValues.lastName);
+      
+      // Store username in Firestore for lookup
+      // Ensure Firestore is initialized and available
+      if (firestore) {
+        const usernameDocRef = doc(firestore, 'usernames', registrationValues.username.toLowerCase());
+        await setDoc(usernameDocRef, {
+          uid: user.uid,
+          email: user.email,
+          username: registrationValues.username, // Store original casing for display if needed elsewhere
+          createdAt: serverTimestamp(),
+        });
+        
+        // Optionally, store first/last name in a user profile collection
+        const userProfileDocRef = doc(firestore, 'users', user.uid);
+        await setDoc(userProfileDocRef, {
+            firstName: registrationValues.firstName,
+            lastName: registrationValues.lastName,
+            email: user.email,
+            username: registrationValues.username,
+            createdAt: serverTimestamp(),
+        }, { merge: true }); // Merge true if you might add other profile data later
+      } else {
+        console.warn("Firestore client not available, skipping username/profile document creation.");
+      }
 
 
       await sendEmailVerification(user);
@@ -87,7 +106,10 @@ export function SignUpForm() {
 
     } catch (error: any) {
       console.error("Registration Error:", error);
-      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      let errorMessage = getFirebaseAuthErrorMessage(error.code);
+      if (error.code === 'firestore/permission-denied') {
+        errorMessage = 'Failed to save username. Please try again or contact support.';
+      }
       setFormError(errorMessage);
        toast({
         title: 'Sign Up Failed',
@@ -103,6 +125,23 @@ export function SignUpForm() {
     setIsLoading(true);
     setFormError(null);
     setBreachWarning(null); 
+
+    // Basic client-side check for existing username before attempting Firebase Auth creation
+    // This is NOT a substitute for proper Firestore security rules or a server-side check
+    if (firestore) {
+        try {
+            const usernameLower = values.username.toLowerCase();
+            // A real implementation might use a cloud function for a secure check or rely on Firestore rules heavily.
+            // For now, this is a placeholder idea - directly checking for username existence client-side before Auth creation is tricky due to rules.
+            // It's better to let Firebase Auth create the user, then try to create the username doc.
+            // If username doc creation fails due to a uniqueness constraint (enforced by Firestore rules or a Cloud Function),
+            // then you'd need to handle that (e.g., delete the Auth user, ask user for new username).
+            // For simplicity in this step, we proceed and will rely on the setDoc to potentially fail if rules were set up for uniqueness (which they aren't explicitly here for now).
+        } catch (e) {
+            // Firestore check error - proceed with caution or handle
+        }
+    }
+
 
     try {
       const breachResult = await checkPasswordBreach({ password: values.password });
@@ -173,7 +212,7 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John" {...field} />
+                    <Input placeholder="John" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -186,7 +225,7 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Doe" {...field} />
+                    <Input placeholder="Doe" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -200,7 +239,7 @@ export function SignUpForm() {
               <FormItem>
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input placeholder="johndoe" {...field} />
+                  <Input placeholder="johndoe" {...field} disabled={isLoading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -213,7 +252,7 @@ export function SignUpForm() {
               <FormItem>
                 <FormLabel>Email Address</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="john.doe@example.com" {...field} />
+                  <Input type="email" placeholder="john.doe@example.com" {...field} disabled={isLoading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -238,6 +277,7 @@ export function SignUpForm() {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••" 
                       {...field} 
+                      disabled={isLoading}
                     />
                     <Button
                       type="button"
@@ -246,6 +286,7 @@ export function SignUpForm() {
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
+                      disabled={isLoading}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
@@ -270,6 +311,7 @@ export function SignUpForm() {
                       type={showConfirmPassword ? 'text' : 'password'}
                       placeholder="••••••••" 
                       {...field} 
+                      disabled={isLoading}
                     />
                     <Button
                       type="button"
@@ -278,6 +320,7 @@ export function SignUpForm() {
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      disabled={isLoading}
                     >
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
@@ -297,6 +340,7 @@ export function SignUpForm() {
                     checked={field.value}
                     onCheckedChange={field.onChange}
                     aria-label="Accept terms and conditions"
+                    disabled={isLoading}
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">

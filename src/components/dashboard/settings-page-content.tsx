@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { updateProfile } from 'firebase/auth';
+// import { updateProfile } from 'firebase/auth'; // updateProfile for displayName will not be used if displayName is username
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,15 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 import { ChevronLeft, User, Mail, Shield, Bell, Palette, Lock, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+// import { firestore } from '@/lib/firebase/config'; // For future Firestore profile updates
+// import { doc, updateDoc } from 'firebase/firestore'; // For future Firestore profile updates
 
+
+// Schema might need to adjust if firstName/lastName are stored/validated differently (e.g. from Firestore)
 const ProfileSettingsSchema = z.object({
-  firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
-  lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
+  firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.').optional(),
+  lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.').optional(),
+  // username: z.string().min(1, "Username is required"), // Username might be non-editable or handled differently
 });
 
 type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
@@ -39,14 +44,27 @@ export default function SettingsPageContent() {
     defaultValues: {
       firstName: '',
       lastName: '',
+      // username: '', // Username will be from user.displayName
     },
   });
   
   useEffect(() => {
+    // Populate form with first/last name if available (e.g. from a future Firestore profile fetch)
+    // For now, user.displayName is the username, so direct splitting might not be right for first/last.
+    // This part will need updating when first/last name are stored separately in Firestore.
     if (user) {
+      // If you had separate first/last names stored, you'd fetch and set them here.
+      // For now, let's leave them blank or try a placeholder if desired.
+      // Or, if user.displayName was "First Last", this would work:
+      // const nameParts = user.displayName?.split(' ') || [];
+      // form.reset({
+      //   firstName: nameParts[0] || '',
+      //   lastName: nameParts.slice(1).join(' ') || '',
+      // });
+      // Since displayName is username, let's keep them empty for now.
       form.reset({
-        firstName: user.displayName?.split(' ')[0] || '',
-        lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+        firstName: '', // Will be populated from Firestore in future
+        lastName: '',  // Will be populated from Firestore in future
       });
     }
   }, [user, form]);
@@ -59,13 +77,24 @@ export default function SettingsPageContent() {
     setFormSuccess(null);
 
     try {
-      const newDisplayName = `${values.firstName} ${values.lastName}`.trim();
-      if (newDisplayName !== user.displayName) {
-        await updateProfile(user, { displayName: newDisplayName });
-      }
+      // If displayName is strictly username, we don't update it here with first/last name.
+      // const newDisplayName = `${values.firstName} ${values.lastName}`.trim();
+      // if (newDisplayName !== user.displayName) {
+      //   // await updateProfile(user, { displayName: newDisplayName }); // This line is removed
+      // }
       
-      setFormSuccess('Profile updated successfully!');
-      toast({ title: 'Profile Updated', description: 'Your profile information has been saved.' });
+      // TODO: Implement update to Firestore for firstName, lastName
+      // Example:
+      // if (firestore) {
+      //   const userProfileRef = doc(firestore, 'users', user.uid);
+      //   await updateDoc(userProfileRef, {
+      //     firstName: values.firstName,
+      //     lastName: values.lastName,
+      //   });
+      // }
+
+      setFormSuccess('Profile settings (first/last name) would be updated here if Firestore was fully integrated for them.');
+      toast({ title: 'Profile Update (Simulated)', description: 'First/Last name update logic needs Firestore.' });
     } catch (error: any) {
       console.error('Error updating profile:', error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code) || 'Failed to update profile.';
@@ -85,8 +114,6 @@ export default function SettingsPageContent() {
   }
 
   if (!user) {
-    // This state should ideally be handled by ProtectedRoute by redirecting.
-    // If we reach here, ProtectedRoute might not have redirected yet or isn't used as expected.
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="max-w-md">
@@ -136,6 +163,11 @@ export default function SettingsPageContent() {
                       <AlertDescription>{formSuccess}</AlertDescription>
                     </Alert>
                   )}
+                   <div>
+                    <Label htmlFor="usernameDisplay">Username</Label>
+                    <Input id="usernameDisplay" type="text" value={user.displayName || ''} disabled />
+                    <p className="text-xs text-muted-foreground mt-1">Username cannot be changed here.</p>
+                  </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField
                       control={form.control}
@@ -144,7 +176,7 @@ export default function SettingsPageContent() {
                         <FormItem>
                           <FormLabel>First Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="John" {...field} disabled={isLoading} />
+                            <Input placeholder="John (Optional)" {...field} disabled={isLoading} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -157,7 +189,7 @@ export default function SettingsPageContent() {
                         <FormItem>
                           <FormLabel>Last Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Doe" {...field} disabled={isLoading} />
+                            <Input placeholder="Doe (Optional)" {...field} disabled={isLoading} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -166,7 +198,7 @@ export default function SettingsPageContent() {
                   </div>
                   <div>
                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" defaultValue={user.email || ''} placeholder="john.doe@example.com" disabled />
+                    <Input id="email" type="email" value={user.email || ''} placeholder="john.doe@example.com" disabled />
                     <p className="text-xs text-muted-foreground mt-1">Email address cannot be changed here.</p>
                   </div>
                   <div>
