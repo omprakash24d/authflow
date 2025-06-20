@@ -1,12 +1,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { doc, getDoc, writeBatch, serverTimestamp, type WriteBatch, type Firestore } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase/config';
 import { updateProfile, type User as FirebaseUser } from 'firebase/auth';
+import Image from 'next/image'; // Import next/image
 import { ProfileSettingsSchema, type ProfileSettingsFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 
@@ -14,16 +15,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { FormAlert } from '@/components/ui/form-alert'; // New import
+import { FormAlert } from '@/components/ui/form-alert';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { User as UserIcon, Loader2, Image as ImageIcon } from 'lucide-react'; // Removed AlertTriangle
+import { User as UserIcon, Loader2, Image as ImageIcon, UploadCloud } from 'lucide-react';
 
 async function prepareUsernameUpdates(
   newUsername: string,
   currentUsername: string | null,
   userId: string,
-  userEmail: string | null, 
+  userEmail: string | null,
   db: Firestore
 ): Promise<{ success: boolean; error?: string; usernameChanged: boolean; batchOperations?: (batch: WriteBatch) => void }> {
   const newUsernameLower = newUsername.toLowerCase();
@@ -56,7 +57,7 @@ async function prepareUsernameUpdates(
       batch.set(newUsernameDocRef, {
         uid: userId,
         email: userEmail,
-        username: newUsername, 
+        username: newUsername,
         updatedAt: serverTimestamp(),
       });
     },
@@ -71,6 +72,9 @@ export function ProfileInformationForm() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [initialUsername, setInitialUsername] = useState<string | null>(null);
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const profileForm = useForm<ProfileSettingsFormValues>({
     resolver: zodResolver(ProfileSettingsSchema),
@@ -82,45 +86,88 @@ export function ProfileInformationForm() {
   });
 
   useEffect(() => {
-    if (user && firestore) {
-      const fetchUserProfile = async () => {
-        try {
-          const userProfileRef = doc(firestore, 'users', user.uid);
-          const docSnap = await getDoc(userProfileRef);
-          let fetchedUsername = user.displayName || '';
+    if (user) {
+      // Set initial photo preview from user.photoURL if available
+      if (user.photoURL) {
+        setProfilePhotoPreview(user.photoURL);
+      }
 
-          if (docSnap.exists()) {
-            const profileData = docSnap.data();
-            profileForm.reset({
-              firstName: profileData.firstName || '',
-              lastName: profileData.lastName || '',
-              username: profileData.username || user.displayName || '',
-            });
-            fetchedUsername = profileData.username || user.displayName || '';
-          } else {
-             console.warn(`User profile document not found for UID: ${user.uid}. Initializing form with Auth display name.`);
-            profileForm.reset({
-              firstName: '',
-              lastName: '',
-              username: user.displayName || '',
-            });
+      if (firestore) {
+        const fetchUserProfile = async () => {
+          try {
+            const userProfileRef = doc(firestore, 'users', user.uid);
+            const docSnap = await getDoc(userProfileRef);
+            let fetchedUsername = user.displayName || '';
+
+            if (docSnap.exists()) {
+              const profileData = docSnap.data();
+              profileForm.reset({
+                firstName: profileData.firstName || '',
+                lastName: profileData.lastName || '',
+                username: profileData.username || user.displayName || '',
+              });
+              fetchedUsername = profileData.username || user.displayName || '';
+              // Also update preview if Firestore has a more specific photoURL
+              // (This part would be more relevant if photoURL is stored in Firestore profile doc)
+              if (profileData.photoURL && profileData.photoURL !== user.photoURL) {
+                 setProfilePhotoPreview(profileData.photoURL);
+              }
+
+            } else {
+               console.warn(`User profile document not found for UID: ${user.uid}. Initializing form with Auth display name.`);
+              profileForm.reset({
+                firstName: '',
+                lastName: '',
+                username: user.displayName || '',
+              });
+            }
+            setInitialUsername(fetchedUsername);
+          } catch (error: any) {
+            console.error("Error fetching user profile for settings:", error);
+            setProfileError("Could not load your profile data.");
+            toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
           }
-          setInitialUsername(fetchedUsername);
-        } catch (error: any) {
-          console.error("Error fetching user profile for settings:", error);
-          setProfileError("Could not load your profile data.");
-          toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
-        }
-      };
-      fetchUserProfile();
-    } else if (!firestore && user) {
-        setProfileError("Firestore is not available. Profile data cannot be loaded or saved.");
-        toast({ title: "Configuration Error", description: "Firestore is not available.", variant: "destructive" });
+        };
+        fetchUserProfile();
+      } else if (!firestore) {
+          setProfileError("Firestore is not available. Profile data cannot be loaded or saved.");
+          toast({ title: "Configuration Error", description: "Firestore is not available.", variant: "destructive" });
+      }
     }
   }, [user, profileForm, toast]);
 
+
+  const handlePhotoUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid File Type',
+          description: 'Please select an image file (e.g., PNG, JPG, GIF).',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setProfilePhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      toast({
+        title: 'Image Selected',
+        description: 'Image ready for preview. Actual upload to server is pending implementation.',
+      });
+    }
+  };
+
+
   async function onSubmitProfile(values: ProfileSettingsFormValues) {
-    if (!user || !auth?.currentUser) { 
+    if (!user || !auth?.currentUser) {
       setProfileError("User not authenticated. Please sign in again.");
       toast({ title: "Authentication Error", description: "User not authenticated.", variant: "destructive" });
       return;
@@ -134,9 +181,34 @@ export function ProfileInformationForm() {
     setProfileSaving(true);
     setProfileError(null);
 
-    const currentUser = auth.currentUser; 
+    const currentUser = auth.currentUser;
     const newUsername = values.username.trim();
     let authDisplayNameUpdated = false;
+    // let newPhotoURL: string | null = user.photoURL; // Start with current or null
+
+    // Placeholder for actual image upload logic
+    if (profilePhotoFile) {
+        // const storage = getStorage(firebaseApp!); // Get storage instance
+        // const photoRef = ref(storage, `profilePhotos/${currentUser.uid}/${profilePhotoFile.name}`);
+        // try {
+        //   const uploadTaskSnapshot = await uploadBytes(photoRef, profilePhotoFile);
+        //   newPhotoURL = await getDownloadURL(uploadTaskSnapshot.ref);
+        //   toast({ title: "Photo Uploaded (Simulated)", description: "Photo uploaded and URL obtained (Simulated for now)." });
+        // } catch (uploadError: any) {
+        //   console.error("Error uploading profile photo:", uploadError);
+        //   setProfileError(`Failed to upload photo: ${getFirebaseAuthErrorMessage(uploadError.code)}`);
+        //   toast({ title: "Photo Upload Error", description: `Photo upload failed. ${getFirebaseAuthErrorMessage(uploadError.code)}`, variant: "destructive" });
+        //   setProfileSaving(false);
+        //   return;
+        // }
+        console.log("Profile photo selected, actual upload to Firebase Storage needs implementation.", profilePhotoFile.name);
+        toast({
+            title: "Profile Photo (Pending Backend)",
+            description: "Photo selected. Backend to handle actual upload & linking to profile is required.",
+            duration: 7000,
+        });
+    }
+
 
     const usernameUpdateResult = await prepareUsernameUpdates(
       newUsername,
@@ -153,15 +225,18 @@ export function ProfileInformationForm() {
       return;
     }
 
-    if (usernameUpdateResult.usernameChanged) {
+    if (usernameUpdateResult.usernameChanged) { //  || (newPhotoURL && newPhotoURL !== user.photoURL)
       try {
-        await updateProfile(currentUser, { displayName: newUsername });
+        await updateProfile(currentUser, {
+            displayName: newUsername,
+            // photoURL: newPhotoURL, // Update Auth profile photo if changed
+        });
         authDisplayNameUpdated = true;
       } catch (authError: any) {
-        console.error("Error updating Firebase Auth displayName:", authError);
+        console.error("Error updating Firebase Auth profile:", authError);
         const authErrorMessage = getFirebaseAuthErrorMessage(authError.code);
-        setProfileError(`Failed to update display name in authentication: ${authErrorMessage}. Profile changes not saved.`);
-        toast({ title: "Auth Update Error", description: `Failed to update display name: ${authErrorMessage}`, variant: "destructive" });
+        setProfileError(`Failed to update profile in authentication: ${authErrorMessage}.`);
+        toast({ title: "Auth Update Error", description: `Failed to update profile: ${authErrorMessage}`, variant: "destructive" });
         setProfileSaving(false);
         return;
       }
@@ -175,7 +250,8 @@ export function ProfileInformationForm() {
         firstName: values.firstName,
         lastName: values.lastName,
         username: newUsername,
-        email: currentUser.email, 
+        email: currentUser.email,
+        // photoURL: newPhotoURL, // Save new photo URL to Firestore profile
         updatedAt: serverTimestamp(),
       };
       batch.set(userProfileRef, profileUpdateData, { merge: true });
@@ -187,7 +263,7 @@ export function ProfileInformationForm() {
       await batch.commit();
 
       if (usernameUpdateResult.usernameChanged) {
-        setInitialUsername(newUsername); 
+        setInitialUsername(newUsername);
       }
 
       toast({
@@ -201,7 +277,7 @@ export function ProfileInformationForm() {
       let specificErrorMessage = "An error occurred while saving your profile to the database.";
       if (firestoreError.code === 'permission-denied' || (firestoreError.message && firestoreError.message.toLowerCase().includes('permission denied'))) {
         specificErrorMessage = `Saving profile details to the database failed due to permissions. (Details: ${firestoreError.message})`;
-         if (authDisplayNameUpdated) { 
+         if (authDisplayNameUpdated) {
           specificErrorMessage = `Auth display name was updated to "${newUsername}", but ${specificErrorMessage}`;
         }
       } else {
@@ -221,7 +297,7 @@ export function ProfileInformationForm() {
   if (!user) {
     return <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
-   
+
   const isFirestoreUnavailableError = profileError && profileError.includes("Firestore is not available");
 
   return (
@@ -229,7 +305,7 @@ export function ProfileInformationForm() {
       <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
         <UserIcon className="mr-2 h-5 w-5" /> Profile Information
       </h2>
-      
+
       {isFirestoreUnavailableError ? (
          <FormAlert title="Configuration Error" message={profileError} variant="destructive" className="mb-4" />
       ) : (
@@ -286,23 +362,47 @@ export function ProfileInformationForm() {
               Your email address is managed in the Security section.
             </p>
           </div>
+
           <div className="space-y-2">
             <Label>Profile Photo</Label>
             <div className="flex items-center gap-4">
-              <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                <ImageIcon size={32} />
+              <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center text-muted-foreground overflow-hidden">
+                {profilePhotoPreview ? (
+                  <Image
+                    src={profilePhotoPreview}
+                    alt="Profile preview"
+                    width={80}
+                    height={80}
+                    className="object-cover h-full w-full"
+                  />
+                ) : (
+                  <ImageIcon size={32} />
+                )}
               </div>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => toast({ title: 'Coming Soon', description: 'Profile photo upload will be implemented in a future update.' })}
+                onClick={handlePhotoUploadClick}
                 disabled={profileSaving || !firestore}
               >
-                Upload Photo
+                <UploadCloud className="mr-2 h-4 w-4" />
+                {profilePhotoPreview ? 'Change Photo' : 'Upload Photo'}
               </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/png, image/jpeg, image/gif"
+                className="hidden"
+                aria-label="Upload profile photo"
+              />
             </div>
-            <p className="text-xs text-muted-foreground">Profile photo upload is coming soon.</p>
+            <p className="text-xs text-muted-foreground">
+                {profilePhotoFile ? `Selected: ${profilePhotoFile.name}` : "Select a PNG, JPG, or GIF."}
+                 <br/>Actual upload to server requires backend implementation.
+            </p>
           </div>
+
           <Button type="submit" disabled={profileSaving || !firestore}>
             {(profileSaving) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Profile Changes
