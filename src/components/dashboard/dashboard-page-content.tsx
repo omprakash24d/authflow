@@ -10,8 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, Settings, Trash2, Clock, Loader2, WifiOff, MapPin, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteUser } from 'firebase/auth';
-import { firestore } from '@/lib/firebase/config'; // Import firestore
-import { doc, getDoc } from 'firebase/firestore'; // Import firestore functions
+import { firestore } from '@/lib/firebase/config';
+import { doc, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function DashboardPageContent() {
-  const { user, signOut, loading: authLoading } = useAuth(); // Renamed loading to authLoading
+  const { user, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [ipAddress, setIpAddress] = useState<string | null>('Loading...');
@@ -83,8 +83,8 @@ export default function DashboardPageContent() {
             setLastName(profileData.lastName || null);
           } else {
             console.warn(`User profile document not found for UID: ${user.uid}`);
-            setFirstName(null);
-            setLastName(null);
+            setFirstName(null); // Explicitly set to null if not found
+            setLastName(null);  // Explicitly set to null if not found
           }
         } catch (error: any) {
           console.error("Error fetching user profile:", error);
@@ -95,10 +95,11 @@ export default function DashboardPageContent() {
       };
       fetchUserProfile();
     } else if (!user) {
+      // Clear profile info if user logs out or is not available
       setFirstName(null);
       setLastName(null);
-      setProfileLoading(false);
-      setProfileError(null);
+      setProfileLoading(false); // Ensure loading is stopped
+      setProfileError(null); // Clear any previous errors
     }
   }, [user]);
 
@@ -107,7 +108,7 @@ export default function DashboardPageContent() {
     if (!name) return '??';
     const names = name.split(' ');
     if (names.length === 1) return name.substring(0, 2).toUpperCase();
-    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    return (names[0][0] + (names.length > 1 ? names[names.length - 1][0] : '')).toUpperCase();
   };
 
   const handleDeleteAccount = async () => {
@@ -140,7 +141,7 @@ export default function DashboardPageContent() {
     ? format(new Date(user.metadata.lastSignInTime), "PPpp") 
     : 'N/A';
 
-  if (authLoading || (!user && !authLoading)) { // Show loader if auth is loading OR if no user and not finished auth loading
+  if (authLoading || (!user && !authLoading)) {
      return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -148,8 +149,6 @@ export default function DashboardPageContent() {
     );
   }
   
-  // At this point, authLoading is false. If !user, ProtectedRoute should have redirected.
-  // This is an additional safeguard in case of direct navigation or race conditions.
   if (!user) { 
     return <div className="flex min-h-screen items-center justify-center">Redirecting...</div>;
   }
@@ -175,15 +174,27 @@ export default function DashboardPageContent() {
               </h3>
               <p><strong>Username:</strong> {user.displayName || 'Not set'}</p>
               <p>
-                <strong>Full Name:</strong>{' '}
+                <strong>First Name:</strong>{' '}
                 {profileLoading ? (
                   <Loader2 className="inline-block h-4 w-4 animate-spin" />
                 ) : profileError ? (
                   <span className="text-destructive">{profileError}</span>
-                ) : firstName || lastName ? (
-                  `${firstName || ''} ${lastName || ''}`.trim()
+                ) : firstName ? (
+                  firstName
                 ) : (
-                  <span className="text-muted-foreground">Not set (Update in Settings)</span>
+                  <span className="text-muted-foreground">Not set</span>
+                )}
+              </p>
+              <p>
+                <strong>Last Name:</strong>{' '}
+                {profileLoading ? (
+                  <Loader2 className="inline-block h-4 w-4 animate-spin" />
+                ) : profileError ? (
+                  <span className="text-destructive">{profileError}</span>
+                ) : lastName ? (
+                  lastName
+                ) : (
+                  <span className="text-muted-foreground">Not set</span>
                 )}
               </p>
               <p><strong>Email:</strong> {user.email}</p>
@@ -214,7 +225,7 @@ export default function DashboardPageContent() {
                 size="sm" 
                 className="p-0 h-auto text-primary" 
                 onClick={() => {
-                  console.log(`View full activity log clicked for user: ${user.uid}`);
+                  console.log(`View full activity log clicked for user: ${user.uid}. Feature under development.`);
                   toast({ 
                     title: 'Activity Log', 
                     description: 'Full activity log feature is under development. Your request has been logged (simulated).'

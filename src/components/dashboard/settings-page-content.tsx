@@ -1,71 +1,22 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-
+import { useRouter } from 'next/navigation'; // Corrected import
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-// Form, FormControl, FormField, FormItem, FormLabel, FormMessage are not used for profile fields currently
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-// import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // Not used for profile update now
-import { ChevronLeft, User, Mail, Shield, Bell, Palette, Lock, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-
-// Simplified schema: no profile fields to validate for now
-const ProfileSettingsSchema = z.object({});
-
-type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
+import { ChevronLeft, User, Lock, Bell, Palette, AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function SettingsPageContent() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  // const [isLoading, setIsLoading] = useState(false); // Not used for profile submission now
-  // const [formError, setFormError] = useState<string | null>(null); // Not used for profile submission
-  // const [formSuccess, setFormSuccess] = useState<string | null>(null); // Not used for profile submission
-
-  const form = useForm<ProfileSettingsFormValues>({
-    resolver: zodResolver(ProfileSettingsSchema),
-    defaultValues: {},
-  });
-  
-  // useEffect for form population is not needed as we are not editing profile fields in this simplified version
-  // useEffect(() => {
-  //   if (user) {
-  //     form.reset({
-  //       // No fields to reset for now
-  //     });
-  //   }
-  // }, [user, form.reset]);
-
-
-  // async function onSubmitProfile(values: ProfileSettingsFormValues) {
-  //   // Functionality removed/simplified for now
-  //   if (!user) return;
-  //   setIsLoading(true);
-  //   setFormError(null);
-  //   setFormSuccess(null);
-  //   try {
-  //     setFormSuccess('Profile update (First/Last Name) is pending Firestore integration.');
-  //     toast({ title: 'Profile Update (Simulated)', description: 'First/Last Name fields will be editable with Firestore.' });
-  //   } catch (error: any) {
-  //     console.error('Error updating profile:', error);
-  //     const errorMessage = getFirebaseAuthErrorMessage(error.code) || 'Failed to update profile.';
-  //     setFormError(errorMessage);
-  //     toast({ title: 'Update Failed', description: errorMessage, variant: 'destructive' });
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // }
 
   if (authLoading) {
     return (
@@ -76,6 +27,7 @@ export default function SettingsPageContent() {
   }
 
   if (!user) {
+    // This case should ideally be handled by ProtectedRoute, but as a fallback:
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="max-w-md text-center">
@@ -92,6 +44,7 @@ export default function SettingsPageContent() {
     );
   }
 
+  // If execution reaches here, user is authenticated and auth is not loading.
   return (
     <div className="flex min-h-screen flex-col items-center bg-background p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-2xl">
@@ -110,9 +63,8 @@ export default function SettingsPageContent() {
           <CardContent className="space-y-8">
             <section>
               <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
-                <User className="mr-2 h-5 w-5" /> Profile Information
+                <User className="mr-2 h-5 w-5" /> Profile Information (Simplified)
               </h2>
-              {/* Simplified: No form for profile info edits for now */}
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="usernameDisplay">Username</Label>
@@ -122,17 +74,9 @@ export default function SettingsPageContent() {
                   <Label htmlFor="emailDisplay">Email Address</Label>
                   <Input id="emailDisplay" type="email" value={user.email || 'N/A'} disabled />
                 </div>
-                <div>
-                  <Label htmlFor="profilePhoto">Profile Photo</Label>
-                  <Input id="profilePhoto" type="file" accept="image/*" disabled={true} />
-                  <p className="text-xs text-muted-foreground mt-1">Upload a new profile picture. (Functionality not yet implemented)</p>
-                </div>
-                {/* 
-                <Button type="submit" className="mt-2" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Profile Changes (Simulated)
-                </Button> 
-                */}
+                 <p className="text-xs text-muted-foreground mt-1">
+                    First Name, Last Name, and Profile Photo editing will be available soon.
+                 </p>
               </div>
             </section>
 
@@ -144,10 +88,10 @@ export default function SettingsPageContent() {
               </h2>
               <div className="space-y-3">
                 <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Change password functionality will be added soon.'})}>
-                  <Shield className="mr-2 h-4 w-4" /> Change Password
+                  Change Password
                 </Button>
                 <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Two-Factor Authentication (2FA) will be added soon.'})}>
-                  <Shield className="mr-2 h-4 w-4" /> Enable Two-Factor Authentication (2FA)
+                  Enable Two-Factor Authentication (2FA)
                 </Button>
                 <Button variant="link" className="text-primary p-0 h-auto" onClick={() => toast({ title: 'Coming Soon', description: 'Login history view will be added soon.'})}>View login history</Button>
               </div>
@@ -190,4 +134,3 @@ export default function SettingsPageContent() {
     </div>
   );
 }
-    

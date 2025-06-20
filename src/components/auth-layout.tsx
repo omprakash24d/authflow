@@ -27,7 +27,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="mb-10">
         <Logo />
       </div>
-      <main className="w-full max-w-md bg-white shadow-md rounded-lg p-6">
+      <main className="w-full max-w-md ">
         {children}
       </main>
       <footer className="mt-12 text-center text-sm text-muted-foreground">
