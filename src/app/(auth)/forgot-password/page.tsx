@@ -8,6 +8,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
+import type { Metadata } from 'next';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { AuthFormWrapper } from '@/components/auth/auth-form-wrapper';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, AlertTriangle, Loader2, CheckCircle } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Reset Your AuthFlow Password | Forgot Password',
+  description: 'Forgot your AuthFlow password? Enter your email address to receive a secure link to reset your password and regain access to your account.',
+};
 
 const ForgotPasswordSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -50,8 +56,6 @@ export default function ForgotPasswordPage() {
       });
       form.reset();
     } catch (error: unknown) {
-      // Log the specific error for debugging, but show a generic message to the user
-      // to avoid revealing whether an email address exists or not.
       if (error instanceof Error) {
         console.error('Password Reset Error:', error.message, (error as any).code);
       } else {

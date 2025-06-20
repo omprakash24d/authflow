@@ -1,61 +1,12 @@
 
-'use client';
+import type { Metadata } from 'next';
+import HomePageContent from '@/components/home/home-page-content';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { Logo } from '@/components/logo';
-import LoadingComponent from './loading'; // Import the main loading component
+export const metadata: Metadata = {
+  title: 'AuthFlow: Secure & Scalable User Authentication System',
+  description: 'Discover AuthFlow, a comprehensive user authentication solution built with Firebase and Next.js. Features email/password auth, social logins, MFA, and robust security for your applications.',
+};
 
-export default function HomePage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
-      }
-      // If not loading and no user, stay on this page (landing page)
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return <LoadingComponent />; // Use the standardized loading component
-  }
-
-  // If not loading and no user, show landing content
-  if (!user) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8 text-center">
-        <div className="mb-12">
-          <Logo />
-        </div>
-        <h2 className="mb-4 text-4xl font-bold font-headline text-primary">
-          Welcome to AuthFlow
-        </h2>
-        <p className="mb-8 max-w-xl text-lg text-foreground/80">
-          A comprehensive User and Authentication System built with Firebase and Next.js.
-          Secure, scalable, and feature-rich for your application needs.
-        </p>
-        <div className="space-x-4">
-          <Button asChild size="lg">
-            <Link href="/signup">Get Started</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/signin">Sign In</Link>
-          </Button>
-        </div>
-         <p className="mt-12 text-sm text-muted-foreground">
-          Explore features like email/password auth, social logins, MFA, and more.
-        </p>
-      </div>
-    );
-  }
-
-  // If user is logged in, but redirect hasn't happened yet (e.g., useEffect still running)
-  // or as a fallback if ProtectedRoute on /dashboard is also rendering its loader.
-  return <LoadingComponent />; // Use the standardized loading component
+export default function Page() {
+  return <HomePageContent />;
 }

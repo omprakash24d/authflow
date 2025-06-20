@@ -5,8 +5,8 @@ import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Sign In | AuthFlow',
-  description: 'Sign in to your AuthFlow account.',
+  title: 'Sign In to AuthFlow | Secure Account Access',
+  description: 'Access your AuthFlow account securely. Sign in with your email/username and password or use social login options. Fast and reliable authentication.',
 };
 
 // A more visually indicative and accessible loading component for Suspense
@@ -31,4 +31,3 @@ export default function SignInPage() {
     </Suspense>
   );
 }
-
