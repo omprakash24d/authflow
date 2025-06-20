@@ -9,7 +9,7 @@ const passwordValidation = z
   .regex(/[0-9]/, { message: 'Password must contain at least one number.' })
   .regex(/[\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~]/, { message: 'Password must contain at least one special character.' });
 
-const emailValidation = z
+export const emailValidation = z
   .string()
   .email({ message: 'Invalid email address.' })
   .refine(email => !/[+=#]/.test(email.split('@')[0]), {
@@ -19,8 +19,9 @@ const emailValidation = z
 export const SignUpSchema = z.object({
   firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
   lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
-  username: z.string().min(1, 'Username is required.').max(64, 'Username must be 64 characters or less.')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.'),
+  username: z.string().min(3, 'Username must be at least 3 characters.').max(30, 'Username must be 30 characters or less.')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.')
+    .refine(val => val.toLowerCase() !== 'admin', { message: 'Username "admin" is not allowed.' }),
   email: emailValidation,
   password: passwordValidation,
   confirmPassword: passwordValidation,
@@ -44,9 +45,11 @@ export type SignInFormValues = z.infer<typeof SignInSchema>;
 export const ProfileSettingsSchema = z.object({
   firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
   lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
-  // username: z.string().min(1, 'Username is required.').max(64, 'Username must be 64 characters or less.')
-  //   .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.'),
-  // email: emailValidation, // Email is generally not changed here or requires verification
+  username: z.string().min(3, 'Username must be at least 3 characters.')
+    .max(30, 'Username must be 30 characters or less.')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.')
+    .refine(val => val.toLowerCase() !== 'admin', { message: 'Username "admin" is not allowed for security reasons.' })
+    .refine(val => !val.includes('@'), { message: 'Username cannot contain the "@" symbol.'}),
 });
 export type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
 
@@ -59,3 +62,9 @@ export const ChangePasswordSchema = z.object({
   path: ['confirmNewPassword'],
 });
 export type ChangePasswordFormValues = z.infer<typeof ChangePasswordSchema>;
+
+export const ChangeEmailSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required."),
+  newEmail: emailValidation,
+});
+export type ChangeEmailFormValues = z.infer<typeof ChangeEmailSchema>;

@@ -104,7 +104,7 @@ export function ForgotPasswordForm() {
                 <FormControl>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input type="email" placeholder="john.doe@example.com" className="pl-10" {...field} disabled={isLoading} />
+                    <Input type="email" placeholder="abc@example.com" className="pl-10" {...field} disabled={isLoading} />
                   </div>
                 </FormControl>
                 <FormMessage />

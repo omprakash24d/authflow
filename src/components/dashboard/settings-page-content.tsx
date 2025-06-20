@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase/config';
+import { doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { auth, firestore } from '@/lib/firebase/config';
+import { updateProfile, type User as FirebaseUser } from 'firebase/auth';
 import { ProfileSettingsSchema, type ProfileSettingsFormValues } from '@/lib/validators/auth';
+import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,9 +20,10 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ChangePasswordDialog } from '@/components/dashboard/settings/change-password-dialog';
+import { ChangeEmailDialog } from '@/components/dashboard/settings/change-email-dialog'; // Placeholder for now
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronLeft, User, Lock, Bell, Palette, AlertTriangle, Loader2, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, User, Lock, Bell, Palette, AlertTriangle, Loader2, Image as ImageIcon, Mail } from 'lucide-react';
 
 export default function SettingsPageContent() {
   const { user, loading: authLoading } = useAuth();
@@ -28,14 +31,17 @@ export default function SettingsPageContent() {
   const router = useRouter();
 
   const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false);
+  const [isChangeEmailDialogOpen, setIsChangeEmailDialogOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [initialUsername, setInitialUsername] = useState<string | null>(null);
 
   const profileForm = useForm<ProfileSettingsFormValues>({
     resolver: zodResolver(ProfileSettingsSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
+      username: '',
     },
   });
 
@@ -50,7 +56,17 @@ export default function SettingsPageContent() {
             profileForm.reset({
               firstName: profileData.firstName || '',
               lastName: profileData.lastName || '',
+              username: profileData.username || user.displayName || '',
             });
+            setInitialUsername(profileData.username || user.displayName || null);
+          } else {
+             // If no profile, use auth display name for username
+            profileForm.reset({
+              firstName: '',
+              lastName: '',
+              username: user.displayName || '',
+            });
+            setInitialUsername(user.displayName || null);
           }
         } catch (error: any) {
           console.error("Error fetching user profile for settings:", error);
@@ -64,27 +80,84 @@ export default function SettingsPageContent() {
 
 
   async function onSubmitProfile(values: ProfileSettingsFormValues) {
-    if (!user) {
+    if (!user || !auth.currentUser) {
       setProfileError("User not authenticated.");
+      toast({ title: "Authentication Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
     setProfileSaving(true);
     setProfileError(null);
+
+    const currentUser = auth.currentUser;
+    const batch = writeBatch(firestore);
+    const userProfileRef = doc(firestore, 'users', currentUser.uid);
+
+    let usernameChanged = false;
+    const newUsername = values.username.trim();
+    const oldUsername = initialUsername ? initialUsername.trim() : (currentUser.displayName || '').trim();
+    
+    if (newUsername !== oldUsername) {
+        usernameChanged = true;
+        // Basic client-side check for new username availability in 'usernames' collection
+        const newUsernameRef = doc(firestore, 'usernames', newUsername.toLowerCase());
+        try {
+            const newUsernameSnap = await getDoc(newUsernameRef);
+            if (newUsernameSnap.exists()) {
+                setProfileError(`Username "${newUsername}" is already taken. Please choose another.`);
+                toast({ title: "Username Taken", description: `Username "${newUsername}" is already taken.`, variant: "destructive" });
+                setProfileSaving(false);
+                return;
+            }
+        } catch (error: any) {
+            console.error("Error checking username availability:", error);
+            setProfileError("Failed to verify username availability. Please try again.");
+            toast({ title: "Error", description: "Failed to verify username. Please try again.", variant: "destructive" });
+            setProfileSaving(false);
+            return;
+        }
+    }
+
     try {
-      const userProfileRef = doc(firestore, 'users', user.uid);
-      await setDoc(userProfileRef, {
+      // Prepare Firestore update for users/{uid}
+      batch.set(userProfileRef, {
         firstName: values.firstName,
         lastName: values.lastName,
-        updatedAt: serverTimestamp(), 
+        username: usernameChanged ? newUsername : oldUsername, // Update username if changed
+        updatedAt: serverTimestamp(),
       }, { merge: true });
+
+      if (usernameChanged) {
+        // Update Firebase Auth display name
+        await updateProfile(currentUser, { displayName: newUsername });
+
+        // Update 'usernames' collection
+        if (oldUsername && oldUsername.toLowerCase() !== newUsername.toLowerCase()) {
+            const oldUsernameRef = doc(firestore, 'usernames', oldUsername.toLowerCase());
+            batch.delete(oldUsernameRef);
+        }
+        const newUsernameRefForWrite = doc(firestore, 'usernames', newUsername.toLowerCase());
+        batch.set(newUsernameRefForWrite, {
+            uid: currentUser.uid,
+            email: currentUser.email, // Keep email consistent
+            username: newUsername,
+            createdAt: serverTimestamp(), // Or use original createdAt if preferred
+        });
+      }
+
+      await batch.commit();
+
+      if (usernameChanged) {
+        setInitialUsername(newUsername); // Update initialUsername state after successful change
+      }
 
       toast({
         title: 'Profile Updated',
-        description: 'Your first and last name have been saved.',
+        description: 'Your profile information has been saved.',
       });
+
     } catch (error: any) {
       console.error("Error updating profile:", error);
-      const errorMessage = error.message || "An unexpected error occurred.";
+      const errorMessage = getFirebaseAuthErrorMessage(error.code) || "An unexpected error occurred while updating your profile.";
       setProfileError(errorMessage);
       toast({
         title: 'Error Updating Profile',
@@ -180,15 +253,25 @@ export default function SettingsPageContent() {
                         )}
                       />
                     </div>
-                     <div>
-                      <Label htmlFor="usernameDisplay">Username</Label>
-                      <Input id="usernameDisplay" type="text" value={user.displayName || 'N/A'} disabled />
-                       <p className="text-xs text-muted-foreground mt-1">Username cannot be changed here. It is set during sign up.</p>
-                    </div>
+                     <FormField
+                        control={profileForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Your username" {...field} disabled={profileSaving} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     <div>
                       <Label htmlFor="emailDisplay">Email Address</Label>
-                      <Input id="emailDisplay" type="email" value={user.email || 'N/A'} disabled />
-                       <p className="text-xs text-muted-foreground mt-1">Email address cannot be changed through this form.</p>
+                      <Input id="emailDisplay" type="email" value={user.email || 'N/A'} disabled className="bg-muted/50"/>
+                       <p className="text-xs text-muted-foreground mt-1">
+                         To change your email, use the "Change Email" option in the Security section.
+                       </p>
                     </div>
                      <div className="space-y-2">
                         <Label>Profile Photo</Label>
@@ -196,9 +279,9 @@ export default function SettingsPageContent() {
                             <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                                 <ImageIcon size={32} />
                             </div>
-                            <Button 
-                                type="button" 
-                                variant="outline" 
+                            <Button
+                                type="button"
+                                variant="outline"
                                 onClick={() => toast({ title: 'Coming Soon', description: 'Profile photo upload will be implemented in a future update.'})}
                                 disabled={profileSaving}
                             >
@@ -225,13 +308,16 @@ export default function SettingsPageContent() {
                   <Button variant="outline" className="w-full justify-start" onClick={() => setIsChangePasswordDialogOpen(true)}>
                     Change Password
                   </Button>
+                  <Button variant="outline" className="w-full justify-start" onClick={() => setIsChangeEmailDialogOpen(true)}>
+                    <Mail className="mr-2 h-4 w-4" /> Change Email Address
+                  </Button>
                   <Button variant="outline" className="w-full justify-start" onClick={() => toast({ title: 'Coming Soon', description: 'Two-Factor Authentication (2FA) will be added in a future update.'})}>
                     Enable Two-Factor Authentication (2FA)
                   </Button>
                   <Button variant="link" className="text-primary p-0 h-auto" onClick={() => toast({ title: 'Coming Soon', description: 'Login history view will be added in a future update.'})}>View login history</Button>
                 </div>
               </section>
-              
+
               <Separator />
 
               <section>
@@ -268,8 +354,7 @@ export default function SettingsPageContent() {
         </div>
       </div>
       <ChangePasswordDialog open={isChangePasswordDialogOpen} onOpenChange={setIsChangePasswordDialogOpen} />
+      <ChangeEmailDialog open={isChangeEmailDialogOpen} onOpenChange={setIsChangeEmailDialogOpen} />
     </>
   );
 }
-
-    
