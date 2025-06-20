@@ -6,7 +6,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { signInWithEmailAndPassword, sendEmailVerification, type User } from 'firebase/auth';
+import { 
+  signInWithEmailAndPassword, 
+  sendEmailVerification, 
+  type User,
+  fetchSignInMethodsForEmail, // New import
+  GoogleAuthProvider // New import
+} from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { SignInSchema, type SignInFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
@@ -60,7 +66,6 @@ export function SignInForm() {
       router.replace(newPath, { scroll: false });
     }
 
-    // Load remembered identifier from localStorage
     const rememberedIdentifier = localStorage.getItem(REMEMBER_ME_STORAGE_KEY);
     if (rememberedIdentifier) {
       form.setValue('identifier', rememberedIdentifier);
@@ -70,7 +75,7 @@ export function SignInForm() {
 
 
   async function handleSignIn(emailToUse: string, passwordToUse: string, currentIdentifier: string) {
-    const userCredential = await signInWithEmailAndPassword(auth, emailToUse, passwordToUse);
+    const userCredential = await signInWithEmailAndPassword(auth!, emailToUse, passwordToUse); // auth! assumes it's initialized
     const firebaseUser = userCredential.user;
 
     if (firebaseUser && !firebaseUser.emailVerified) {
@@ -81,8 +86,8 @@ export function SignInForm() {
         description: "Check your inbox for a verification link or use the resend option.",
         variant: 'destructive',
       });
-      setIsLoading(false); // Ensure loading is stopped here
-      return; // Stop further execution
+      setIsLoading(false); 
+      return; 
     }
 
     if (firebaseUser) {
@@ -105,7 +110,6 @@ export function SignInForm() {
       }
     }
 
-    // Handle "Remember Me"
     if (rememberMe) {
       localStorage.setItem(REMEMBER_ME_STORAGE_KEY, currentIdentifier);
     } else {
@@ -129,6 +133,13 @@ export function SignInForm() {
     let emailToUse = values.identifier;
 
     try {
+      if (!auth) { // Check if auth service is available
+        setFormError("Authentication service is not available. Please try again later.");
+        toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
+
       if (!values.identifier.includes('@')) {
         const usernameLookupResponse = await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`);
         if (!usernameLookupResponse.ok) {
@@ -153,21 +164,29 @@ export function SignInForm() {
 
     } catch (error: any) {
       console.error("Sign In Error:", error);
-      const errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
+      let errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
       
-      // Only set formError if it's not the unverified email message (which has its own handler)
-      // and if there isn't already a more specific error in form.formState.errors.identifier
+      if (auth && emailToUse && (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found')) {
+        try {
+          const signInMethods = await fetchSignInMethodsForEmail(auth, emailToUse);
+          if (signInMethods.includes(GoogleAuthProvider.PROVIDER_ID)) {
+            errorMessage += " Tip: This email may be linked to Google Sign-In. Consider trying that method.";
+          }
+        } catch (fetchMethodsError) {
+          console.warn("Could not fetch sign in methods for email:", emailToUse, fetchMethodsError);
+          // Fallback to original error message if fetchSignInMethodsForEmail fails
+        }
+      }
+      
       if (errorMessage !== UNVERIFIED_EMAIL_ERROR_MESSAGE && !form.formState.errors.identifier && !formError) {
          setFormError(errorMessage);
       }
        toast({
         title: 'Sign In Failed',
-        description: formError || errorMessage, // Prefer formError if it was set (e.g., from username lookup)
+        description: formError || errorMessage, 
         variant: 'destructive',
       });
     } finally {
-      // Only set isLoading to false if it's not an unverified email error,
-      // as that scenario keeps the form interactive for resending verification.
       if(formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE && !(unverifiedUser && !unverifiedUser.emailVerified) ) {
         setIsLoading(false);
       }
@@ -175,7 +194,10 @@ export function SignInForm() {
   }
 
   async function handleResendVerificationEmail() {
-    if (!unverifiedUser) return;
+    if (!unverifiedUser || !auth) { // Also check auth
+      toast({ title: 'Error', description: 'Cannot resend verification email at this time.', variant: 'destructive'});
+      return;
+    }
     setIsResendingVerification(true);
     setFormError(null); 
     try {
@@ -184,7 +206,7 @@ export function SignInForm() {
         title: 'Verification Email Sent',
         description: 'A new verification email has been sent to your address. Please check your inbox.',
       });
-      setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE); // Keep the alert visible
+      setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE); 
     } catch (error: any) {
       console.error("Error resending verification email:", error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code);
@@ -271,7 +293,7 @@ export function SignInForm() {
                   </Link>
                 </div>
                 <FormControl>
-                  <PasswordInput
+                  <PasswordInput<SignInFormValues, "password">
                     field={field}
                     placeholder="••••••••"
                     disabled={anyLoading}
@@ -305,3 +327,4 @@ export function SignInForm() {
     </AuthFormWrapper>
   );
 }
+
