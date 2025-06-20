@@ -1,32 +1,39 @@
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Add paths that require authentication
-const protectedPaths = ['/dashboard']; 
-// Add paths that should only be accessible to unauthenticated users
-const authPaths = ['/signin', '/signup', '/forgot-password'];
+// Configuration for paths
+const PROTECTED_PATHS: string[] = ['/dashboard'];
+const AUTH_PATHS: string[] = ['/signin', '/signup', '/forgot-password'];
+const SESSION_COOKIE_NAME = 'firebaseIdToken';
+
+const protectedPathSet = new Set(PROTECTED_PATHS.map(path => path.startsWith('/') ? path : `/${path}`));
+const authPathSet = new Set(AUTH_PATHS.map(path => path.startsWith('/') ? path : `/${path}`));
+
+function createRedirectResponse(request: NextRequest, targetPath: string, addRedirectedFrom: boolean = false): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = targetPath;
+  if (addRedirectedFrom) {
+    url.searchParams.set('redirectedFrom', request.nextUrl.pathname);
+  }
+  return NextResponse.redirect(url);
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionToken = request.cookies.get('firebaseIdToken'); // Example, adjust if using a different cookie name
+  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME);
+
+  const isAccessingProtectedPath = Array.from(protectedPathSet).some(path => pathname.startsWith(path));
+  const isAccessingAuthPath = Array.from(authPathSet).some(path => pathname.startsWith(path));
 
   // If trying to access a protected path without a session, redirect to signin
-  if (protectedPaths.some(path => pathname.startsWith(path))) {
-    if (!sessionToken) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/signin';
-      url.searchParams.set('redirectedFrom', pathname); // Optional: add redirect origin
-      return NextResponse.redirect(url);
-    }
+  if (isAccessingProtectedPath && !sessionToken) {
+    return createRedirectResponse(request, '/signin', true);
   }
 
   // If trying to access an auth path (like signin/signup) with an active session, redirect to dashboard
-  if (authPaths.some(path => pathname.startsWith(path))) {
-    if (sessionToken) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/dashboard';
-      return NextResponse.redirect(url);
-    }
+  if (isAccessingAuthPath && sessionToken) {
+    return createRedirectResponse(request, '/dashboard');
   }
 
   return NextResponse.next();
