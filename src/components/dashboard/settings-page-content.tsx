@@ -35,7 +35,7 @@ type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
 export default function SettingsPageContent() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // For form submission
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
@@ -50,21 +50,11 @@ export default function SettingsPageContent() {
   
   useEffect(() => {
     // Populate form with first/last name if available (e.g. from a future Firestore profile fetch)
-    // For now, user.displayName is the username, so direct splitting might not be right for first/last.
-    // This part will need updating when first/last name are stored separately in Firestore.
+    // For now, user.displayName is the username. These fields are for future Firestore integration.
     if (user) {
-      // If you had separate first/last names stored, you'd fetch and set them here.
-      // For now, let's leave them blank or try a placeholder if desired.
-      // Or, if user.displayName was "First Last", this would work:
-      // const nameParts = user.displayName?.split(' ') || [];
-      // form.reset({
-      //   firstName: nameParts[0] || '',
-      //   lastName: nameParts.slice(1).join(' ') || '',
-      // });
-      // Since displayName is username, let's keep them empty for now.
       form.reset({
-        firstName: '', // Will be populated from Firestore in future
-        lastName: '',  // Will be populated from Firestore in future
+        firstName: '', 
+        lastName: '',  
       });
     }
   }, [user, form]);
@@ -77,11 +67,9 @@ export default function SettingsPageContent() {
     setFormSuccess(null);
 
     try {
-      // If displayName is strictly username, we don't update it here with first/last name.
-      // const newDisplayName = `${values.firstName} ${values.lastName}`.trim();
-      // if (newDisplayName !== user.displayName) {
-      //   // await updateProfile(user, { displayName: newDisplayName }); // This line is removed
-      // }
+      // NOTE: The logic to update user.displayName with firstName/lastName was removed
+      // because user.displayName is now primarily the username.
+      // Saving firstName and lastName will require Firestore integration.
       
       // TODO: Implement update to Firestore for firstName, lastName
       // Example:
@@ -93,8 +81,8 @@ export default function SettingsPageContent() {
       //   });
       // }
 
-      setFormSuccess('Profile settings (first/last name) would be updated here if Firestore was fully integrated for them.');
-      toast({ title: 'Profile Update (Simulated)', description: 'First/Last name update logic needs Firestore.' });
+      setFormSuccess('Profile settings (first/last name) would be updated here if Firestore was fully integrated for them. This is a placeholder message.');
+      toast({ title: 'Profile Update (Simulated)', description: 'First/Last name update logic requires Firestore integration.' });
     } catch (error: any) {
       console.error('Error updating profile:', error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code) || 'Failed to update profile.';
@@ -114,13 +102,15 @@ export default function SettingsPageContent() {
   }
 
   if (!user) {
+    // This state should ideally be handled by ProtectedRoute redirecting.
+    // This is a fallback.
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="max-w-md">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Authentication Error</AlertTitle>
           <AlertDescription>
-            User not authenticated or session expired. You may be redirected to the sign-in page.
+            User not authenticated or session expired. You may need to sign out and sign in again.
           </AlertDescription>
         </Alert>
       </div>
@@ -208,7 +198,7 @@ export default function SettingsPageContent() {
                   </div>
                   <Button type="submit" className="mt-2" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save Profile Changes
+                    Save Profile Changes (Simulated)
                   </Button>
                 </form>
               </Form>
