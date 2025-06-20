@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { signInWithEmailAndPassword, sendEmailVerification, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { SignInSchema, type SignInFormValues } from '@/lib/validators/auth';
@@ -29,20 +29,26 @@ export function SignInForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [showVerificationMessageFromSignUp, setShowVerificationMessageFromSignUp] = useState(false);
   const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null);
+  
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
   useEffect(() => {
     if (searchParams.get('verificationEmailSent') === 'true') {
       setShowVerificationMessageFromSignUp(true);
-      if (router) {
-        const current = new URL(window.location.href);
-        current.searchParams.delete('verificationEmailSent');
-        router.replace(current.pathname + current.search, { scroll: false });
-      }
+      // Create a new URLSearchParams object from the current one
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      // Delete the specific parameter
+      newSearchParams.delete('verificationEmailSent');
+      // Construct the new path. If there are no search params left, don't append '?'
+      const newPath = newSearchParams.toString()
+        ? `${pathname}?${newSearchParams.toString()}`
+        : pathname;
+      router.replace(newPath, { scroll: false });
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, pathname, setShowVerificationMessageFromSignUp]);
 
 
   const form = useForm<SignInFormValues>({
