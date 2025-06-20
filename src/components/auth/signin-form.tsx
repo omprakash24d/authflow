@@ -218,7 +218,7 @@ export function SignInForm() {
                 <FormControl>
                   <Input 
                     type="text" 
-                    placeholder="john.doe@example.com or johndoe" 
+                    placeholder="om@example.com or omprakash24d" 
                     {...field} 
                     disabled={anyLoading}
                   />

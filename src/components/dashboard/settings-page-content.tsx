@@ -5,16 +5,16 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-// import { updateProfile } from 'firebase/auth'; // updateProfile for displayName will not be used if displayName is username
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Added for potential redirection
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Label is used directly, not FormLabel here
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'; // FormLabel is used via FormField
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
@@ -23,11 +23,9 @@ import { ChevronLeft, User, Mail, Shield, Bell, Palette, Lock, AlertTriangle, Ch
 // import { doc, updateDoc } from 'firebase/firestore'; // For future Firestore profile updates
 
 
-// Schema might need to adjust if firstName/lastName are stored/validated differently (e.g. from Firestore)
 const ProfileSettingsSchema = z.object({
-  firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.').optional(),
-  lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.').optional(),
-  // username: z.string().min(1, "Username is required"), // Username might be non-editable or handled differently
+  firstName: z.string().max(64, 'First name must be 64 characters or less.').optional(), // Optional for now
+  lastName: z.string().max(64, 'Last name must be 64 characters or less.').optional(), // Optional for now
 });
 
 type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
@@ -35,6 +33,7 @@ type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
 export default function SettingsPageContent() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const router = useRouter(); // For potential programmatic navigation
   const [isLoading, setIsLoading] = useState(false); // For form submission
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -44,20 +43,20 @@ export default function SettingsPageContent() {
     defaultValues: {
       firstName: '',
       lastName: '',
-      // username: '', // Username will be from user.displayName
     },
   });
   
   useEffect(() => {
-    // Populate form with first/last name if available (e.g. from a future Firestore profile fetch)
-    // For now, user.displayName is the username. These fields are for future Firestore integration.
+    // This useEffect is primarily for resetting the form if the user context changes
+    // (e.g. logs out and logs in as someone else while on this page, though unlikely).
+    // Actual population with data from Firestore would happen here if implemented.
     if (user) {
       form.reset({
-        firstName: '', 
-        lastName: '',  
+        firstName: '', // Placeholder: fetch actual first name from Firestore profile
+        lastName: '',  // Placeholder: fetch actual last name from Firestore profile
       });
     }
-  }, [user, form]);
+  }, [user, form.reset]); // form.reset is stable
 
 
   async function onSubmitProfile(values: ProfileSettingsFormValues) {
@@ -67,11 +66,11 @@ export default function SettingsPageContent() {
     setFormSuccess(null);
 
     try {
-      // NOTE: The logic to update user.displayName with firstName/lastName was removed
-      // because user.displayName is now primarily the username.
-      // Saving firstName and lastName will require Firestore integration.
+      // NOTE: Firebase Auth user.displayName is now primarily the username.
+      // Saving separate firstName and lastName requires Firestore integration.
+      // The updateProfile call for displayName has been removed.
       
-      // TODO: Implement update to Firestore for firstName, lastName
+      // TODO: Implement update to Firestore for values.firstName, values.lastName
       // Example:
       // if (firestore) {
       //   const userProfileRef = doc(firestore, 'users', user.uid);
@@ -79,10 +78,16 @@ export default function SettingsPageContent() {
       //     firstName: values.firstName,
       //     lastName: values.lastName,
       //   });
+      //   setFormSuccess('Profile first/last name updated in Firestore (Simulated).');
+      //   toast({ title: 'Profile Updated (Simulated)', description: 'First/Last name saved to Firestore.' });
+      // } else {
+      //   setFormSuccess('Profile settings (first/last name) would be updated here. Firestore not available.');
+      //   toast({ title: 'Profile Update (Simulated)', description: 'First/Last name update requires Firestore integration.' });
       // }
 
-      setFormSuccess('Profile settings (first/last name) would be updated here if Firestore was fully integrated for them. This is a placeholder message.');
-      toast({ title: 'Profile Update (Simulated)', description: 'First/Last name update logic requires Firestore integration.' });
+      setFormSuccess('Profile update for First/Last Name is simulated. Backend integration (Firestore) is needed to persist these changes.');
+      toast({ title: 'Profile Update (Simulated)', description: 'First/Last Name fields are for display and future integration.' });
+
     } catch (error: any) {
       console.error('Error updating profile:', error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code) || 'Failed to update profile.';
@@ -102,16 +107,17 @@ export default function SettingsPageContent() {
   }
 
   if (!user) {
-    // This state should ideally be handled by ProtectedRoute redirecting.
-    // This is a fallback.
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Authentication Error</AlertTitle>
+        <Alert variant="destructive" className="max-w-md text-center">
+          <AlertTriangle className="h-5 w-5 mx-auto mb-2" />
+          <AlertTitle>Authentication Required</AlertTitle>
           <AlertDescription>
-            User not authenticated or session expired. You may need to sign out and sign in again.
+            You need to be signed in to access this page.
           </AlertDescription>
+          <Button onClick={() => router.push('/signin')} className="mt-4">
+            Go to Sign In
+          </Button>
         </Alert>
       </div>
     );
@@ -156,7 +162,7 @@ export default function SettingsPageContent() {
                    <div>
                     <Label htmlFor="usernameDisplay">Username</Label>
                     <Input id="usernameDisplay" type="text" value={user.displayName || ''} disabled />
-                    <p className="text-xs text-muted-foreground mt-1">Username cannot be changed here.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Username is set at signup and cannot be changed here.</p>
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField
@@ -189,12 +195,12 @@ export default function SettingsPageContent() {
                   <div>
                     <Label htmlFor="email">Email Address</Label>
                     <Input id="email" type="email" value={user.email || ''} placeholder="john.doe@example.com" disabled />
-                    <p className="text-xs text-muted-foreground mt-1">Email address cannot be changed here.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Email address cannot be changed here. Contact support if needed.</p>
                   </div>
                   <div>
                     <Label htmlFor="profilePhoto">Profile Photo</Label>
                     <Input id="profilePhoto" type="file" accept="image/*" disabled={isLoading || true} />
-                    <p className="text-xs text-muted-foreground mt-1">Upload a new profile picture. (Upload not yet functional)</p>
+                    <p className="text-xs text-muted-foreground mt-1">Upload a new profile picture. (Functionality not yet implemented)</p>
                   </div>
                   <Button type="submit" className="mt-2" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -258,3 +264,5 @@ export default function SettingsPageContent() {
     </div>
   );
 }
+
+    
