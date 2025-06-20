@@ -1,11 +1,7 @@
-// import type { Metadata } from 'next';
-// import SettingsPageContent from '@/components/dashboard/settings-page-content';
-// import { ProtectedRoute } from '@/components/protected-route';
 
-// export const metadata: Metadata = {
-//   title: 'Account Settings | AuthFlow Profile Management',
-//   description: 'Update your AuthFlow profile information, manage security settings like password changes, and customize your notification preferences from the account settings page.',
-// };
+// This is an intentionally minimal page for debugging.
+// If this page still doesn't load after clearing the .next folder and restarting the dev server,
+// the issue is likely deeper within the Next.js build or server state for this specific route.
 
 export default function SettingsPage() {
   return (
