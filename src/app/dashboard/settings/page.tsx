@@ -1,7 +1,7 @@
 
 import type { Metadata } from 'next';
 import SettingsPageContent from '@/components/dashboard/settings-page-content';
-import { ProtectedRoute } from '@/components/protected-route';
+// import { ProtectedRoute } from '@/components/protected-route'; // Temporarily removed for diagnostics
 
 export const metadata: Metadata = {
   title: 'Account Settings | AuthFlow Profile Management',
@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
   return (
-    <ProtectedRoute>
-      <SettingsPageContent />
-    </ProtectedRoute>
+    // <ProtectedRoute> // Temporarily removed for diagnostics
+    <SettingsPageContent />
+    // </ProtectedRoute> // Temporarily removed for diagnostics
   );
 }
