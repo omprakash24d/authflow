@@ -10,6 +10,7 @@ import { LogOut, Settings, Trash2, ShieldCheck, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteUser } from 'firebase/auth';
 import { format } from 'date-fns';
+import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -107,8 +108,10 @@ export default function DashboardPage() {
                <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
                 <Settings className="mr-2 h-5 w-5" /> Account Management
               </h3>
-              <Button variant="outline" className="w-full" onClick={() => alert('Account Settings (not implemented)')}>
-                <Settings className="mr-2 h-4 w-4" /> Account Settings
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/dashboard/settings">
+                  <Settings className="mr-2 h-4 w-4" /> Account Settings
+                </Link>
               </Button>
 
               <AlertDialog>
