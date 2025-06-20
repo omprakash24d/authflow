@@ -20,7 +20,7 @@ import { SocialLogins } from './social-logins';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, AlertTriangle, Loader2, MailCheck, Send } from 'lucide-react';
 
-const UNVERIFIED_EMAIL_ERROR_MESSAGE = 'Your email address is not verified. Please check your inbox for the verification link we sent you, or click below to resend.';
+const UNVERIFIED_EMAIL_ERROR_MESSAGE = "Your email address is not verified. Please check your inbox for the verification link we sent you. If you don't see it, be sure to check your spam or junk folder. You can also click below to resend the verification link.";
 
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
