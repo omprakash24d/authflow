@@ -1,12 +1,13 @@
 
 'use client';
 
+import { useState } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings, Trash2, ShieldCheck, Clock } from 'lucide-react';
+import { LogOut, Settings, Trash2, ShieldCheck, Clock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteUser } from 'firebase/auth';
 import { format } from 'date-fns';
@@ -26,6 +27,7 @@ import {
 export default function DashboardPage() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return '??';
@@ -36,6 +38,7 @@ export default function DashboardPage() {
 
   const handleDeleteAccount = async () => {
     if (!user) return;
+    setIsDeleting(true);
     try {
       await deleteUser(user);
       toast({
@@ -54,6 +57,8 @@ export default function DashboardPage() {
         description: description,
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -129,8 +134,13 @@ export default function DashboardPage() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90">
+                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDeleteAccount} 
+                      className="bg-destructive hover:bg-destructive/90"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Yes, delete account
                     </AlertDialogAction>
                   </AlertDialogFooter>
