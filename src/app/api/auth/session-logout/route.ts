@@ -1,22 +1,23 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
-import admin from '@/lib/firebase/admin-config'; // Initializes admin app
+import admin from '@/lib/firebase/admin-config';
 
 export async function POST(request: NextRequest) {
-  const sessionCookie = request.cookies.get('firebaseIdToken')?.value;
+  const sessionCookie: string | undefined = request.cookies.get('firebaseIdToken')?.value;
 
   if (sessionCookie) {
     try {
-      // Optional: Verify the session cookie and revoke refresh tokens.
-      // const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie, true);
-      // await admin.auth().revokeRefreshTokens(decodedClaims.sub);
+      // For a simple logout, just clearing the cookie is often sufficient.
+      // If active server-side revocation of all user sessions is needed,
+      // you would typically verify the session cookie here and then use
+      // admin.auth().revokeRefreshTokens(decodedClaims.sub);
+      // This is a more involved process and depends on specific security requirements.
     } catch (error) {
-      // Ignore error if cookie is invalid, just clear it.
-      console.warn('Error verifying session cookie during logout (continuing to clear):', error);
+      console.warn('Error during session cookie operations on logout (continuing to clear):', error);
     }
   }
 
-  const response = NextResponse.json({ status: 'success' }, { status: 200 });
+  const response = NextResponse.json({ status: 'success', message: 'Logged out successfully.' }, { status: 200 });
   response.cookies.set({
     name: 'firebaseIdToken',
     value: '',
@@ -28,3 +29,4 @@ export async function POST(request: NextRequest) {
   });
   return response;
 }
+
