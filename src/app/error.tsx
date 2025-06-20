@@ -1,3 +1,4 @@
+
 'use client'; // Error components must be Client Components
 
 import { useEffect } from 'react';
@@ -17,7 +18,10 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8 text-center">
+    <div
+      className="flex min-h-screen flex-col items-center justify-center bg-background p-8 text-center"
+      role="alert"
+    >
       <AlertTriangle className="mb-4 h-16 w-16 text-destructive" />
       <h2 className="mb-4 text-3xl font-bold font-headline text-destructive">
         Oops, Something Went Wrong!
@@ -31,6 +35,7 @@ export default function Error({
         </p>
       )}
       <Button
+        type="button"
         onClick={
           // Attempt to recover by trying to re-render the segment
           () => reset()

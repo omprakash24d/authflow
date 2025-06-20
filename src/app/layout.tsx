@@ -1,18 +1,16 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/auth-context';
+import type { PropsWithChildren } from 'react';
 
 export const metadata: Metadata = {
   title: 'AuthFlow',
   description: 'Comprehensive User and Authentication System by Firebase Studio',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: PropsWithChildren<{}>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
