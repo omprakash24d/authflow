@@ -49,9 +49,14 @@ export default function ForgotPasswordPage() {
         description: 'Check your inbox for instructions to reset your password.',
       });
       form.reset();
-    } catch (error: any) {
-      console.error(error);
-      // Don't reveal if email exists or not for security reasons
+    } catch (error: unknown) {
+      // Log the specific error for debugging, but show a generic message to the user
+      // to avoid revealing whether an email address exists or not.
+      if (error instanceof Error) {
+        console.error('Password Reset Error:', error.message, (error as any).code);
+      } else {
+        console.error('Password Reset Error:', error);
+      }
       setFormError('An error occurred. Please try again.');
       toast({
         title: 'Error Sending Reset Email',
@@ -79,14 +84,14 @@ export default function ForgotPasswordPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {formError && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" aria-live="assertive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
           {formSuccess && (
-            <Alert variant="default" className="bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300">
+            <Alert variant="default" className="bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300" aria-live="assertive">
               <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
               <AlertTitle>Success</AlertTitle>
               <AlertDescription>{formSuccess}</AlertDescription>
@@ -101,7 +106,7 @@ export default function ForgotPasswordPage() {
                 <FormControl>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input type="email" placeholder="john.doe@example.com" className="pl-10" {...field} />
+                    <Input type="email" placeholder="john.doe@example.com" className="pl-10" {...field} disabled={isLoading} />
                   </div>
                 </FormControl>
                 <FormMessage />
