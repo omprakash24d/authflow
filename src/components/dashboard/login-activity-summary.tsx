@@ -57,8 +57,8 @@ export function LoginActivitySummary({ user }: LoginActivitySummaryProps) {
     }
   }, [user]);
 
-  const lastSignInTime = user?.metadata.lastSignInTime 
-    ? format(new Date(user.metadata.lastSignInTime), "PPpp") 
+  const lastSignInTime = user?.metadata.lastSignInTime
+    ? format(new Date(user.metadata.lastSignInTime), "PPpp")
     : 'N/A';
 
   return (
@@ -77,15 +77,14 @@ export function LoginActivitySummary({ user }: LoginActivitySummaryProps) {
         <strong>Location:</strong>&nbsp;
          {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{location} (Error: {activityError})</span> : location}
       </p>
-       <Button 
-        variant="link" 
-        size="sm" 
-        className="p-0 h-auto text-primary" 
+       <Button
+        variant="link"
+        size="sm"
+        className="p-0 h-auto text-primary"
         onClick={() => {
-          console.log(`View full activity log clicked for user: ${user.uid}. Feature under development.`);
-          toast({ 
-            title: 'Activity Log', 
-            description: 'Full activity log feature is under development. Your request has been logged (simulated).'
+          toast({
+            title: 'Coming Soon',
+            description: 'A detailed activity log feature will be implemented in a future update.'
           });
         }}
        >
