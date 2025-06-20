@@ -19,22 +19,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
-import { PasswordInput } from './password-input'; 
+import { PasswordInput } from './password-input';
 import { PasswordStrengthIndicator } from './password-strength-indicator';
 import { SocialLogins } from './social-logins';
+import { PasswordBreachDialog } from './password-breach-dialog'; // New Import
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -42,10 +33,10 @@ export function SignUpForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [breachWarning, setBreachWarning] = useState<{ count: number; formValues: SignUpFormValues } | null>(null);
-  
+
   const router = useRouter();
   const { toast } = useToast();
-  const passwordInputRef = useRef<HTMLInputElement | null>(null); 
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(SignUpSchema),
@@ -64,30 +55,30 @@ export function SignUpForm() {
 
   async function executeRegistration(registrationValues: SignUpFormValues) {
     setIsLoading(true);
-    setFormError(null); 
+    setFormError(null);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, registrationValues.email, registrationValues.password);
       const user = userCredential.user;
 
       await updateProfile(user, {
-        displayName: registrationValues.username, 
+        displayName: registrationValues.username,
       });
-      
+
       if (firestore) {
         const usernameDocRef = doc(firestore, 'usernames', registrationValues.username.toLowerCase());
         await setDoc(usernameDocRef, {
           uid: user.uid,
-          email: user.email, 
+          email: user.email,
           username: registrationValues.username,
           createdAt: serverTimestamp(),
         });
-        
+
         const userProfileDocRef = doc(firestore, 'users', user.uid);
         await setDoc(userProfileDocRef, {
             firstName: registrationValues.firstName,
             lastName: registrationValues.lastName,
-            email: user.email, 
-            username: registrationValues.username, 
+            email: user.email,
+            username: registrationValues.username,
             createdAt: serverTimestamp(),
         }, { merge: true });
       } else {
@@ -121,14 +112,14 @@ export function SignUpForm() {
   async function onSubmit(values: SignUpFormValues) {
     setIsLoading(true);
     setFormError(null);
-    setBreachWarning(null); 
+    setBreachWarning(null);
 
     try {
       const breachResult = await checkPasswordBreach({ password: values.password });
       if (breachResult.isBreached && (breachResult.breachCount || 0) > 0) {
         setBreachWarning({ count: breachResult.breachCount || 0, formValues: values });
         setIsLoading(false);
-        return; 
+        return;
       }
       await executeRegistration(values);
     } catch (error: any) {
@@ -155,12 +146,25 @@ export function SignUpForm() {
     setBreachWarning(null);
     form.setValue('password', '');
     form.setValue('confirmPassword', '');
-    passwordInputRef.current?.focus(); 
+    // Ensure passwordInputRef.current is not null before calling focus
+    if (passwordInputRef.current && passwordInputRef.current.querySelector('input')) {
+        (passwordInputRef.current.querySelector('input') as HTMLInputElement).focus();
+    }
     toast({
         title: 'Choose a New Password',
         description: 'Please enter a new, secure password.',
     });
   };
+
+  const handleBreachDialogOnOpenChange = (isOpen: boolean) => {
+    if (!isOpen && breachWarning) {
+      // If dialog is closed without explicit action (Proceed/Choose New), treat as choosing new.
+      handleChooseNewPassword();
+    } else if (!isOpen) {
+      // If dialog is closed and there was no breachWarning (e.g. programmatically closed)
+      setBreachWarning(null);
+    }
+  }
 
   return (
     <AuthFormWrapper
@@ -247,10 +251,10 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <div ref={passwordInputRef}> 
+                    <div ref={passwordInputRef}>
                         <PasswordInput
                             field={{...otherFieldProps, ref: (el) => {
-                                fieldRef(el); 
+                                fieldRef(el);
                             }}}
                             placeholder="••••••••"
                             disabled={isLoading}
@@ -327,38 +331,13 @@ export function SignUpForm() {
       <SocialLogins />
 
       {breachWarning && (
-        <AlertDialog open={breachWarning !== null} onOpenChange={(isOpen) => {
-          if (!isOpen && breachWarning) { 
-             handleChooseNewPassword();
-          }
-        }}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-6 w-6 text-destructive" />
-                <AlertDialogTitle>Compromised Password Warning</AlertDialogTitle>
-              </div>
-              <AlertDialogDescription className="pt-2">
-                The password you entered has been found in {breachWarning.count} known data breaches.
-                Using this password significantly increases the risk of your account being compromised.
-                We strongly recommend choosing a different, unique password.
-                <br /><br />
-                Do you want to proceed with this password anyway?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleChooseNewPassword}>
-                Choose a New Password
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleProceedWithBreachedPassword}
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-              >
-                Proceed Anyway
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <PasswordBreachDialog
+          isOpen={breachWarning !== null}
+          breachCount={breachWarning.count}
+          onProceed={handleProceedWithBreachedPassword}
+          onChooseNew={handleChooseNewPassword}
+          onOpenChange={handleBreachDialogOnOpenChange}
+        />
       )}
     </AuthFormWrapper>
   );

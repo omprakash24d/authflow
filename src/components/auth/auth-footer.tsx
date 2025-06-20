@@ -1,11 +1,10 @@
-
-import { Twitter, Linkedin, Github } from 'lucide-react';
+import { Twitter, Github, LinkedinIcon } from 'lucide-react';
 
 export function AuthFooter() {
   const developerLinks = [
     {
       href: "https://www.linkedin.com/in/omrakash24d/",
-      icon: <Linkedin className="h-5 w-5" />,
+      icon: <LinkedinIcon className="h-5 w-5" />,
       label: "LinkedIn"
     },
     {
@@ -26,7 +25,7 @@ export function AuthFooter() {
       <p className="mt-1">
         Developed with <span className="text-accent">&hearts;</span> by Om Prakash.
       </p>
-      <div className="flex justify-center items-center space-x-3 mt-4 mb-3">
+      <nav className="flex justify-center items-center space-x-3 mt-4 mb-3" aria-label="Connect with the developer">
         <span className="text-xs text-muted-foreground/80 font-body">Connect with the developer:</span>
         {developerLinks.map(({ href, icon, label }) => (
           <a
@@ -34,14 +33,14 @@ export function AuthFooter() {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            title={`Om Prakash on ${label}`}
+            aria-label={`Om Prakash on ${label}`}
             className="text-muted-foreground hover:text-primary transition-colors flex items-center space-x-1"
           >
             {icon}
             <span className="sr-only">{label}</span>
           </a>
         ))}
-      </div>
+      </nav>
     </footer>
   );
 }
