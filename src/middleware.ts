@@ -20,15 +20,16 @@ export function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME);
 
   const isAccessingProtectedPath = PROTECTED_PATHS.some(p => pathname.startsWith(p));
-  const isAccessingAuthPath = AUTH_PATHS.some(p => pathname.startsWith(p));
+  // For the rule redirecting *away* from auth paths when logged in, use a more precise match.
+  const isOnExactAuthPath = AUTH_PATHS.includes(pathname);
 
   // If trying to access a protected path without a session, redirect to signin
   if (isAccessingProtectedPath && !sessionToken) {
     return createRedirectResponse(request, '/signin');
   }
 
-  // If trying to access an auth path (like signin/signup or homepage) with an active session, redirect to dashboard
-  if (isAccessingAuthPath && sessionToken) {
+  // If trying to access an exact auth path (like signin/signup or homepage) with an active session, redirect to dashboard
+  if (isOnExactAuthPath && sessionToken) {
     return createRedirectResponse(request, '/dashboard');
   }
 
