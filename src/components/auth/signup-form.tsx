@@ -67,12 +67,16 @@ export function SignUpForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, registrationValues.email, registrationValues.password);
       const user = userCredential.user;
 
+      // Set displayName to the username
       await updateProfile(user, {
-        displayName: `${registrationValues.firstName} ${registrationValues.lastName}`,
+        displayName: registrationValues.username,
       });
-      // Username is not directly stored in Firebase Auth user profile by default.
-      // You would typically store this in a Firestore/RTDB document alongside the user's UID.
-      console.log('User created. Username (client-side):', registrationValues.username);
+      // Note: First/Last name are collected but not directly stored on the Firebase Auth user object by default
+      // beyond displayName. They would typically be stored in Firestore/RTDB if needed separately.
+      console.log('User created. Username used as displayName:', registrationValues.username);
+      console.log('First Name (collected):', registrationValues.firstName);
+      console.log('Last Name (collected):', registrationValues.lastName);
+
 
       await sendEmailVerification(user);
       toast({
