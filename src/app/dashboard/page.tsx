@@ -1,6 +1,7 @@
 
 import type { Metadata } from 'next';
 import DashboardPageContent from '@/components/dashboard/dashboard-page-content';
+import { ProtectedRoute } from '@/components/protected-route'; // Import ProtectedRoute
 
 export const metadata: Metadata = {
   title: 'User Dashboard | AuthFlow Account Management',
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <DashboardPageContent />;
+  return (
+    <ProtectedRoute> {/* Wrap DashboardPageContent with ProtectedRoute */}
+      <DashboardPageContent />
+    </ProtectedRoute>
+  );
 }
