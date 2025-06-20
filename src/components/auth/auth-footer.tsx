@@ -1,7 +1,16 @@
+// src/components/auth/auth-footer.tsx
+// This component renders the footer section specifically for authentication pages.
+// It includes copyright information and links to the developer's social profiles.
 
 import { TwitterIcon, GithubIcon, LinkedinIcon } from 'lucide-react'; 
 
+/**
+ * AuthFooter component.
+ * Displays copyright, a small message, and social media links for the developer.
+ * @returns JSX.Element
+ */
 export function AuthFooter() {
+  // Array of developer's social media links for easy mapping.
   const developerLinks = [
     {
       href: "https://www.linkedin.com/in/omrakash24d/",
@@ -32,13 +41,13 @@ export function AuthFooter() {
           <a
             key={label}
             href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Om Prakash on ${label}`}
+            target="_blank" // Opens link in a new tab
+            rel="noopener noreferrer" // Security measure for external links
+            aria-label={`Om Prakash on ${label}`} // Accessibility label
             className="text-muted-foreground hover:text-primary transition-colors flex items-center space-x-1"
           >
             {icon}
-            <span className="sr-only">{label}</span>
+            <span className="sr-only">{label}</span> {/* For screen readers if icon is primary content */}
           </a>
         ))}
       </nav>

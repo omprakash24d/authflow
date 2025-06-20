@@ -1,36 +1,38 @@
+// src/components/home/home-page-content.tsx
+// This component renders the content for the application's homepage.
+// It displays different content based on the user's authentication state:
+// - If loading auth state: shows a global loader.
+// - If not authenticated: shows a welcome message and links to sign up/sign in.
+// - If authenticated: shows a global loader (as middleware should redirect to dashboard).
 
-'use client';
+'use client'; // Client component due to use of `useAuth` hook and client-side logic.
 
-// useEffect and useRouter are no longer needed for redirection here
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context'; // Hook to access authentication state
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Logo } from '@/components/logo';
-import LoadingComponent from '@/app/loading'; 
+import { Logo } from '@/components/logo'; // Application logo
+import LoadingComponent from '@/app/loading'; // Global loading component
 
+/**
+ * HomePageContent component.
+ * Dynamically renders content for the homepage based on authentication status.
+ * @returns JSX.Element
+ */
 export default function HomePageContent() {
-  const { user, loading } = useAuth();
-  // const router = useRouter(); // No longer needed
+  const { user, loading } = useAuth(); // Get user and loading state from AuthContext
 
-  // useEffect for redirection has been removed as middleware now handles it.
-  // useEffect(() => {
-  //   if (!loading) {
-  //     if (user) {
-  //       router.replace('/dashboard');
-  //     }
-  //   }
-  // }, [user, loading, router]);
-
+  // If initial authentication state is still loading, display the global loader.
   if (loading) {
     return <LoadingComponent />;
   }
 
-  // If middleware has not redirected (i.e., user is not authenticated), show landing content.
+  // If authentication state is resolved and user is NOT authenticated,
+  // display the landing page content for unauthenticated users.
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-8 text-center">
         <div className="mb-12">
-          <Logo />
+          <Logo /> {/* Application Logo */}
         </div>
         <h2 className="mb-4 text-4xl font-bold font-headline text-primary">
           Welcome to AuthFlow
@@ -39,6 +41,7 @@ export default function HomePageContent() {
           A comprehensive User and Authentication System built with Firebase and Next.js.
           Secure, scalable, and feature-rich for your application needs.
         </p>
+        {/* Call to action buttons */}
         <div className="space-x-4">
           <Button asChild size="lg">
             <Link href="/signup">Get Started</Link>
@@ -54,9 +57,10 @@ export default function HomePageContent() {
     );
   }
 
-  // If user is logged in, middleware should have redirected.
-  // This state (loading is false, user exists) should ideally not be reached for long on the homepage.
-  // Showing a loader here is a fallback during the brief period before middleware effect or if something unexpected occurs.
+  // If authentication state is resolved and user IS authenticated:
+  // The middleware (`src/middleware.ts`) should have already redirected the user
+  // from the homepage ('/') to an authenticated route (e.g., '/dashboard').
+  // Showing a loader here is a fallback for the brief moment before the middleware's
+  // redirect takes effect or if something unexpected occurs.
   return <LoadingComponent />;
 }
-

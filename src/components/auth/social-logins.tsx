@@ -1,25 +1,29 @@
+// src/components/auth/social-logins.tsx
+// This component provides buttons for users to sign in or sign up using social providers
+// like Google, GitHub, and Microsoft. It handles the OAuth popup flow with Firebase.
 
-'use client';
+'use client'; // Client component due to Firebase interactions and state.
 
 import { useRouter } from 'next/navigation';
 import { 
   GoogleAuthProvider, 
   GithubAuthProvider,
-  OAuthProvider,
+  OAuthProvider, // Generic OAuth provider, used here for Microsoft
   signInWithPopup, 
   type UserCredential, 
   type User as FirebaseUser, 
-  getAdditionalUserInfo 
+  getAdditionalUserInfo // To check if it's a new user
 } from 'firebase/auth';
-import { auth, firestore } from '@/lib/firebase/config';
-import { doc, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore'; // Added getDoc
+import { auth, firestore } from '@/lib/firebase/config'; // Firebase auth and firestore instances
+import { doc, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore'; // Firestore functions
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
-import { Chrome, Github, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
+import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // Maps Firebase errors to messages
+import { Chrome, Github, Loader2 } from 'lucide-react'; // Icons
 import { useState } from 'react';
 
+// Simple SVG icon for Microsoft.
 const MicrosoftIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M0 0H7.5V7.5H0V0Z" />
@@ -31,22 +35,33 @@ const MicrosoftIcon = () => (
 
 type SocialProviderName = 'Google' | 'GitHub' | 'Microsoft';
 
+/**
+ * SocialLogins component.
+ * Renders buttons for signing in with various social providers.
+ * Handles the OAuth flow, user profile creation/update in Firestore, and session management.
+ * @returns JSX.Element
+ */
 export function SocialLogins() {
   const router = useRouter();
   const { toast } = useToast();
+  // State for loading indicators on each button
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isGithubLoading, setIsGithubLoading] = useState(false);
   const [isMicrosoftLoading, setIsMicrosoftLoading] = useState(false);
 
+  /**
+   * Creates a server-side session cookie after successful social login.
+   * @param {FirebaseUser} user - The authenticated Firebase user object.
+   */
   const createSessionCookie = async (user: FirebaseUser) => {
     const idToken = await user.getIdToken();
-    const response = await fetch('/api/auth/session-login', {
+    const response = await fetch('/api/auth/session-login', { // Calls API to set HTTP-only cookie
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${idToken}`,
       },
     });
-    if (!response.ok) {
+    if (!response.ok) { // Handle API errors
       let errorData = { error: 'Failed to create session. Server response not in expected format.' };
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -58,16 +73,21 @@ export function SocialLogins() {
       } else {
          const textResponse = await response.text();
          console.error("Non-JSON response from /api/auth/session-login:", textResponse);
-         if (textResponse.length < 200) errorData.error = textResponse;
+         if (textResponse.length < 200) errorData.error = textResponse; // Use text if short
       }
       throw new Error(errorData.error || 'Failed to create session via social login.');
     }
   };
 
+  /**
+   * Handles the social login process for a given provider.
+   * @param {SocialProviderName} providerName - The name of the social provider (Google, GitHub, Microsoft).
+   */
   const handleSocialLogin = async (providerName: SocialProviderName) => {
-    let provider;
-    let setIsLoadingState: React.Dispatch<React.SetStateAction<boolean>>;
+    let provider; // Firebase Auth provider instance
+    let setIsLoadingState: React.Dispatch<React.SetStateAction<boolean>>; // State setter for loading
 
+    // Select provider and loading state based on providerName
     switch (providerName) {
       case 'Google':
         provider = new GoogleAuthProvider();
@@ -78,7 +98,7 @@ export function SocialLogins() {
         setIsLoadingState = setIsGithubLoading;
         break;
       case 'Microsoft':
-        provider = new OAuthProvider('microsoft.com');
+        provider = new OAuthProvider('microsoft.com'); // Uses generic OAuthProvider for Microsoft
         setIsLoadingState = setIsMicrosoftLoading;
         break;
       default:
@@ -86,8 +106,9 @@ export function SocialLogins() {
         return;
     }
 
-    setIsLoadingState(true);
+    setIsLoadingState(true); // Start loading
 
+    // Check if Firebase Auth service is available
     if (!auth) {
       toast({ title: 'Service Unavailable', description: 'Authentication service is not configured. Social login unavailable.', variant: 'destructive' });
       setIsLoadingState(false);
@@ -95,20 +116,23 @@ export function SocialLogins() {
     }
     
     try {
+      // Initiate sign-in with popup
       const result: UserCredential = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const additionalInfo = getAdditionalUserInfo(result);
+      const user = result.user; // Firebase user object
+      const additionalInfo = getAdditionalUserInfo(result); // Info like isNewUser
 
-      if (user) { // User exists after successful popup
-        if (firestore) { // Firestore is available
+      if (user) { // Should always be true on successful popup
+        if (firestore) { // If Firestore is available, manage user profile data
             try {
             const userProfileRef = doc(firestore, 'users', user.uid);
-            // Use email as key for username if available, otherwise a unique ID
+            // Use email as key for username document if available, otherwise a unique ID fallback.
+            // Social providers might not always return an email or a suitable username.
             const usernameKey = user.email ? user.email.toLowerCase() : `social_${user.uid}`;
             const usernameDocRef = doc(firestore, 'usernames', usernameKey);
 
-            const batch = writeBatch(firestore);
+            const batch = writeBatch(firestore); // Use a batch for atomic writes
 
+            // Attempt to parse first and last name from displayName
             let firstName = '';
             let lastName = '';
             if (user.displayName) {
@@ -117,23 +141,23 @@ export function SocialLogins() {
                 lastName = nameParts.slice(1).join(' ') || '';
             }
             
-            // Set profile data
+            // Prepare profile data to set/merge in Firestore
             const profileDataToSet: any = {
                 firstName,
                 lastName,
-                email: user.email,
-                // Use email for username field by default, or a fallback
+                email: user.email, // May be null depending on provider and user permissions
+                // Use email for username field by default, or a fallback like 'user_UID_prefix'
                 username: user.email || `user_${user.uid.substring(0,8)}`, 
-                photoURL: user.photoURL || null,
-                providerId: result.providerId, 
+                photoURL: user.photoURL || null, // Profile picture URL from provider
+                providerId: result.providerId, // e.g., 'google.com', 'github.com'
                 updatedAt: serverTimestamp(),
             };
-            if (additionalInfo?.isNewUser) {
+            if (additionalInfo?.isNewUser) { // If it's a new user, set createdAt
                 profileDataToSet.createdAt = serverTimestamp();
             }
-            batch.set(userProfileRef, profileDataToSet, { merge: true });
+            batch.set(userProfileRef, profileDataToSet, { merge: true }); // Merge to avoid overwriting existing data
             
-            // Set username document if email exists
+            // Set username document if email exists (used for username login lookup)
             if (user.email) {
                 const usernameDataToSet: any = {
                 uid: user.uid,
@@ -149,9 +173,9 @@ export function SocialLogins() {
                  console.warn(`User ${user.uid} lacks an email from social provider ${providerName}, skipping username document creation.`);
             }
             
-            await batch.commit();
+            await batch.commit(); // Commit Firestore writes
 
-            } catch (dbError: any) {
+            } catch (dbError: any) { // Handle Firestore errors gracefully
             console.error(`Error updating/creating Firestore profile for ${providerName} login:`, dbError);
             toast({
                 title: "Profile Sync Issue",
@@ -174,24 +198,25 @@ export function SocialLogins() {
         throw new Error("User object not found after social sign-in.");
       }
       
-      await createSessionCookie(user);
+      await createSessionCookie(user); // Create server-side session
       
       toast({
         title: `Signed In with ${providerName}!`,
         description: `Welcome, ${user.displayName || user.email}!`,
       });
-      // router.push('/dashboard'); // Replaced by window.location.assign for full reload
+      // Redirect to dashboard using full page reload
       window.location.assign('/dashboard');
 
-
-    } catch (error: any) {
+    } catch (error: any) { // Handle errors from signInWithPopup or createSessionCookie
       console.error(`Error during ${providerName} sign-in:`, error);
       let errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
+      // Provide more specific messages for common OAuth errors
       if (error.code === 'auth/account-exists-with-different-credential') {
-        errorMessage = "An account already exists with this email address using a different sign-in method. Try signing in with the original method, or link your accounts if that feature is available.";
+        errorMessage = "An account already exists with the same email address but was created using a different sign-in method (e.g., Google, Email/Password). Please sign in using the original method, or link your accounts if that feature is available.";
       } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user'){
         errorMessage = `Sign-in with ${providerName} was cancelled.`;
       } else if (error.message && error.message.includes("auth/configuration-not-found")) {
+        // This often indicates the provider isn't enabled or configured correctly in Firebase console
         errorMessage = `${providerName} sign-in is not configured in Firebase. Please contact support. (dev: Check Firebase console for ${providerName} auth setup and API keys/secrets).`
       }
 
@@ -201,26 +226,29 @@ export function SocialLogins() {
         variant: 'destructive',
       });
     } finally {
-      setIsLoadingState(false);
+      setIsLoadingState(false); // Stop loading
     }
   };
 
+  // Combined loading state to disable all buttons if any one is loading
   const anyLoading = isGoogleLoading || isGithubLoading || isMicrosoftLoading;
 
   return (
     <>
+      {/* Separator with "OR CONTINUE WITH" text */}
       <div className="relative my-6">
         <Separator />
         <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
           OR CONTINUE WITH
         </span>
       </div>
+      {/* Container for social login buttons */}
       <div className="space-y-3">
         <Button 
           variant="outline" 
           className="w-full" 
           onClick={() => handleSocialLogin('Google')} 
-          disabled={anyLoading || !auth}
+          disabled={anyLoading || !auth} // Disable if any loading or auth service unavailable
           aria-label="Sign in with Google"
         >
           {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Chrome className="mr-2 h-4 w-4" />} 

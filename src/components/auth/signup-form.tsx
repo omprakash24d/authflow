@@ -1,5 +1,9 @@
+// src/components/auth/signup-form.tsx
+// This component renders the sign-up form. It handles user input for registration details,
+// validation, AI-powered password breach checking, interaction with Firebase for account creation
+// and email verification, and saving user profile data to Firestore.
 
-'use client';
+'use client'; // Client component due to extensive state, form handling, and effects.
 
 import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
@@ -7,35 +11,44 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
-import { auth, firestore } from '@/lib/firebase/config';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { SignUpSchema, type SignUpFormValues } from '@/lib/validators/auth';
-import { checkPasswordBreach } from '@/ai/flows/password-breach-detector';
-import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
+import { auth, firestore } from '@/lib/firebase/config'; // Firebase auth and firestore instances
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Firestore functions
+import { SignUpSchema, type SignUpFormValues } from '@/lib/validators/auth'; // Zod schema for validation
+import { checkPasswordBreach } from '@/ai/flows/password-breach-detector'; // AI flow for password check
+import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // Maps Firebase errors to messages
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { AuthFormWrapper } from './auth-form-wrapper';
-import { PasswordInput } from './password-input';
-import { PasswordStrengthIndicator } from './password-strength-indicator';
-import { SocialLogins } from './social-logins';
-import { PasswordBreachDialog } from './password-breach-dialog';
-import { FormAlert } from '@/components/ui/form-alert'; 
-import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react'; 
+import { AuthFormWrapper } from './auth-form-wrapper'; // Consistent wrapper for auth forms
+import { PasswordInput } from './password-input'; // Custom password input
+import { PasswordStrengthIndicator } from './password-strength-indicator'; // Password strength UI
+import { SocialLogins } from './social-logins'; // Social login options
+import { PasswordBreachDialog } from './password-breach-dialog'; // Dialog for breached password warning
+import { FormAlert } from '@/components/ui/form-alert'; // General form alert
+import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
+import { Loader2 } from 'lucide-react'; // Loading icon
 
-
+/**
+ * SignUpForm component.
+ * Handles the user registration process, including form input, validation,
+ * password security checks, Firebase account creation, and profile setup.
+ * @returns JSX.Element
+ */
 export function SignUpForm() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  // State variables
+  const [isLoading, setIsLoading] = useState(false); // Manages loading state for form submission
+  const [formError, setFormError] = useState<string | null>(null); // Stores general form error messages
+  // Stores details if a password breach is detected, to show a warning dialog
   const [breachWarning, setBreachWarning] = useState<{ count: number; formValues: SignUpFormValues } | null>(null);
 
+  // Hooks
   const router = useRouter();
   const { toast } = useToast();
-  const passwordInputRef = useRef<HTMLInputElement | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement | null>(null); // Ref to focus password input after breach warning
 
+  // Initialize react-hook-form
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(SignUpSchema),
     defaultValues: {
@@ -49,12 +62,19 @@ export function SignUpForm() {
     },
   });
 
+  // Watch the password field to update the strength indicator dynamically
   const watchedPassword = form.watch('password');
 
+  /**
+   * Core registration logic: creates user in Firebase Auth, updates profile,
+   * saves data to Firestore, and sends verification email.
+   * @param {SignUpFormValues} registrationValues - The validated form values.
+   */
   async function executeRegistration(registrationValues: SignUpFormValues) {
     setIsLoading(true);
     setFormError(null);
 
+    // Check if Firebase Auth service is available
     if (!auth) {
       setFormError("Authentication service is not available. Please try again later or contact support.");
       toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
@@ -63,42 +83,50 @@ export function SignUpForm() {
     }
 
     try {
+      // Create user with email and password in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, registrationValues.email, registrationValues.password);
       const user = userCredential.user;
 
+      // Update Firebase Auth user profile with username (displayName)
+      // Note: photoURL could be added here if collected during sign-up
       await updateProfile(user, {
         displayName: registrationValues.username,
       });
 
+      // If Firestore is available, save additional user details
       if (firestore) {
         try {
+            // Create a document in 'usernames' collection to map username to UID and email (for username login)
             const usernameDocRef = doc(firestore, 'usernames', registrationValues.username.toLowerCase());
             await setDoc(usernameDocRef, {
             uid: user.uid,
-            email: user.email,
-            username: registrationValues.username,
-            createdAt: serverTimestamp(),
+            email: user.email, // Store email for potential lookup
+            username: registrationValues.username, // Store the cased username
+            createdAt: serverTimestamp(), // Timestamp of creation
             });
 
+            // Create/update a document in 'users' collection with detailed profile information
             const userProfileDocRef = doc(firestore, 'users', user.uid);
             await setDoc(userProfileDocRef, {
                 firstName: registrationValues.firstName,
                 lastName: registrationValues.lastName,
                 email: user.email,
                 username: registrationValues.username,
+                // photoURL: user.photoURL, // Can be set if available from Auth profile
                 createdAt: serverTimestamp(),
-            }, { merge: true });
+            }, { merge: true }); // Merge true to avoid overwriting existing fields if any
         } catch (dbError: any) {
+            // Handle Firestore errors gracefully; account creation still succeeded
             console.error("Firestore error during sign up:", dbError);
             toast({
                 title: "Profile Save Warning",
                 description: "Account created, but there was an issue saving some profile details to the database. You can update them in settings later.",
-                variant: "default", // More of a warning than destructive error for sign up itself
+                variant: "default", 
                 duration: 7000,
             });
-            // Do not setFormError here as the auth account is created.
         }
       } else {
+        // Firestore not available, inform user
         console.warn("Firestore client not available, skipping username/profile document creation.");
         toast({
             title: "Firestore Unavailable",
@@ -108,16 +136,20 @@ export function SignUpForm() {
         });
       }
 
+      // Send email verification to the newly created user
       await sendEmailVerification(user);
       toast({
         title: 'Account Created!',
         description: 'A verification email has been sent. Please check your inbox.',
       });
+      // Redirect to sign-in page with a flag to show a message about email verification
       router.push('/signin?verificationEmailSent=true');
 
     } catch (error: any) {
+      // Handle errors from Firebase Auth or other issues during registration
       console.error("Registration Error:", error);
-      let errorMessage = getFirebaseAuthErrorMessage(error.code);
+      let errorMessage = getFirebaseAuthErrorMessage(error.code); // Get user-friendly message
+      // Specific handling for Firestore permission errors if they occur despite Auth success
       if (error.code === 'firestore/permission-denied' || (error.message && error.message.toLowerCase().includes('permission denied'))) {
         errorMessage = 'Account created, but failed to save username/profile due to database permissions. Please contact support or check your Firestore security rules.';
       }
@@ -132,20 +164,29 @@ export function SignUpForm() {
     }
   }
 
+  /**
+   * Main form submission handler.
+   * First checks password for breaches, then proceeds with registration.
+   * @param {SignUpFormValues} values - The validated form values.
+   */
   async function onSubmit(values: SignUpFormValues) {
     setIsLoading(true);
     setFormError(null);
-    setBreachWarning(null);
+    setBreachWarning(null); // Reset breach warning
 
     try {
+      // Check if the chosen password has been breached using the AI flow
       const breachResult = await checkPasswordBreach({ password: values.password });
       if (breachResult.isBreached && (breachResult.breachCount || 0) > 0) {
+        // If breached, show a warning dialog instead of proceeding immediately
         setBreachWarning({ count: breachResult.breachCount || 0, formValues: values });
         setIsLoading(false);
-        return;
+        return; // Stop and wait for user decision from dialog
       }
+      // If not breached (or no breach check configured/error), proceed with registration
       await executeRegistration(values);
     } catch (error: any) {
+      // Handle errors from the password breach check itself (e.g., API issues)
       console.error("Error during pre-registration checks (e.g., password breach):", error);
       const breachCheckErrorMsg = getFirebaseAuthErrorMessage(error.code) || "Could not verify password security. Please try again.";
       setFormError(breachCheckErrorMsg);
@@ -158,17 +199,20 @@ export function SignUpForm() {
     }
   }
 
+  // Handler for when user decides to proceed despite password breach warning
   const handleProceedWithBreachedPassword = () => {
     if (breachWarning?.formValues) {
-      executeRegistration(breachWarning.formValues);
+      executeRegistration(breachWarning.formValues); // Proceed with the stored form values
     }
-    setBreachWarning(null);
+    setBreachWarning(null); // Close the dialog
   };
 
+  // Handler for when user decides to choose a new password after breach warning
   const handleChooseNewPassword = () => {
-    setBreachWarning(null);
-    form.setValue('password', '');
+    setBreachWarning(null); // Close the dialog
+    form.setValue('password', ''); // Clear password fields
     form.setValue('confirmPassword', '');
+    // Focus the password input for convenience
     if (passwordInputRef.current && passwordInputRef.current.querySelector('input')) {
         (passwordInputRef.current.querySelector('input') as HTMLInputElement).focus();
     }
@@ -178,10 +222,13 @@ export function SignUpForm() {
     });
   };
 
+  // Handler for when the breach dialog's open state changes (e.g., closed via Esc or overlay click)
   const handleBreachDialogOnOpenChange = (isOpen: boolean) => {
     if (!isOpen && breachWarning) {
+      // If dialog is closed without explicit action (Proceed/ChooseNew), default to "Choose New" behavior
       handleChooseNewPassword();
     } else if (!isOpen) {
+      // General close without active warning
       setBreachWarning(null);
     }
   }
@@ -190,7 +237,7 @@ export function SignUpForm() {
     <AuthFormWrapper
       title="Create an Account"
       description="Enter your details below to get started."
-      footerContent={
+      footerContent={ // Link to sign-in page
         <p>
           Already have an account?{' '}
           <Link href="/signin" className="font-medium text-primary hover:underline">
@@ -202,6 +249,8 @@ export function SignUpForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormAlert title="Error" message={formError} variant="destructive" />
+          
+          {/* Name Fields */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField
               control={form.control}
@@ -212,7 +261,7 @@ export function SignUpForm() {
                   <FormControl>
                     <Input placeholder="Om" {...field} disabled={isLoading} autoComplete="given-name" />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage /> {/* Field-specific validation errors */}
                 </FormItem>
               )}
             />
@@ -230,6 +279,8 @@ export function SignUpForm() {
               )}
             />
           </div>
+
+          {/* Username Field */}
           <FormField
             control={form.control}
             name="username"
@@ -243,6 +294,8 @@ export function SignUpForm() {
               </FormItem>
             )}
           />
+
+          {/* Email Field */}
           <FormField
             control={form.control}
             name="email"
@@ -256,19 +309,23 @@ export function SignUpForm() {
               </FormItem>
             )}
           />
+
+          {/* Password Field */}
           <FormField
             control={form.control}
             name="password"
             render={({ field }) => {
+              // Pass down the ref correctly to the PasswordInput component
               const { ref: fieldRef, ...otherFieldProps } = field;
               return (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <div ref={passwordInputRef}>
+                    {/* `div` wrapper for the ref from react-hook-form to be correctly applied to a focusable element if PasswordInput uses forwardRef internally for its own input */}
+                    <div ref={passwordInputRef}> 
                         <PasswordInput
                             field={{...otherFieldProps, ref: (el) => {
-                                fieldRef(el);
+                                fieldRef(el); // Assign react-hook-form's ref
                             }}}
                             placeholder="••••••••"
                             disabled={isLoading}
@@ -276,6 +333,7 @@ export function SignUpForm() {
                         />
                     </div>
                   </FormControl>
+                  {/* Display password strength indicator if password has input */}
                   {watchedPassword && watchedPassword.length > 0 && (
                     <PasswordStrengthIndicator password={watchedPassword} />
                   )}
@@ -284,6 +342,8 @@ export function SignUpForm() {
               );
             }}
           />
+
+          {/* Confirm Password Field */}
           <FormField
             control={form.control}
             name="confirmPassword"
@@ -302,6 +362,8 @@ export function SignUpForm() {
               </FormItem>
             )}
           />
+
+          {/* Terms and Conditions Checkbox */}
           <FormField
             control={form.control}
             name="termsAccepted"
@@ -332,14 +394,17 @@ export function SignUpForm() {
               </FormItem>
             )}
           />
+
+          {/* Submit Button */}
           <Button type="submit" className="w-full" disabled={isLoading || !auth}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sign Up
           </Button>
         </form>
       </Form>
-      <SocialLogins />
+      <SocialLogins /> {/* Social login options */}
 
+      {/* Password Breach Dialog (conditionally rendered) */}
       {breachWarning && (
         <PasswordBreachDialog
           isOpen={breachWarning !== null}
