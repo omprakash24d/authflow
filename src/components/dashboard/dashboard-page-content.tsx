@@ -1,18 +1,17 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings, Trash2, ShieldCheck, Clock, Loader2 } from 'lucide-react';
+import { LogOut, Settings, Trash2, ShieldCheck, Clock, Loader2, WifiOff, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteUser } from 'firebase/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
-// Removed 'Metadata' import as it's handled by the server component
 
 import {
   AlertDialog,
@@ -26,12 +25,42 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-// Metadata export is removed from client component
-
 export default function DashboardPageContent() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [ipAddress, setIpAddress] = useState<string | null>('Loading...');
+  const [location, setLocation] = useState<string | null>('Loading...');
+  const [activityLoading, setActivityLoading] = useState<boolean>(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchActivityDetails = async () => {
+      setActivityLoading(true);
+      setActivityError(null);
+      try {
+        const response = await fetch('/api/auth/activity-details');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Failed to fetch activity details: ${response.status}`);
+        }
+        const data = await response.json();
+        setIpAddress(data.ipAddress || 'Not Available');
+        setLocation(data.location || 'Not Available');
+      } catch (error: any) {
+        console.error("Error fetching activity details:", error);
+        setActivityError(error.message || 'Could not load activity data.');
+        setIpAddress('Error');
+        setLocation('Error');
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchActivityDetails();
+    }
+  }, [user]);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return '??';
@@ -70,10 +99,19 @@ export default function DashboardPageContent() {
     ? format(new Date(user.metadata.lastSignInTime), "PPpp") 
     : 'N/A';
 
-  if (!user) {
+  if (!user && !useAuth().loading) { // Check loading state from context as well
     // This should be handled by ProtectedRoute, but as a fallback:
     return <div className="flex min-h-screen items-center justify-center">Redirecting...</div>;
   }
+  
+  if (useAuth().loading || !user) { // Show loader if auth is loading or user is still null
+     return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
 
   return (
     <ProtectedRoute>
@@ -106,9 +144,17 @@ export default function DashboardPageContent() {
                 <Clock className="mr-2 h-5 w-5" /> Login Activity
               </h3>
               <p><strong>Last Sign-In:</strong> {lastSignInTime}</p>
-              <p><strong>IP Address:</strong> Not Tracked (Requires backend integration)</p>
-              <p><strong>Location:</strong> Not Tracked (Requires backend integration)</p>
-               <Button variant="link" size="sm" className="p-0 h-auto text-primary" onClick={() => alert('View full activity log (not implemented)')}>
+              <p className="flex items-center">
+                <WifiOff className="mr-2 h-4 w-4 text-muted-foreground" />
+                <strong>IP Address:</strong>&nbsp;
+                {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{ipAddress}</span> : ipAddress}
+              </p>
+              <p className="flex items-center">
+                <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                <strong>Location:</strong>&nbsp;
+                 {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{location}</span> : location}
+              </p>
+               <Button variant="link" size="sm" className="p-0 h-auto text-primary" onClick={() => toast({ title: 'Coming Soon', description: 'Viewing full activity log is not yet implemented.'})}>
                 View full activity log
               </Button>
             </div>
