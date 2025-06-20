@@ -238,7 +238,9 @@ export function SignUpForm() {
                     </Button>
                   </div>
                 </FormControl>
-                <PasswordStrengthIndicator password={watchedPassword} />
+                {watchedPassword && watchedPassword.length > 0 && (
+                  <PasswordStrengthIndicator password={watchedPassword} />
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -311,8 +313,8 @@ export function SignUpForm() {
 
       {breachWarning && (
         <AlertDialog open={breachWarning !== null} onOpenChange={(isOpen) => {
-          if (!isOpen && breachWarning) { // Check breachWarning to prevent issues if it becomes null
-             handleChooseNewPassword(); // Default to choosing new password if closed via Esc/overlay
+          if (!isOpen && breachWarning) { 
+             handleChooseNewPassword();
           }
         }}>
           <AlertDialogContent>
@@ -346,5 +348,3 @@ export function SignUpForm() {
     </AuthFormWrapper>
   );
 }
-
-    
