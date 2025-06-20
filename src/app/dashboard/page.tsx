@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ProtectedRoute } from '@/components/protected-route';
@@ -5,9 +6,10 @@ import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings, Trash2 } from 'lucide-react';
+import { LogOut, Settings, Trash2, ShieldCheck, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteUser } from 'firebase/auth';
+import { format } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +56,9 @@ export default function DashboardPage() {
     }
   };
 
+  const lastSignInTime = user?.metadata.lastSignInTime 
+    ? format(new Date(user.metadata.lastSignInTime), "PPpp") 
+    : 'N/A';
 
   if (!user) {
     // This should be handled by ProtectedRoute, but as a fallback:
@@ -72,17 +77,36 @@ export default function DashboardPage() {
               </Avatar>
             </div>
             <CardTitle className="text-3xl font-headline">Welcome to AuthFlow!</CardTitle>
-            <CardDescription>This is your protected dashboard.</CardDescription>
+            <CardDescription>This is your personalized dashboard.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2 text-sm">
+            <div className="space-y-3 text-sm">
+              <h3 className="text-lg font-semibold font-headline text-primary">Account Information</h3>
               <p><strong>Display Name:</strong> {user.displayName || 'Not set'}</p>
               <p><strong>Email:</strong> {user.email}</p>
-              <p><strong>Email Verified:</strong> {user.emailVerified ? 'Yes' : 'No'}</p>
-              <p><strong>User ID:</strong> {user.uid}</p>
+              <p><strong>Email Verified:</strong> {user.emailVerified ? 
+                <span className="text-green-600 dark:text-green-400 font-medium">Yes</span> : 
+                <span className="text-red-600 dark:text-red-400 font-medium">No</span>}
+              </p>
+              <p><strong>User ID:</strong> <span className="text-xs">{user.uid}</span></p>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
+                <Clock className="mr-2 h-5 w-5" /> Login Activity
+              </h3>
+              <p><strong>Last Sign-In:</strong> {lastSignInTime}</p>
+              <p><strong>IP Address:</strong> Not Tracked (Requires backend integration)</p>
+              <p><strong>Location:</strong> Not Tracked (Requires backend integration)</p>
+               <Button variant="link" size="sm" className="p-0 h-auto text-primary" onClick={() => alert('View full activity log (not implemented)')}>
+                View full activity log
+              </Button>
             </div>
             
             <div className="space-y-3">
+               <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
+                <Settings className="mr-2 h-5 w-5" /> Account Management
+              </h3>
               <Button variant="outline" className="w-full" onClick={() => alert('Account Settings (not implemented)')}>
                 <Settings className="mr-2 h-4 w-4" /> Account Settings
               </Button>
