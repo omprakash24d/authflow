@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase/config';
-import { updateProfile, type User as FirebaseUser } from 'firebase/auth';
-import { ProfileSettingsSchema, type ProfileSettingsFormValues } from '@/lib/validators/auth';
+import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, verifyBeforeUpdateEmail, type User as FirebaseUser } from 'firebase/auth';
+import { ProfileSettingsSchema, type ProfileSettingsFormValues, ChangeEmailSchema, type ChangeEmailFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,19 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ChangePasswordDialog } from '@/components/dashboard/settings/change-password-dialog';
-import { ChangeEmailDialog } from '@/components/dashboard/settings/change-email-dialog'; // Placeholder for now
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronLeft, User, Lock, Bell, Palette, AlertTriangle, Loader2, Image as ImageIcon, Mail } from 'lucide-react';
+import { ChevronLeft, User, Lock, Bell, Palette, AlertTriangle, Loader2, Image as ImageIcon, Mail, Eye, EyeOff } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+
 
 export default function SettingsPageContent() {
   const { user, loading: authLoading } = useAuth();
@@ -36,6 +45,11 @@ export default function SettingsPageContent() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [initialUsername, setInitialUsername] = useState<string | null>(null);
 
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+  const [emailChangeFormError, setEmailChangeFormError] = useState<string | null>(null);
+  const [showCurrentPasswordForEmail, setShowCurrentPasswordForEmail] = useState(false);
+
+
   const profileForm = useForm<ProfileSettingsFormValues>({
     resolver: zodResolver(ProfileSettingsSchema),
     defaultValues: {
@@ -45,12 +59,21 @@ export default function SettingsPageContent() {
     },
   });
 
+  const emailChangeForm = useForm<ChangeEmailFormValues>({
+    resolver: zodResolver(ChangeEmailSchema),
+    defaultValues: {
+      currentPassword: '',
+      newEmail: '',
+    },
+  });
+
   useEffect(() => {
     if (user && firestore) {
       const fetchUserProfile = async () => {
         try {
           const userProfileRef = doc(firestore, 'users', user.uid);
           const docSnap = await getDoc(userProfileRef);
+          let fetchedUsername = user.displayName || ''; // Fallback to auth displayName
           if (docSnap.exists()) {
             const profileData = docSnap.data();
             profileForm.reset({
@@ -58,30 +81,29 @@ export default function SettingsPageContent() {
               lastName: profileData.lastName || '',
               username: profileData.username || user.displayName || '',
             });
-            setInitialUsername(profileData.username || user.displayName || null);
+            fetchedUsername = profileData.username || user.displayName || '';
           } else {
-             // If no profile, use auth display name for username
             profileForm.reset({
               firstName: '',
               lastName: '',
               username: user.displayName || '',
             });
-            setInitialUsername(user.displayName || null);
           }
+          setInitialUsername(fetchedUsername);
         } catch (error: any) {
           console.error("Error fetching user profile for settings:", error);
-          setProfileError("Could not load profile information.");
+          setProfileError("Could not load your profile data.");
           toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
         }
       };
       fetchUserProfile();
     }
-  }, [user, profileForm, toast]);
+  }, [user, profileForm.reset, toast]);
 
 
   async function onSubmitProfile(values: ProfileSettingsFormValues) {
     if (!user || !auth.currentUser) {
-      setProfileError("User not authenticated.");
+      setProfileError("User not authenticated. Please sign in again.");
       toast({ title: "Authentication Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
@@ -89,85 +111,162 @@ export default function SettingsPageContent() {
     setProfileError(null);
 
     const currentUser = auth.currentUser;
+    const newUsername = values.username.trim();
+    let usernameChanged = false;
+
+    // Check if username has actually changed (case-insensitive check for desired state)
+    if (newUsername.toLowerCase() !== (initialUsername || '').toLowerCase()) {
+      usernameChanged = true;
+      // Client-side check for new username availability
+      const newUsernameRef = doc(firestore, 'usernames', newUsername.toLowerCase());
+      try {
+        const newUsernameSnap = await getDoc(newUsernameRef);
+        if (newUsernameSnap.exists()) {
+          const usernameData = newUsernameSnap.data();
+          if (usernameData.uid !== currentUser.uid) { // Allow if it's the user's own existing record (e.g. case change)
+            setProfileError(`Username "${newUsername}" is already taken. Please choose another.`);
+            toast({ title: "Username Taken", description: `Username "${newUsername}" is already taken.`, variant: "destructive" });
+            setProfileSaving(false);
+            return;
+          }
+        }
+      } catch (error: any) {
+        console.error("Error checking username availability:", error);
+        setProfileError("Failed to verify username availability. Please try again.");
+        toast({ title: "Error", description: "Failed to verify username. Please try again.", variant: "destructive" });
+        setProfileSaving(false);
+        return;
+      }
+    }
+
+    // Attempt to update Firebase Auth displayName first if username changed
+    if (usernameChanged) {
+      try {
+        await updateProfile(currentUser, { displayName: newUsername });
+        // Successfully updated Auth displayName, now reflect this in initialUsername for Firestore logic
+        // This helps if Firestore batch fails, Auth part is done.
+      } catch (authError: any) {
+        console.error("Error updating Firebase Auth displayName:", authError);
+        const authErrorMessage = getFirebaseAuthErrorMessage(authError.code);
+        setProfileError(`Failed to update display name in authentication: ${authErrorMessage}`);
+        toast({ title: "Auth Update Error", description: `Failed to update display name: ${authErrorMessage}`, variant: "destructive" });
+        setProfileSaving(false);
+        return; // Stop if Auth update fails
+      }
+    }
+
+    // Proceed with Firestore updates
     const batch = writeBatch(firestore);
     const userProfileRef = doc(firestore, 'users', currentUser.uid);
 
-    let usernameChanged = false;
-    const newUsername = values.username.trim();
-    const oldUsername = initialUsername ? initialUsername.trim() : (currentUser.displayName || '').trim();
-    
-    if (newUsername !== oldUsername) {
-        usernameChanged = true;
-        // Basic client-side check for new username availability in 'usernames' collection
-        const newUsernameRef = doc(firestore, 'usernames', newUsername.toLowerCase());
-        try {
-            const newUsernameSnap = await getDoc(newUsernameRef);
-            if (newUsernameSnap.exists()) {
-                setProfileError(`Username "${newUsername}" is already taken. Please choose another.`);
-                toast({ title: "Username Taken", description: `Username "${newUsername}" is already taken.`, variant: "destructive" });
-                setProfileSaving(false);
-                return;
-            }
-        } catch (error: any) {
-            console.error("Error checking username availability:", error);
-            setProfileError("Failed to verify username availability. Please try again.");
-            toast({ title: "Error", description: "Failed to verify username. Please try again.", variant: "destructive" });
-            setProfileSaving(false);
-            return;
-        }
-    }
-
     try {
-      // Prepare Firestore update for users/{uid}
-      batch.set(userProfileRef, {
+      const profileUpdateData: any = {
         firstName: values.firstName,
         lastName: values.lastName,
-        username: usernameChanged ? newUsername : oldUsername, // Update username if changed
+        username: newUsername, // Always set the username in the user's profile to the new one
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      };
+      batch.set(userProfileRef, profileUpdateData, { merge: true });
 
+      if (usernameChanged && initialUsername && initialUsername.toLowerCase() !== newUsername.toLowerCase()) {
+        // Only delete the old username record if initialUsername was non-empty and different
+        const oldUsernameRef = doc(firestore, 'usernames', initialUsername.toLowerCase());
+        batch.delete(oldUsernameRef);
+      }
+      
       if (usernameChanged) {
-        // Update Firebase Auth display name
-        await updateProfile(currentUser, { displayName: newUsername });
-
-        // Update 'usernames' collection
-        if (oldUsername && oldUsername.toLowerCase() !== newUsername.toLowerCase()) {
-            const oldUsernameRef = doc(firestore, 'usernames', oldUsername.toLowerCase());
-            batch.delete(oldUsernameRef);
-        }
+        // Create/Update new username document in 'usernames' collection
         const newUsernameRefForWrite = doc(firestore, 'usernames', newUsername.toLowerCase());
         batch.set(newUsernameRefForWrite, {
-            uid: currentUser.uid,
-            email: currentUser.email, // Keep email consistent
-            username: newUsername,
-            createdAt: serverTimestamp(), // Or use original createdAt if preferred
+          uid: currentUser.uid,
+          email: currentUser.email,
+          username: newUsername, // Store the exact case chosen by user
+          updatedAt: serverTimestamp(),
         });
       }
 
       await batch.commit();
 
       if (usernameChanged) {
-        setInitialUsername(newUsername); // Update initialUsername state after successful change
+          setInitialUsername(newUsername); // Update local state to reflect successful full change
       }
 
       toast({
         title: 'Profile Updated',
-        description: 'Your profile information has been saved.',
+        description: 'Your profile information has been successfully saved.',
       });
 
-    } catch (error: any) {
-      console.error("Error updating profile:", error);
-      const errorMessage = getFirebaseAuthErrorMessage(error.code) || "An unexpected error occurred while updating your profile.";
-      setProfileError(errorMessage);
+    } catch (firestoreError: any) {
+      console.error("Error updating profile in Firestore:", firestoreError);
+      let specificErrorMessage = "An error occurred while saving your profile to the database.";
+      if (firestoreError.code === 'permission-denied' || (firestoreError.message && firestoreError.message.toLowerCase().includes('permission denied'))) {
+        specificErrorMessage = `Your Firebase Auth display name may have been updated to "${newUsername}", but saving username details to the database failed due to permissions. Please check Firestore security rules for 'users' and 'usernames' collections or contact support. (Details: ${firestoreError.message})`;
+      } else {
+        specificErrorMessage = getFirebaseAuthErrorMessage(firestoreError.code) || specificErrorMessage;
+      }
+      setProfileError(specificErrorMessage);
       toast({
-        title: 'Error Updating Profile',
-        description: errorMessage,
+        title: 'Firestore Update Error',
+        description: specificErrorMessage,
         variant: 'destructive',
       });
     } finally {
       setProfileSaving(false);
     }
   }
+
+  async function onSubmitEmailChange(values: ChangeEmailFormValues) {
+    if (!user || !user.email) {
+      setEmailChangeFormError('User not found or email is missing.');
+      return;
+    }
+    setEmailChangeLoading(true);
+    setEmailChangeFormError(null);
+
+    try {
+      const credential = EmailAuthProvider.credential(user.email, values.currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // User re-authenticated, now verify and update email
+      await verifyBeforeUpdateEmail(user, values.newEmail);
+
+      toast({
+        title: 'Verification Email Sent',
+        description: `A verification email has been sent to ${values.newEmail}. Please verify to complete the email change. Your current email remains active until then.`,
+      });
+
+      // Optionally, update the email in Firestore `users/{uid}` document with a pending status
+      // or wait for a Cloud Function triggered by Auth email change event.
+      // For now, we'll just inform the user.
+      // const userProfileRef = doc(firestore, 'users', user.uid);
+      // await setDoc(userProfileRef, { email: values.newEmail, emailVerified: false, emailChangePending: true }, { merge: true });
+
+
+      emailChangeForm.reset();
+      setIsChangeEmailDialogOpen(false);
+    } catch (error: any) {
+      console.error('Change Email Error:', error);
+      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      setEmailChangeFormError(errorMessage);
+      toast({
+        title: 'Error Changing Email',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  }
+
+  const handleEmailDialogClose = (isOpen: boolean) => {
+    if (!isOpen) {
+      emailChangeForm.reset();
+      setEmailChangeFormError(null);
+      setEmailChangeLoading(false);
+      setShowCurrentPasswordForEmail(false);
+    }
+    setIsChangeEmailDialogOpen(isOpen);
+  };
 
 
   if (authLoading) {
@@ -354,7 +453,87 @@ export default function SettingsPageContent() {
         </div>
       </div>
       <ChangePasswordDialog open={isChangePasswordDialogOpen} onOpenChange={setIsChangePasswordDialogOpen} />
-      <ChangeEmailDialog open={isChangeEmailDialogOpen} onOpenChange={setIsChangeEmailDialogOpen} />
+      
+      {/* Change Email Dialog */}
+      <Dialog open={isChangeEmailDialogOpen} onOpenChange={handleEmailDialogClose}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Change Email Address</DialogTitle>
+            <DialogDescription>
+              Enter your current password and your new email address. A verification link will be sent to your new email.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...emailChangeForm}>
+            <form onSubmit={emailChangeForm.handleSubmit(onSubmitEmailChange)} className="space-y-6 py-4">
+              {emailChangeFormError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{emailChangeFormError}</AlertDescription>
+                </Alert>
+              )}
+              <FormField
+                control={emailChangeForm.control}
+                name="currentPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showCurrentPasswordForEmail ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          {...field}
+                          disabled={emailChangeLoading}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowCurrentPasswordForEmail(!showCurrentPasswordForEmail)}
+                          aria-label={showCurrentPasswordForEmail ? "Hide password" : "Show password"}
+                          disabled={emailChangeLoading}
+                        >
+                          {showCurrentPasswordForEmail ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={emailChangeForm.control}
+                name="newEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Email Address</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input type="email" placeholder="new.email@example.com" className="pl-10" {...field} disabled={emailChangeLoading} />
+                        </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline" disabled={emailChangeLoading}>
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button type="submit" disabled={emailChangeLoading}>
+                  {emailChangeLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Send Verification Email
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
