@@ -4,7 +4,11 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { EmailAuthProvider, reauthenticateWithCredential, verifyBeforeUpdateEmail } from 'firebase/auth';
+import { auth, firestore } from '@/lib/firebase/config'; // Added firestore
+import { doc, setDoc } from 'firebase/firestore'; // Added for Firestore updates
 import { ChangeEmailSchema, type ChangeEmailFormValues } from '@/lib/validators/auth';
+import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,7 +33,7 @@ interface ChangeEmailDialogProps {
 }
 
 export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps) {
-  const { user } = useAuth(); // We might need reauthenticateWithCredential from firebase/auth directly
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -43,34 +47,67 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
     },
   });
 
-  // Placeholder for onSubmit logic. Full implementation in next step.
   async function onSubmit(values: ChangeEmailFormValues) {
+    if (!user || !user.email) {
+      setFormError('User not found or current email is missing.');
+      toast({ title: "Error", description: "User not found or current email is missing.", variant: "destructive" });
+      return;
+    }
+
     setIsLoading(true);
     setFormError(null);
-    console.log("Change Email Values:", values); // Log for now
-    
-    // TODO: Implement re-authentication and verifyBeforeUpdateEmail
-    toast({
-      title: 'Email Change (In Progress)',
-      description: 'Email change functionality is being implemented. Check console for values.',
-    });
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Example error/success
-    // setFormError("This is a placeholder error for email change.");
-    // toast({ title: "Email Not Changed", description: "Placeholder.", variant: "destructive"});
-    // onOpenChange(false); // Close dialog on success
-    
-    setIsLoading(false);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, values.currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // User re-authenticated, now verify and update email
+      await verifyBeforeUpdateEmail(user, values.newEmail);
+
+      // Optionally, update the email in Firestore `users/{uid}` document with a pending status
+      // or wait for a Cloud Function triggered by Auth email change event.
+      // For now, we inform the user and encourage them to verify.
+      // A more robust solution might also update the 'usernames' collection if it stores emails.
+      if (firestore) {
+        const userProfileRef = doc(firestore, 'users', user.uid);
+        await setDoc(userProfileRef, 
+          { 
+            email: user.email, // Keep old email until verified, or new one if strategy dictates
+            emailChangePendingTo: values.newEmail, // Indicate pending change
+            updatedAt: new Date() // Or serverTimestamp
+          }, 
+          { merge: true }
+        );
+      }
+
+      toast({
+        title: 'Verification Email Sent',
+        description: `A verification email has been sent to ${values.newEmail}. Please check your inbox and verify to complete the email change. Your current email remains active until then.`,
+        duration: 9000, // Longer duration for this important message
+      });
+      
+      form.reset();
+      onOpenChange(false); // Close the dialog
+    } catch (error: any) {
+      console.error('Change Email Error:', error);
+      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      setFormError(errorMessage);
+      toast({
+        title: 'Error Changing Email',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const handleDialogClose = (isOpen: boolean) => {
     if (!isOpen) {
       form.reset();
       setFormError(null);
-      setIsLoading(false);
+      setShowCurrentPassword(false); // Reset password visibility
+      setIsLoading(false); // Ensure loading state is reset
     }
     onOpenChange(isOpen);
   };
