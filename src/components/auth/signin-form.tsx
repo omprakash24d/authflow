@@ -17,9 +17,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
 import { SocialLogins } from './social-logins';
-import { PasswordInput } from './password-input'; // Import the new component
+import { PasswordInput } from './password-input';
+import { EmailVerificationAlert } from './email-verification-alert'; // New Import
 import { useToast } from '@/hooks/use-toast';
-import { AlertTriangle, Loader2, MailCheck, Send } from 'lucide-react';
+import { AlertTriangle, Loader2, MailCheck } from 'lucide-react';
 
 const UNVERIFIED_EMAIL_ERROR_MESSAGE = "Your email address is not verified. Please check your inbox for the verification link we sent you. If you don't see it, be sure to check your spam or junk folder. You can also click below to resend the verification link.";
 
@@ -30,7 +31,7 @@ export function SignInForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [showVerificationMessageFromSignUp, setShowVerificationMessageFromSignUp] = useState(false);
   const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null);
-  
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -69,10 +70,10 @@ export function SignInForm() {
         description: "Check your inbox for a verification link or use the resend option.",
         variant: 'destructive',
       });
-      setIsLoading(false); 
-      return; 
+      setIsLoading(false);
+      return;
     }
-    
+
     if (firebaseUser) {
       const idToken = await firebaseUser.getIdToken();
       const response = await fetch('/api/auth/session-login', {
@@ -92,7 +93,7 @@ export function SignInForm() {
         throw new Error(errorData.error || 'Failed to create session.');
       }
     }
-    
+
     toast({
       title: 'Signed In!',
       description: 'Welcome back!',
@@ -104,13 +105,13 @@ export function SignInForm() {
   async function onSubmit(values: SignInFormValues) {
     setIsLoading(true);
     setFormError(null);
-    setShowVerificationMessageFromSignUp(false); 
+    setShowVerificationMessageFromSignUp(false);
     setUnverifiedUser(null);
 
     let emailToUse = values.identifier;
 
     try {
-      if (!values.identifier.includes('@')) { 
+      if (!values.identifier.includes('@')) {
         const usernameLookupResponse = await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`);
         if (!usernameLookupResponse.ok) {
           const errorData = await usernameLookupResponse.json().catch(() => ({}));
@@ -129,40 +130,42 @@ export function SignInForm() {
         }
         emailToUse = email;
       }
-      
+
       await handleSignIn(emailToUse, values.password);
 
     } catch (error: any) {
       console.error("Sign In Error:", error);
       const errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
-      if (!form.formState.errors.identifier && !formError) { 
+      if (!form.formState.errors.identifier && !formError && errorMessage !== UNVERIFIED_EMAIL_ERROR_MESSAGE) {
          setFormError(errorMessage);
       }
        toast({
         title: 'Sign In Failed',
-        description: formError || errorMessage, 
+        description: formError || errorMessage,
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      if(formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE) setIsLoading(false);
     }
   }
 
   async function handleResendVerificationEmail() {
     if (!unverifiedUser) return;
     setIsResendingVerification(true);
-    setFormError(null); 
+    setFormError(null); // Clear previous errors before resending
     try {
       await sendEmailVerification(unverifiedUser);
       toast({
         title: 'Verification Email Sent',
         description: 'A new verification email has been sent to your address. Please check your inbox.',
       });
-      setUnverifiedUser(null); 
+      // Keep unverifiedUser and the UNVERIFIED_EMAIL_ERROR_MESSAGE so the alert stays
+      setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE);
     } catch (error: any) {
       console.error("Error resending verification email:", error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code);
-      setFormError(errorMessage); 
+      // Display the resend error within the alert if possible, or as a general form error
+      setFormError(errorMessage); // This will replace the UNVERIFIED_EMAIL_ERROR_MESSAGE
       toast({
         title: 'Resend Failed',
         description: errorMessage,
@@ -190,14 +193,22 @@ export function SignInForm() {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {formError && (
+          {formError && formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
-          {showVerificationMessageFromSignUp && !formError && ( 
+          {formError === UNVERIFIED_EMAIL_ERROR_MESSAGE && (
+            <EmailVerificationAlert
+              message={UNVERIFIED_EMAIL_ERROR_MESSAGE}
+              onResend={handleResendVerificationEmail}
+              isResending={isResendingVerification}
+              showResendButton={!!unverifiedUser}
+            />
+          )}
+          {showVerificationMessageFromSignUp && !formError && (
             <Alert variant="default" className="bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300">
               <MailCheck className="h-5 w-5 text-green-500 dark:text-green-400" />
               <AlertTitle className="font-semibold">Verification Email Sent During Sign Up</AlertTitle>
@@ -213,10 +224,10 @@ export function SignInForm() {
               <FormItem>
                 <FormLabel>Email or Username</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="text" 
-                    placeholder="om@example.com or omprakash24d" 
-                    {...field} 
+                  <Input
+                    type="text"
+                    placeholder="om@example.com or omprakash24d"
+                    {...field}
                     disabled={anyLoading}
                     autoComplete="username"
                   />
@@ -251,22 +262,9 @@ export function SignInForm() {
             )}
           />
           <Button type="submit" className="w-full" disabled={anyLoading}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isLoading && formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sign In
           </Button>
-
-          {unverifiedUser && formError === UNVERIFIED_EMAIL_ERROR_MESSAGE && (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full mt-2"
-              onClick={handleResendVerificationEmail}
-              disabled={anyLoading}
-            >
-              {isResendingVerification ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Resend Verification Email
-            </Button>
-          )}
         </form>
       </Form>
       <SocialLogins />
