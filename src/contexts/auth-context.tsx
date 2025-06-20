@@ -2,9 +2,9 @@
 'use client';
 
 import type { User as FirebaseUser } from 'firebase/auth';
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
+import { auth } from '@/lib/firebase/config'; // auth can now be null
 import { useRouter } from 'next/navigation';
 
 interface User extends FirebaseUser {
@@ -25,6 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    if (!auth) {
+      // Firebase Auth service is not initialized (e.g., due to missing config)
+      setUser(null);
+      setLoading(false);
+      console.warn("AuthContext: Firebase Auth service is not available. User authentication will be disabled.");
+      return; // Do not attempt to subscribe
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser as User);
@@ -34,32 +42,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, []); // Empty dependency array as `auth` instance doesn't change post-initialization
 
   const signOut = async (): Promise<void> => {
     try {
-      // Attempt to clear the session cookie by calling the API route
       await fetch('/api/auth/session-logout', { method: 'POST' });
     } catch (error) {
-      // Log if API call fails, but proceed with client-side logout
       console.error('Error clearing session cookie via /api/auth/session-logout: ', error);
-      // Optionally: show a toast to the user that server-side session might still be active,
-      // but client-side logout will proceed.
     }
 
-    try {
-      // Sign out from Firebase client-side
-      await firebaseSignOut(auth);
-    } catch (clientSignOutError) {
-      // Log if client-side sign-out fails
-      console.error('Error signing out from Firebase client: ', clientSignOutError);
-      // Optionally: show a toast to the user about client-side logout failure.
+    if (auth) { // Only attempt Firebase sign out if auth service is available
+      try {
+        await firebaseSignOut(auth);
+      } catch (clientSignOutError) {
+        console.error('Error signing out from Firebase client: ', clientSignOutError);
+      }
     }
     
-    // Always update client state and redirect.
-    setUser(null);
-    router.push('/signin');
+    setUser(null); // Always update client state
+    router.push('/signin'); // Always redirect
   };
 
   return (

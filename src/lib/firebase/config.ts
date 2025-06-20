@@ -1,7 +1,7 @@
 
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore'; // Uncommented
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,40 +12,44 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let firebaseApp: FirebaseApp;
-
-// Check if all required config values are present
 const requiredConfigKeys: (keyof typeof firebaseConfig)[] = [
   'apiKey',
   'authDomain',
   'projectId',
-  'storageBucket',
-  'messagingSenderId',
-  'appId',
-];
+]; // Reduced to essential keys for basic app functionality
 
 const missingKeys = requiredConfigKeys.filter(key => !firebaseConfig[key]);
 
-if (missingKeys.length > 0) {
-  console.error(`Firebase config is missing or incomplete. Missing keys: ${missingKeys.join(', ')}. Please check your .env file.`);
-}
+let firebaseAppInstance: FirebaseApp | null = null;
 
-
-if (!getApps().length) {
-  if (missingKeys.length === 0) { // Only initialize if config is not missing
-    firebaseApp = initializeApp(firebaseConfig);
+if (missingKeys.length === 0) {
+  if (!getApps().length) {
+    try {
+      firebaseAppInstance = initializeApp(firebaseConfig);
+      console.log("Firebase app initialized successfully.");
+    } catch (e: any) {
+      console.error("CRITICAL: Firebase app initialization failed:", e.message, "Config used:", firebaseConfig);
+      firebaseAppInstance = null; // Ensure it's null on error
+    }
   } else {
-    console.warn("Firebase app initialization skipped due to missing configuration.");
-    // @ts-ignore
-    firebaseApp = null; 
+    firebaseAppInstance = getApps()[0];
   }
 } else {
-  firebaseApp = getApps()[0];
+  console.error(`CRITICAL: Firebase app initialization skipped due to missing essential configuration: ${missingKeys.join(', ')}. Firebase services will be unavailable.`);
+  firebaseAppInstance = null; // Ensure it's null if config is missing
 }
 
-// @ts-ignore
-const auth: Auth = firebaseApp ? getAuth(firebaseApp) : null;
-// @ts-ignore
-const firestore: Firestore = firebaseApp ? getFirestore(firebaseApp) : null; // Initialize Firestore
+export const firebaseApp: FirebaseApp | null = firebaseAppInstance;
+export const auth: Auth | null = firebaseAppInstance ? getAuth(firebaseAppInstance) : null;
+export const firestore: Firestore | null = firebaseAppInstance ? getFirestore(firebaseAppInstance) : null;
 
-export { firebaseApp, auth, firestore }; // Export firestore
+// Log the status of services
+if (!firebaseApp) {
+  console.warn("Firebase App instance is not available.");
+}
+if (!auth) {
+  console.warn("Firebase Auth instance is not available.");
+}
+if (!firestore) {
+  console.warn("Firebase Firestore instance is not available.");
+}
