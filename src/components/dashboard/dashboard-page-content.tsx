@@ -1,145 +1,18 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { useAuth } from '@/contexts/auth-context';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings, Trash2, Clock, Loader2, WifiOff, MapPin, User as UserIcon } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { deleteUser } from 'firebase/auth';
-import { firestore } from '@/lib/firebase/config';
-import { doc, getDoc } from 'firebase/firestore';
-import { format } from 'date-fns';
-import Link from 'next/link';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+import { DashboardHeader } from './dashboard-header';
+import { UserProfileSummary } from './user-profile-summary';
+import { LoginActivitySummary } from './login-activity-summary';
+import { AccountManagementActions } from './account-management-actions';
 
 export default function DashboardPageContent() {
   const { user, signOut, loading: authLoading } = useAuth();
-  const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [ipAddress, setIpAddress] = useState<string | null>('Loading...');
-  const [location, setLocation] = useState<string | null>('Loading...');
-  const [activityLoading, setActivityLoading] = useState<boolean>(true);
-  const [activityError, setActivityError] = useState<string | null>(null);
-
-  const [firstName, setFirstName] = useState<string | null>(null);
-  const [lastName, setLastName] = useState<string | null>(null);
-  const [profileLoading, setProfileLoading] = useState<boolean>(true);
-  const [profileError, setProfileError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchActivityDetails = async () => {
-      setActivityLoading(true);
-      setActivityError(null);
-      try {
-        const response = await fetch('/api/auth/activity-details');
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to fetch activity details: ${response.status}`);
-        }
-        const data = await response.json();
-        setIpAddress(data.ipAddress || 'Not Available');
-        setLocation(data.location || 'Not Available');
-      } catch (error: any) {
-        console.error("Error fetching activity details:", error);
-        setActivityError(error.message || 'Could not load activity data.');
-        setIpAddress('Error');
-        setLocation('Error');
-      } finally {
-        setActivityLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchActivityDetails();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && firestore) {
-      const fetchUserProfile = async () => {
-        setProfileLoading(true);
-        setProfileError(null);
-        try {
-          const userProfileRef = doc(firestore, 'users', user.uid);
-          const docSnap = await getDoc(userProfileRef);
-          if (docSnap.exists()) {
-            const profileData = docSnap.data();
-            setFirstName(profileData.firstName || null);
-            setLastName(profileData.lastName || null);
-          } else {
-            console.warn(`User profile document not found for UID: ${user.uid}`);
-            setFirstName(null); // Explicitly set to null if not found
-            setLastName(null);  // Explicitly set to null if not found
-          }
-        } catch (error: any) {
-          console.error("Error fetching user profile:", error);
-          setProfileError("Could not load profile information.");
-        } finally {
-          setProfileLoading(false);
-        }
-      };
-      fetchUserProfile();
-    } else if (!user) {
-      // Clear profile info if user logs out or is not available
-      setFirstName(null);
-      setLastName(null);
-      setProfileLoading(false); // Ensure loading is stopped
-      setProfileError(null); // Clear any previous errors
-    }
-  }, [user]);
-
-
-  const getInitials = (name: string | null | undefined) => {
-    if (!name) return '??';
-    const names = name.split(' ');
-    if (names.length === 1) return name.substring(0, 2).toUpperCase();
-    return (names[0][0] + (names.length > 1 ? names[names.length - 1][0] : '')).toUpperCase();
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!user) return;
-    setIsDeleting(true);
-    try {
-      await deleteUser(user);
-      toast({
-        title: "Account Deleted",
-        description: "Your account has been successfully deleted.",
-      });
-      // signOut will redirect
-    } catch (error: any) {
-      console.error("Error deleting account:", error);
-      let description = "Failed to delete your account. You may need to sign in again recently to perform this operation.";
-      if (error.code === 'auth/requires-recent-login') {
-        description = "This operation is sensitive and requires recent authentication. Please sign out and sign back in, then try again.";
-      }
-      toast({
-        title: "Error Deleting Account",
-        description: description,
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const lastSignInTime = user?.metadata.lastSignInTime 
-    ? format(new Date(user.metadata.lastSignInTime), "PPpp") 
-    : 'N/A';
 
   if (authLoading || (!user && !authLoading)) {
      return (
@@ -149,8 +22,15 @@ export default function DashboardPageContent() {
     );
   }
   
+  // This case should ideally be handled by ProtectedRoute redirecting,
+  // but as a fallback, prevent rendering dashboard content if user is null after loading.
   if (!user) { 
-    return <div className="flex min-h-screen items-center justify-center">Redirecting...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p>Redirecting to sign-in...</p>
+        <Loader2 className="ml-2 h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -158,126 +38,12 @@ export default function DashboardPageContent() {
       <div className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 lg:p-8 bg-background">
         <Card className="w-full max-w-lg shadow-xl">
           <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
-                <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-              </Avatar>
-            </div>
-            <CardTitle className="text-3xl font-headline">Welcome to AuthFlow!</CardTitle>
-            <CardDescription>This is your personalized dashboard.</CardDescription>
+            <DashboardHeader user={user} />
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-3 text-sm">
-              <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
-                <UserIcon className="mr-2 h-5 w-5" /> Account Information
-              </h3>
-              <p><strong>Username:</strong> {user.displayName || 'Not set'}</p>
-              <p>
-                <strong>First Name:</strong>{' '}
-                {profileLoading ? (
-                  <Loader2 className="inline-block h-4 w-4 animate-spin" />
-                ) : profileError ? (
-                  <span className="text-destructive">{profileError}</span>
-                ) : firstName ? (
-                  firstName
-                ) : (
-                  <span className="text-muted-foreground">Not set</span>
-                )}
-              </p>
-              <p>
-                <strong>Last Name:</strong>{' '}
-                {profileLoading ? (
-                  <Loader2 className="inline-block h-4 w-4 animate-spin" />
-                ) : profileError ? (
-                  <span className="text-destructive">{profileError}</span>
-                ) : lastName ? (
-                  lastName
-                ) : (
-                  <span className="text-muted-foreground">Not set</span>
-                )}
-              </p>
-              <p><strong>Email:</strong> {user.email}</p>
-              <p><strong>Email Verified:</strong> {user.emailVerified ? 
-                <span className="text-green-600 dark:text-green-400 font-medium">Yes</span> : 
-                <span className="text-red-600 dark:text-red-400 font-medium">No</span>}
-              </p>
-              <p><strong>User ID:</strong> <span className="text-xs">{user.uid}</span></p>
-            </div>
-
-            <div className="space-y-3 text-sm">
-              <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
-                <Clock className="mr-2 h-5 w-5" /> Login Activity
-              </h3>
-              <p><strong>Last Sign-In:</strong> {lastSignInTime}</p>
-              <p className="flex items-center">
-                <WifiOff className="mr-2 h-4 w-4 text-muted-foreground" />
-                <strong>IP Address:</strong>&nbsp;
-                {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{ipAddress}</span> : ipAddress}
-              </p>
-              <p className="flex items-center">
-                <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                <strong>Location:</strong>&nbsp;
-                 {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{location}</span> : location}
-              </p>
-               <Button 
-                variant="link" 
-                size="sm" 
-                className="p-0 h-auto text-primary" 
-                onClick={() => {
-                  console.log(`View full activity log clicked for user: ${user.uid}. Feature under development.`);
-                  toast({ 
-                    title: 'Activity Log', 
-                    description: 'Full activity log feature is under development. Your request has been logged (simulated).'
-                  });
-                }}
-               >
-                View full activity log
-              </Button>
-            </div>
-            
-            <div className="space-y-3">
-               <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
-                <Settings className="mr-2 h-5 w-5" /> Account Management
-              </h3>
-              <Button variant="outline" className="w-full" asChild>
-                <Link href="/dashboard/settings">
-                  <Settings className="mr-2 h-4 w-4" /> Account Settings
-                </Link>
-              </Button>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="w-full">
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete Account
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete your
-                      account and remove your data from our servers.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleDeleteAccount} 
-                      className="bg-destructive hover:bg-destructive/90"
-                      disabled={isDeleting}
-                    >
-                      {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Yes, delete account
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              <Button onClick={signOut} className="w-full">
-                <LogOut className="mr-2 h-4 w-4" /> Sign Out
-              </Button>
-            </div>
+            <UserProfileSummary user={user} />
+            <LoginActivitySummary user={user} />
+            <AccountManagementActions user={user} signOut={signOut} />
           </CardContent>
         </Card>
       </div>
