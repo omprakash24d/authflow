@@ -19,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
-import { PasswordInput } from './password-input'; // Import the new component
+import { PasswordInput } from './password-input'; 
 import { PasswordStrengthIndicator } from './password-strength-indicator';
 import { SocialLogins } from './social-logins';
 import { useToast } from '@/hooks/use-toast';
@@ -45,7 +45,7 @@ export function SignUpForm() {
   
   const router = useRouter();
   const { toast } = useToast();
-  const passwordInputRef = useRef<HTMLInputElement | null>(null); // Still useful for focusing
+  const passwordInputRef = useRef<HTMLInputElement | null>(null); 
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(SignUpSchema),
@@ -155,7 +155,7 @@ export function SignUpForm() {
     setBreachWarning(null);
     form.setValue('password', '');
     form.setValue('confirmPassword', '');
-    passwordInputRef.current?.focus(); // Focus the password input
+    passwordInputRef.current?.focus(); 
     toast({
         title: 'Choose a New Password',
         description: 'Please enter a new, secure password.',
@@ -242,19 +242,15 @@ export function SignUpForm() {
             control={form.control}
             name="password"
             render={({ field }) => {
-              // Capture the ref from the field for focusing
               const { ref: fieldRef, ...otherFieldProps } = field;
               return (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                     {/* Assign the ref to the PasswordInput's underlying Input if possible, or wrap it */}
-                     {/* For now, PasswordInput doesn't directly expose the inner input's ref prop, so we focus the wrapper or the RHF controlled input */}
-                    <div ref={passwordInputRef}> {/* Attach ref here for focusing the general area */}
+                    <div ref={passwordInputRef}> 
                         <PasswordInput
                             field={{...otherFieldProps, ref: (el) => {
-                                fieldRef(el); // RHF's ref
-                                // passwordInputRef.current = el; // This would work if PasswordInput forwards ref to its Input
+                                fieldRef(el); 
                             }}}
                             placeholder="••••••••"
                             disabled={isLoading}
