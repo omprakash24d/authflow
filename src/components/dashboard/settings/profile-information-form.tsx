@@ -89,62 +89,67 @@ export function ProfileInformationForm() {
   });
 
   useEffect(() => {
+    // Initial check for firestore availability
     if (!firestore) {
         setIsFirestoreAvailable(false);
         setProfileError("Database service is not available. Profile data cannot be loaded or saved.");
-        setInitialDataLoaded(true); // Mark as loaded even if there's an error to stop loader
-        return; 
+        setInitialDataLoaded(true); // Mark as loaded even if there's an error
+        return;
     }
-    
+
+    // Firestore is available, clear any previous "service unavailable" error
     setIsFirestoreAvailable(true);
     if (profileError === "Database service is not available. Profile data cannot be loaded or saved.") {
-      setProfileError(null); 
+      setProfileError(null);
     }
 
-    if (user) {
-      if (user.photoURL) {
-        setProfilePhotoPreview(user.photoURL);
-      }
-
-      const fetchUserProfile = async () => {
-        try {
-          // Firestore is confirmed non-null by the check above
-          const userProfileRef = doc(firestore, 'users', user.uid);
-          const docSnap = await getDoc(userProfileRef);
-          let fetchedUsername = user.displayName || '';
-
-          if (docSnap.exists()) {
-            const profileData = docSnap.data();
-            profileForm.reset({
-              firstName: profileData.firstName || '',
-              lastName: profileData.lastName || '',
-              username: profileData.username || user.displayName || '',
-            });
-            fetchedUsername = profileData.username || user.displayName || '';
-            if (profileData.photoURL && profileData.photoURL !== user.photoURL) {
-               setProfilePhotoPreview(profileData.photoURL);
-            }
-          } else {
-            profileForm.reset({
-              firstName: '',
-              lastName: '',
-              username: user.displayName || '',
-            });
-          }
-          setInitialUsername(fetchedUsername);
-        } catch (error: any) {
-          console.error("Error fetching user profile for settings:", error);
-          setProfileError("Could not load your profile data.");
-          toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
-        } finally {
-          setInitialDataLoaded(true);
+    // Define the async function to fetch profile data
+    // Pass firestore (fs) and user (currentFirebaseUser) explicitly
+    const fetchUserProfile = async (fs: Firestore, currentFirebaseUser: FirebaseUser) => {
+      try {
+        if (currentFirebaseUser.photoURL) {
+          setProfilePhotoPreview(currentFirebaseUser.photoURL);
         }
-      };
-      fetchUserProfile();
-    } else {
+        const userProfileRef = doc(fs, 'users', currentFirebaseUser.uid);
+        const docSnap = await getDoc(userProfileRef);
+        let fetchedUsername = currentFirebaseUser.displayName || '';
+
+        if (docSnap.exists()) {
+          const profileData = docSnap.data();
+          profileForm.reset({
+            firstName: profileData.firstName || '',
+            lastName: profileData.lastName || '',
+            username: profileData.username || currentFirebaseUser.displayName || '',
+          });
+          fetchedUsername = profileData.username || currentFirebaseUser.displayName || '';
+          if (profileData.photoURL && profileData.photoURL !== currentFirebaseUser.photoURL) {
+             setProfilePhotoPreview(profileData.photoURL);
+          }
+        } else {
+          profileForm.reset({
+            firstName: '',
+            lastName: '',
+            username: currentFirebaseUser.displayName || '',
+          });
+        }
+        setInitialUsername(fetchedUsername);
+      } catch (error: any) {
+        console.error("Error fetching user profile for settings:", error);
+        setProfileError("Could not load your profile data.");
+        toast({ title: "Error", description: "Could not load your profile data.", variant: "destructive" });
+      } finally {
+        setInitialDataLoaded(true);
+      }
+    };
+
+    // Only proceed if user and firestore are available
+    if (user && firestore) {
+      fetchUserProfile(firestore, user); // Call with the now-guaranteed non-null firestore and user
+    } else if (!user) { // If user is null but firestore might be available
       setInitialDataLoaded(true); // User is null, so data loading is effectively complete
     }
-  }, [user, profileForm, toast, firestore, profileError]); 
+    // If firestore is null, the initial check at the top of useEffect handles it
+  }, [user, profileForm, toast, firestore, profileError]);
 
 
   const handlePhotoUploadClick = () => {
@@ -169,8 +174,8 @@ export function ProfileInformationForm() {
       };
       reader.readAsDataURL(file);
       toast({
-        title: 'Image Selected for Preview',
-        description: 'Image ready for preview. Actual upload to server is pending implementation and will occur on save.',
+        title: 'Image Selected',
+        description: 'Image preview updated. Actual upload to server is pending future implementation.',
       });
     }
   };
@@ -182,9 +187,10 @@ export function ProfileInformationForm() {
       toast({ title: "Authentication Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
-    if (!firestore) { 
+    if (!firestore) {
       setProfileError("Database service is not available. Profile cannot be saved.");
       toast({ title: "Configuration Error", description: "Database service is not available, cannot save profile.", variant: "destructive" });
+      setProfileSaving(false);
       return;
     }
 
@@ -201,25 +207,24 @@ export function ProfileInformationForm() {
     // if (profilePhotoFile) {
     //   console.log("Profile photo selected, actual upload to Firebase Storage needs implementation.", profilePhotoFile.name);
     //   toast({
-    //       title: "Profile Photo (Upload Pending)",
-    //       description: "Profile photo upload to Firebase Storage is not yet implemented. This is a placeholder.",
+    //       title: "Profile Photo (Upload Skipped)",
+    //       description: "Profile photo upload to Firebase Storage is not yet implemented. This save will not include photo changes.",
     //       duration: 7000,
     //   });
-      // try {
-      //   // const storage = getStorage(firebaseApp); // Assuming firebaseApp is correctly imported and initialized
-      //   // const photoRef = storageRef(storage, `profilePhotos/${currentUser.uid}/${profilePhotoFile.name}`);
-      //   // const snapshot = await uploadBytes(photoRef, profilePhotoFile);
-      //   // newPhotoURL = await getDownloadURL(snapshot.ref);
-      //   // toast({ title: "Photo Uploaded", description: "Your new profile photo has been uploaded." });
-      // } catch (storageError: any) {
-      //   console.error("Error uploading profile photo to Firebase Storage:", storageError);
-      //   const storageErrorMessage = getFirebaseAuthErrorMessage(storageError.code); // Or a custom mapping for storage errors
-      //   setProfileError(`Failed to upload photo: ${storageErrorMessage}. Profile text changes might still be saved.`);
-      //   toast({ title: "Photo Upload Error", description: `Failed to upload photo: ${storageErrorMessage}`, variant: "destructive" });
-      //   // Optionally, decide if you want to stop the entire profile save or proceed with text changes
-      //   setProfileSaving(false); // Consider if you want to stop here
-      //   // return; 
-      // }
+    //   // try {
+    //   //   // const storage = getStorage(firebaseApp);
+    //   //   // const photoRef = storageRef(storage, `profilePhotos/${currentUser.uid}/${profilePhotoFile.name}`);
+    //   //   // const snapshot = await uploadBytes(photoRef, profilePhotoFile);
+    //   //   // newPhotoURL = await getDownloadURL(snapshot.ref);
+    //   //   // toast({ title: "Photo Uploaded", description: "Your new profile photo has been uploaded." });
+    //   // } catch (storageError: any) {
+    //   //   console.error("Error uploading profile photo to Firebase Storage:", storageError);
+    //   //   const storageErrorMessage = getFirebaseAuthErrorMessage(storageError.code); // Or a custom mapping for storage errors
+    //   //   setProfileError(`Failed to upload photo: ${storageErrorMessage}. Profile text changes might still be saved.`);
+    //   //   toast({ title: "Photo Upload Error", description: `Failed to upload photo: ${storageErrorMessage}`, variant: "destructive" });
+    //   //   setProfileSaving(false);
+    //   //   // return;
+    //   // }
     // }
     // --- End of Firebase Storage Upload Logic ---
 
@@ -229,7 +234,7 @@ export function ProfileInformationForm() {
       initialUsername,
       currentUser.uid,
       currentUser.email,
-      firestore 
+      firestore
     );
 
     if (!usernameUpdateResult.success) {
@@ -244,7 +249,7 @@ export function ProfileInformationForm() {
           displayName: newUsername,
           // photoURL: newPhotoURL, // Add this back when storage upload is implemented
       });
-      authDisplayNameUpdated = true; // Mark that at least display name (and potentially photoURL in future) was attempted for Auth update
+      authDisplayNameUpdated = true;
     } catch (authError: any) {
       console.error("Error updating Firebase Auth profile:", authError);
       const authErrorMessage = getFirebaseAuthErrorMessage(authError.code);
@@ -253,11 +258,11 @@ export function ProfileInformationForm() {
       setProfileSaving(false);
       return;
     }
-    
+
 
     try {
-      const batch = writeBatch(firestore); 
-      const userProfileRef = doc(firestore, 'users', currentUser.uid); 
+      const batch = writeBatch(firestore);
+      const userProfileRef = doc(firestore, 'users', currentUser.uid);
 
       const profileUpdateData: any = {
         firstName: values.firstName,
@@ -278,11 +283,6 @@ export function ProfileInformationForm() {
       if (usernameUpdateResult.usernameChanged) {
         setInitialUsername(newUsername);
       }
-      
-      // If photoURL was updated in Firebase Auth, and it differs from Firestore, update AuthContext user?
-      // This part might be complex as useAuth().user is from onAuthStateChanged.
-      // A full page reload or a manual update to auth context might be needed if photoURL changes often.
-      // For now, Firebase Auth profile is the source of truth for photoURL for display in Avatar components.
 
       toast({
         title: 'Profile Updated',
@@ -312,7 +312,7 @@ export function ProfileInformationForm() {
     }
   }
 
-  if (!initialDataLoaded) { 
+  if (!initialDataLoaded) {
     return (
       <section className="space-y-4">
          <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
@@ -331,8 +331,8 @@ export function ProfileInformationForm() {
       </h2>
 
       <FormAlert title="Profile Error" message={profileError} variant="destructive" className="mb-4" />
-      
-      {!isFirestoreAvailable && !profileError && ( 
+
+      {!isFirestoreAvailable && !profileError && (
          <FormAlert title="Configuration Error" message="Database service is not available. Profile data cannot be loaded or saved." variant="destructive" className="mb-4" />
       )}
 
@@ -438,4 +438,3 @@ export function ProfileInformationForm() {
     </section>
   );
 }
-
