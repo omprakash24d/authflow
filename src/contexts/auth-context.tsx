@@ -1,15 +1,30 @@
+// src/contexts/auth-context.tsx
+// This file provides an authentication context for the application.
+// It manages the user's authentication state using Firebase Auth.
+//
+// How to use:
+// 1. Wrap your application's root layout (e.g., src/app/layout.tsx) with <AuthProvider>.
+//    <AuthProvider>
+//      {/* Your application components */}
+//    </AuthProvider>
+//
+// 2. In client components that need access to authentication state or functions, use the `useAuth` hook:
+//    import { useAuth } from '@/contexts/auth-context';
+//    const { user, loading, signOut } = useAuth();
+//
+//    `user`: A Firebase User object if authenticated, or null if not.
+//    `loading`: A boolean indicating if the initial authentication state is being determined.
+//    `signOut`: An async function to sign the user out.
 
 'use client';
 
 import type { User as FirebaseUser } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config'; // auth can now be null
-// useRouter is no longer needed here as we'll use window.location.assign
-// import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/firebase/config'; // auth can be null if Firebase isn't configured
 
 interface User extends FirebaseUser {
-  // Add custom user properties here if needed in the future
+  // Custom user properties can be added here in the future if needed.
 }
 
 interface AuthContextType {
@@ -22,60 +37,66 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  // const router = useRouter(); // No longer needed
+  const [loading, setLoading] = useState(true); // True until initial auth state check completes
 
   useEffect(() => {
+    // If Firebase client auth service is not initialized (e.g., missing config),
+    // set user to null and loading to false.
     if (!auth) {
-      // Firebase Auth service is not initialized (e.g., due to missing config)
       setUser(null);
       setLoading(false);
-      console.warn("AuthContext: Firebase Auth service is not available. User authentication will be disabled.");
-      return; // Do not attempt to subscribe
+      console.warn("AuthContext: Firebase Auth service (client-side) is not available. User authentication will be disabled. Check NEXT_PUBLIC_FIREBASE_* env vars.");
+      return; // Do not attempt to subscribe to auth state changes.
     }
 
+    // Subscribe to Firebase authentication state changes.
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        setUser(firebaseUser as User);
+        setUser(firebaseUser as User); // Set the user if authenticated.
       } else {
-        setUser(null);
+        setUser(null); // Set user to null if not authenticated.
       }
-      setLoading(false);
+      setLoading(false); // Auth state determined, set loading to false.
     });
 
-    // Cleanup subscription on unmount
+    // Cleanup: Unsubscribe from auth state changes when the component unmounts.
     return () => unsubscribe();
-  }, []); // Empty dependency array as `auth` instance doesn't change post-initialization
+  }, []); // Empty dependency array ensures this effect runs only once on mount.
 
   const signOut = async (): Promise<void> => {
-    setLoading(true); // Indicate an operation is in progress
+    setLoading(true); // Indicate an operation is in progress.
     try {
+      // Attempt to clear the server-side session cookie by calling the logout API.
       const logoutResponse = await fetch('/api/auth/session-logout', { method: 'POST' });
       if (!logoutResponse.ok) {
-          console.error('Failed to clear session cookie via API:', logoutResponse.status, await logoutResponse.text());
-          // Consider showing a toast to the user if API logout fails
+          const errorText = await logoutResponse.text();
+          console.error('AuthContext: Failed to clear session cookie via API. Status:', logoutResponse.status, 'Response:', errorText);
+          // Consider showing a user-facing toast if API logout fails, but proceed with client logout.
       }
     } catch (error) {
-      console.error('Error in fetch /api/auth/session-logout: ', error);
-      // Consider showing a toast to the user
+      console.error('AuthContext: Error calling /api/auth/session-logout: ', error);
+      // Consider showing a user-facing toast.
     }
 
-    if (auth) { // Only attempt Firebase sign out if auth service is available
+    // Sign out from Firebase client-side if auth service is available.
+    if (auth) {
       try {
         await firebaseSignOut(auth);
-        // setUser(null) will be handled by onAuthStateChanged in response to firebaseSignOut
+        // `onAuthStateChanged` will handle setting user to null and loading to false.
       } catch (clientSignOutError) {
-        console.error('Error signing out from Firebase client: ', clientSignOutError);
+        console.error('AuthContext: Error signing out from Firebase client: ', clientSignOutError);
+        // Even if client sign out fails, proceed to redirect as session should be cleared.
       }
     } else {
-      // If auth service is not available, we can't call firebaseSignOut,
-      // but we should still clear our local state and try to redirect.
+      // If auth service isn't available, we can't call Firebase sign out.
+      // Manually set user to null and ensure loading is false before redirect.
       setUser(null);
+      setLoading(false);
+      console.warn("AuthContext: Firebase Auth service not available for client-side signOut. Proceeding with redirect.");
     }
     
-    // Using window.location.assign for a full page reload to /signin
-    // This helps ensure the browser state (especially cookies) is fresh for the middleware.
-    // setLoading(false) is implicitly handled by the page reload and AuthContext re-initialization.
+    // Redirect to sign-in page using a full page reload.
+    // This helps ensure cookie state is consistent for the middleware.
     if (typeof window !== 'undefined') {
       window.location.assign('/signin');
     }
@@ -88,10 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Custom hook to use the AuthContext.
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider. Ensure your component tree is wrapped.');
   }
   return context;
 }
