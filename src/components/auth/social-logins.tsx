@@ -2,8 +2,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { GoogleAuthProvider, signInWithPopup, type UserCredential, type User as FirebaseUser } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
+import { GoogleAuthProvider, signInWithPopup, type UserCredential, type User as FirebaseUser, getAdditionalUserInfo } from 'firebase/auth';
+import { auth, firestore } from '@/lib/firebase/config';
+import { doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -65,17 +66,16 @@ export function SocialLogins() {
         setIsLoadingState = setIsGoogleLoading;
         break;
       case 'GitHub':
-        setIsLoadingState = setIsGithubLoading; // Still set loading for consistency, though it's a toast
+        setIsLoadingState = setIsGithubLoading;
         toast({ title: 'GitHub Login', description: 'GitHub login is not yet implemented.', variant: 'default' });
-        setIsGithubLoading(false); // Reset loading state immediately after toast
+        setIsGithubLoading(false);
         return;
       case 'Microsoft':
-        setIsLoadingState = setIsMicrosoftLoading; // Still set loading for consistency
+        setIsLoadingState = setIsMicrosoftLoading;
         toast({ title: 'Microsoft Login', description: 'Microsoft login is not yet implemented.', variant: 'default' });
-        setIsMicrosoftLoading(false); // Reset loading state immediately after toast
+        setIsMicrosoftLoading(false);
         return;
       default:
-        // This case should not be reached with SocialProviderName type, but good for safety
         toast({ title: 'Error', description: 'Unknown social login provider.', variant: 'destructive' });
         return;
     }
@@ -83,12 +83,77 @@ export function SocialLogins() {
     setIsLoadingState(true);
 
     try {
-      const result: UserCredential = await signInWithPopup(auth, provider);
+      const result: UserCredential = await signInWithPopup(auth!, provider); // auth! since we check config
       const user = result.user;
+      const additionalInfo = getAdditionalUserInfo(result);
 
-      if (user) {
-        await createSessionCookie(user);
+      if (user && firestore) {
+        try {
+          const userProfileRef = doc(firestore, 'users', user.uid);
+          // Use user's email (lowercased) as the document ID in the 'usernames' collection.
+          // Fallback to a unique ID if email is not present (very unlikely for Google).
+          const usernameKey = user.email ? user.email.toLowerCase() : `social_${user.uid}`;
+          const usernameDocRef = doc(firestore, 'usernames', usernameKey);
+
+          const batch = writeBatch(firestore);
+
+          let firstName = '';
+          let lastName = '';
+          if (user.displayName) {
+            const nameParts = user.displayName.split(' ');
+            firstName = nameParts[0] || '';
+            lastName = nameParts.slice(1).join(' ') || '';
+          }
+          
+          const profileDataToSet: any = {
+            firstName,
+            lastName,
+            email: user.email,
+            // For simplicity, using the email as the default username value.
+            // This can be customized if a different username generation strategy is needed.
+            username: user.email || `user_${user.uid.substring(0,8)}`,
+            photoURL: user.photoURL || null,
+            providerId: result.providerId, 
+            updatedAt: serverTimestamp(),
+          };
+
+          if (additionalInfo?.isNewUser) {
+            profileDataToSet.createdAt = serverTimestamp();
+          }
+
+          batch.set(userProfileRef, profileDataToSet, { merge: true });
+          
+          if (user.email) { // Only attempt to set username doc if email exists
+            const usernameDataToSet: any = {
+              uid: user.uid,
+              email: user.email,
+              username: user.email, // Storing email as the username value
+              updatedAt: serverTimestamp(),
+            };
+            if (additionalInfo?.isNewUser) {
+              usernameDataToSet.createdAt = serverTimestamp();
+            }
+            batch.set(usernameDocRef, usernameDataToSet, { merge: true });
+          } else {
+            console.warn(`User ${user.uid} lacks an email from social provider, skipping username document creation.`);
+          }
+          
+          await batch.commit();
+
+        } catch (dbError: any) {
+          console.error("Error updating/creating Firestore profile for social login:", dbError);
+          // This toast is to inform the user about a non-critical profile sync issue.
+          // Login itself might still be successful.
+          toast({
+            title: "Profile Sync Issue",
+            description: "Your profile details couldn't be fully synced. You are logged in.",
+            variant: "default", 
+            duration: 7000,
+          });
+        }
       }
+      
+      await createSessionCookie(user);
       
       toast({
         title: `Signed In with ${providerName}!`,
@@ -124,7 +189,7 @@ export function SocialLogins() {
           variant="outline" 
           className="w-full" 
           onClick={() => handleSocialLogin('Google')} 
-          disabled={anyLoading}
+          disabled={anyLoading || !auth} // Disable if auth service is not available
           aria-label="Sign in with Google"
         >
           {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Chrome className="mr-2 h-4 w-4" />} 
@@ -134,7 +199,7 @@ export function SocialLogins() {
           variant="outline" 
           className="w-full" 
           onClick={() => handleSocialLogin('GitHub')} 
-          disabled={anyLoading}
+          disabled={anyLoading || !auth}
           aria-label="Sign in with GitHub"
         >
           {isGithubLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Github className="mr-2 h-4 w-4" />}
@@ -144,7 +209,7 @@ export function SocialLogins() {
           variant="outline" 
           className="w-full" 
           onClick={() => handleSocialLogin('Microsoft')} 
-          disabled={anyLoading}
+          disabled={anyLoading || !auth}
           aria-label="Sign in with Microsoft"
         >
           {isMicrosoftLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MicrosoftIcon />} 
