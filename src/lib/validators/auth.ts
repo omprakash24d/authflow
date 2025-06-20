@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 const passwordValidation = z
@@ -14,7 +15,7 @@ const emailValidation = z
   .refine(email => !/[+=#]/.test(email.split('@')[0]), {
     message: 'Email subaddresses with +, =, or # are not allowed.',
   });
-  
+
 export const SignUpSchema = z.object({
   firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
   lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
@@ -39,3 +40,22 @@ export const SignInSchema = z.object({
 });
 
 export type SignInFormValues = z.infer<typeof SignInSchema>;
+
+export const ProfileSettingsSchema = z.object({
+  firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
+  lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
+  // username: z.string().min(1, 'Username is required.').max(64, 'Username must be 64 characters or less.')
+  //   .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.'),
+  // email: emailValidation, // Email is generally not changed here or requires verification
+});
+export type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required.'),
+  newPassword: passwordValidation,
+  confirmNewPassword: passwordValidation,
+}).refine(data => data.newPassword === data.confirmNewPassword, {
+  message: 'New passwords do not match.',
+  path: ['confirmNewPassword'],
+});
+export type ChangePasswordFormValues = z.infer<typeof ChangePasswordSchema>;
