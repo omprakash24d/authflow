@@ -26,8 +26,18 @@ export function LoginActivitySummary({ user }: LoginActivitySummaryProps) {
       try {
         const response = await fetch('/api/auth/activity-details');
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to fetch activity details: ${response.status}`);
+          let errorMessage = `Failed to fetch activity details: ${response.status} ${response.statusText}`;
+          try {
+            // Attempt to parse error response as JSON
+            const errorData = await response.json();
+            if (errorData && errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch (jsonError) {
+            // If response is not JSON, or errorData.error is not present, stick with statusText
+            console.warn("Could not parse error response as JSON from /api/auth/activity-details:", jsonError);
+          }
+          throw new Error(errorMessage);
         }
         const data = await response.json();
         setIpAddress(data.ipAddress || 'Not Available');
@@ -35,8 +45,8 @@ export function LoginActivitySummary({ user }: LoginActivitySummaryProps) {
       } catch (error: any) {
         console.error("Error fetching activity details:", error);
         setActivityError(error.message || 'Could not load activity data.');
-        setIpAddress('Error');
-        setLocation('Error');
+        setIpAddress('N/A'); // Display N/A on error
+        setLocation('N/A'); // Display N/A on error
       } finally {
         setActivityLoading(false);
       }
@@ -60,12 +70,12 @@ export function LoginActivitySummary({ user }: LoginActivitySummaryProps) {
       <p className="flex items-center">
         <WifiOff className="mr-2 h-4 w-4 text-muted-foreground" />
         <strong>IP Address:</strong>&nbsp;
-        {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{ipAddress}</span> : ipAddress}
+        {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{ipAddress} (Error: {activityError})</span> : ipAddress}
       </p>
       <p className="flex items-center">
         <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
         <strong>Location:</strong>&nbsp;
-         {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{location}</span> : location}
+         {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{location} (Error: {activityError})</span> : location}
       </p>
        <Button 
         variant="link" 

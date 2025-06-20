@@ -13,16 +13,19 @@ import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
 import { SocialLogins } from './social-logins';
 import { PasswordInput } from './password-input';
-import { EmailVerificationAlert } from './email-verification-alert'; // New Import
+import { EmailVerificationAlert } from './email-verification-alert';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle, Loader2, MailCheck } from 'lucide-react';
 
 const UNVERIFIED_EMAIL_ERROR_MESSAGE = "Your email address is not verified. Please check your inbox for the verification link we sent you. If you don't see it, be sure to check your spam or junk folder. You can also click below to resend the verification link.";
+const REMEMBER_ME_STORAGE_KEY = 'authFlowRememberedIdentifier';
 
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -31,11 +34,20 @@ export function SignInForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [showVerificationMessageFromSignUp, setShowVerificationMessageFromSignUp] = useState(false);
   const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  const form = useForm<SignInFormValues>({
+    resolver: zodResolver(SignInSchema),
+    defaultValues: {
+      identifier: '',
+      password: '',
+    },
+  });
 
   useEffect(() => {
     if (searchParams.get('verificationEmailSent') === 'true') {
@@ -47,18 +59,17 @@ export function SignInForm() {
         : pathname;
       router.replace(newPath, { scroll: false });
     }
-  }, [searchParams, router, pathname, setShowVerificationMessageFromSignUp]);
+
+    // Load remembered identifier from localStorage
+    const rememberedIdentifier = localStorage.getItem(REMEMBER_ME_STORAGE_KEY);
+    if (rememberedIdentifier) {
+      form.setValue('identifier', rememberedIdentifier);
+      setRememberMe(true);
+    }
+  }, [searchParams, router, pathname, form, setShowVerificationMessageFromSignUp, setRememberMe]);
 
 
-  const form = useForm<SignInFormValues>({
-    resolver: zodResolver(SignInSchema),
-    defaultValues: {
-      identifier: '',
-      password: '',
-    },
-  });
-
-  async function handleSignIn(emailToUse: string, passwordToUse: string) {
+  async function handleSignIn(emailToUse: string, passwordToUse: string, currentIdentifier: string) {
     const userCredential = await signInWithEmailAndPassword(auth, emailToUse, passwordToUse);
     const firebaseUser = userCredential.user;
 
@@ -70,8 +81,8 @@ export function SignInForm() {
         description: "Check your inbox for a verification link or use the resend option.",
         variant: 'destructive',
       });
-      setIsLoading(false);
-      return;
+      setIsLoading(false); // Ensure loading is stopped here
+      return; // Stop further execution
     }
 
     if (firebaseUser) {
@@ -92,6 +103,13 @@ export function SignInForm() {
         }
         throw new Error(errorData.error || 'Failed to create session.');
       }
+    }
+
+    // Handle "Remember Me"
+    if (rememberMe) {
+      localStorage.setItem(REMEMBER_ME_STORAGE_KEY, currentIdentifier);
+    } else {
+      localStorage.removeItem(REMEMBER_ME_STORAGE_KEY);
     }
 
     toast({
@@ -131,41 +149,46 @@ export function SignInForm() {
         emailToUse = email;
       }
 
-      await handleSignIn(emailToUse, values.password);
+      await handleSignIn(emailToUse, values.password, values.identifier);
 
     } catch (error: any) {
       console.error("Sign In Error:", error);
       const errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
-      if (!form.formState.errors.identifier && !formError && errorMessage !== UNVERIFIED_EMAIL_ERROR_MESSAGE) {
+      
+      // Only set formError if it's not the unverified email message (which has its own handler)
+      // and if there isn't already a more specific error in form.formState.errors.identifier
+      if (errorMessage !== UNVERIFIED_EMAIL_ERROR_MESSAGE && !form.formState.errors.identifier && !formError) {
          setFormError(errorMessage);
       }
        toast({
         title: 'Sign In Failed',
-        description: formError || errorMessage,
+        description: formError || errorMessage, // Prefer formError if it was set (e.g., from username lookup)
         variant: 'destructive',
       });
     } finally {
-      if(formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE) setIsLoading(false);
+      // Only set isLoading to false if it's not an unverified email error,
+      // as that scenario keeps the form interactive for resending verification.
+      if(formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE && !(unverifiedUser && !unverifiedUser.emailVerified) ) {
+        setIsLoading(false);
+      }
     }
   }
 
   async function handleResendVerificationEmail() {
     if (!unverifiedUser) return;
     setIsResendingVerification(true);
-    setFormError(null); // Clear previous errors before resending
+    setFormError(null); 
     try {
       await sendEmailVerification(unverifiedUser);
       toast({
         title: 'Verification Email Sent',
         description: 'A new verification email has been sent to your address. Please check your inbox.',
       });
-      // Keep unverifiedUser and the UNVERIFIED_EMAIL_ERROR_MESSAGE so the alert stays
-      setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE);
+      setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE); // Keep the alert visible
     } catch (error: any) {
       console.error("Error resending verification email:", error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code);
-      // Display the resend error within the alert if possible, or as a general form error
-      setFormError(errorMessage); // This will replace the UNVERIFIED_EMAIL_ERROR_MESSAGE
+      setFormError(errorMessage); 
       toast({
         title: 'Resend Failed',
         description: errorMessage,
@@ -200,7 +223,7 @@ export function SignInForm() {
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
-          {formError === UNVERIFIED_EMAIL_ERROR_MESSAGE && (
+          {formError === UNVERIFIED_EMAIL_ERROR_MESSAGE && unverifiedUser && (
             <EmailVerificationAlert
               message={UNVERIFIED_EMAIL_ERROR_MESSAGE}
               onResend={handleResendVerificationEmail}
@@ -261,8 +284,19 @@ export function SignInForm() {
               </FormItem>
             )}
           />
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="remember-me"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              disabled={anyLoading}
+            />
+            <Label htmlFor="remember-me" className="text-sm font-normal">
+              Remember me
+            </Label>
+          </div>
           <Button type="submit" className="w-full" disabled={anyLoading}>
-            {isLoading && formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {(isLoading && !(unverifiedUser && !unverifiedUser.emailVerified)) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sign In
           </Button>
         </form>
