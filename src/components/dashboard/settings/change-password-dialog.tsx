@@ -5,15 +5,14 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { updatePassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
+// auth import no longer needed directly if user comes from useAuth()
 import { ChangePasswordSchema, type ChangePasswordFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
-import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; // New import
+import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; 
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
-// Input is no longer directly used here, PasswordInput handles it
 import {
   Dialog,
   DialogContent,
@@ -24,10 +23,10 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { PasswordInput } from '@/components/auth/password-input'; // Import the new component
+import { FormAlert } from '@/components/ui/form-alert'; // New import
+import { PasswordInput } from '@/components/auth/password-input'; 
 import { PasswordStrengthIndicator } from '@/components/auth/password-strength-indicator';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2 } from 'lucide-react'; // Removed AlertTriangle
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -55,7 +54,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   const watchedNewPassword = form.watch('newPassword');
 
   async function onSubmit(values: ChangePasswordFormValues) {
-    if (!user) { // Simplified check as user.email is handled by reauthenticateCurrentUser
+    if (!user) { 
       setFormError('User not authenticated.');
       toast({ title: 'Error', description: 'User not authenticated.', variant: 'destructive'});
       return;
@@ -65,7 +64,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     setFormError(null);
 
     try {
-      await reauthenticateCurrentUser(user, values.currentPassword); // Use utility function
+      await reauthenticateCurrentUser(user, values.currentPassword); 
       await updatePassword(user, values.newPassword);
 
       toast({
@@ -114,13 +113,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-            {formError && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            )}
+            <FormAlert title="Error" message={formError} variant="destructive" />
             <FormField
               control={form.control}
               name="currentPassword"
@@ -128,7 +121,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>Current Password</FormLabel>
                   <FormControl>
-                    <PasswordInput
+                    <PasswordInput<ChangePasswordFormValues, "currentPassword">
                       field={field}
                       placeholder="••••••••"
                       disabled={isLoading}
@@ -148,7 +141,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>New Password</FormLabel>
                   <FormControl>
-                     <PasswordInput
+                     <PasswordInput<ChangePasswordFormValues, "newPassword">
                       field={field}
                       placeholder="••••••••"
                       disabled={isLoading}
@@ -171,7 +164,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>Confirm New Password</FormLabel>
                   <FormControl>
-                    <PasswordInput
+                    <PasswordInput<ChangePasswordFormValues, "confirmNewPassword">
                       field={field}
                       placeholder="••••••••"
                       disabled={isLoading}

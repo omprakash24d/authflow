@@ -16,15 +16,15 @@ import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
 import { PasswordInput } from './password-input';
 import { PasswordStrengthIndicator } from './password-strength-indicator';
 import { SocialLogins } from './social-logins';
-import { PasswordBreachDialog } from './password-breach-dialog'; // New Import
+import { PasswordBreachDialog } from './password-breach-dialog';
+import { FormAlert } from '@/components/ui/form-alert'; // New Import
 import { useToast } from '@/hooks/use-toast';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react'; // Removed AlertTriangle
 
 
 export function SignUpForm() {
@@ -57,7 +57,7 @@ export function SignUpForm() {
     setIsLoading(true);
     setFormError(null);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, registrationValues.email, registrationValues.password);
+      const userCredential = await createUserWithEmailAndPassword(auth!, registrationValues.email, registrationValues.password); // auth! assumes it's initialized
       const user = userCredential.user;
 
       await updateProfile(user, {
@@ -146,7 +146,6 @@ export function SignUpForm() {
     setBreachWarning(null);
     form.setValue('password', '');
     form.setValue('confirmPassword', '');
-    // Ensure passwordInputRef.current is not null before calling focus
     if (passwordInputRef.current && passwordInputRef.current.querySelector('input')) {
         (passwordInputRef.current.querySelector('input') as HTMLInputElement).focus();
     }
@@ -158,10 +157,8 @@ export function SignUpForm() {
 
   const handleBreachDialogOnOpenChange = (isOpen: boolean) => {
     if (!isOpen && breachWarning) {
-      // If dialog is closed without explicit action (Proceed/Choose New), treat as choosing new.
       handleChooseNewPassword();
     } else if (!isOpen) {
-      // If dialog is closed and there was no breachWarning (e.g. programmatically closed)
       setBreachWarning(null);
     }
   }
@@ -181,13 +178,7 @@ export function SignUpForm() {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {formError && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
-          )}
+          <FormAlert title="Error" message={formError} variant="destructive" />
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField
               control={form.control}
@@ -252,7 +243,7 @@ export function SignUpForm() {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <div ref={passwordInputRef}>
-                        <PasswordInput
+                        <PasswordInput<SignUpFormValues, "password">
                             field={{...otherFieldProps, ref: (el) => {
                                 fieldRef(el);
                             }}}
@@ -279,7 +270,7 @@ export function SignUpForm() {
               <FormItem>
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
-                  <PasswordInput
+                  <PasswordInput<SignUpFormValues, "confirmPassword">
                     field={field}
                     placeholder="••••••••"
                     disabled={isLoading}

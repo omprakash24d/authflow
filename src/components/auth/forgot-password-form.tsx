@@ -11,11 +11,11 @@ import { auth } from '@/lib/firebase/config';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from '@/components/auth/auth-form-wrapper';
+import { FormAlert } from '@/components/ui/form-alert'; // New import
 import { useToast } from '@/hooks/use-toast';
-import { Mail, AlertTriangle, Loader2, CheckCircle } from 'lucide-react';
+import { Mail, Loader2 } from 'lucide-react'; // Removed AlertTriangle, CheckCircle
 
 const ForgotPasswordSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -42,7 +42,7 @@ export function ForgotPasswordForm() {
     setFormSuccess(null);
 
     try {
-      await sendPasswordResetEmail(auth, values.email);
+      await sendPasswordResetEmail(auth!, values.email); // auth! assumes it's initialized
       setFormSuccess('If an account exists for this email, a password reset link has been sent. Please check your inbox.');
       toast({
         title: 'Password Reset Email Sent',
@@ -81,20 +81,8 @@ export function ForgotPasswordForm() {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {formError && (
-            <Alert variant="destructive" aria-live="assertive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
-          )}
-          {formSuccess && (
-            <Alert variant="default" className="bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300" aria-live="assertive">
-              <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
-              <AlertTitle>Success</AlertTitle>
-              <AlertDescription>{formSuccess}</AlertDescription>
-            </Alert>
-          )}
+          <FormAlert title="Error" message={formError} variant="destructive" />
+          <FormAlert title="Success" message={formSuccess} variant="success" />
           <FormField
             control={form.control}
             name="email"

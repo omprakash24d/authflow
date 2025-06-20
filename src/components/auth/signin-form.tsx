@@ -10,8 +10,8 @@ import {
   signInWithEmailAndPassword, 
   sendEmailVerification, 
   type User,
-  fetchSignInMethodsForEmail, // New import
-  GoogleAuthProvider // New import
+  fetchSignInMethodsForEmail,
+  GoogleAuthProvider
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { SignInSchema, type SignInFormValues } from '@/lib/validators/auth';
@@ -21,14 +21,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Keep for specific alerts
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper';
 import { SocialLogins } from './social-logins';
 import { PasswordInput } from './password-input';
 import { EmailVerificationAlert } from './email-verification-alert';
+import { FormAlert } from '@/components/ui/form-alert'; // New import
 import { useToast } from '@/hooks/use-toast';
-import { AlertTriangle, Loader2, MailCheck } from 'lucide-react';
+import { Loader2, MailCheck } from 'lucide-react'; // Removed AlertTriangle
 
 const UNVERIFIED_EMAIL_ERROR_MESSAGE = "Your email address is not verified. Please check your inbox for the verification link we sent you. If you don't see it, be sure to check your spam or junk folder. You can also click below to resend the verification link.";
 const REMEMBER_ME_STORAGE_KEY = 'authFlowRememberedIdentifier';
@@ -75,7 +76,7 @@ export function SignInForm() {
 
 
   async function handleSignIn(emailToUse: string, passwordToUse: string, currentIdentifier: string) {
-    const userCredential = await signInWithEmailAndPassword(auth!, emailToUse, passwordToUse); // auth! assumes it's initialized
+    const userCredential = await signInWithEmailAndPassword(auth!, emailToUse, passwordToUse); 
     const firebaseUser = userCredential.user;
 
     if (firebaseUser && !firebaseUser.emailVerified) {
@@ -133,7 +134,7 @@ export function SignInForm() {
     let emailToUse = values.identifier;
 
     try {
-      if (!auth) { // Check if auth service is available
+      if (!auth) { 
         setFormError("Authentication service is not available. Please try again later.");
         toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
         setIsLoading(false);
@@ -174,7 +175,6 @@ export function SignInForm() {
           }
         } catch (fetchMethodsError) {
           console.warn("Could not fetch sign in methods for email:", emailToUse, fetchMethodsError);
-          // Fallback to original error message if fetchSignInMethodsForEmail fails
         }
       }
       
@@ -194,7 +194,7 @@ export function SignInForm() {
   }
 
   async function handleResendVerificationEmail() {
-    if (!unverifiedUser || !auth) { // Also check auth
+    if (!unverifiedUser || !auth) { 
       toast({ title: 'Error', description: 'Cannot resend verification email at this time.', variant: 'destructive'});
       return;
     }
@@ -239,11 +239,7 @@ export function SignInForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {formError && formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
+            <FormAlert title="Error" message={formError} variant="destructive" />
           )}
           {formError === UNVERIFIED_EMAIL_ERROR_MESSAGE && unverifiedUser && (
             <EmailVerificationAlert
@@ -327,4 +323,3 @@ export function SignInForm() {
     </AuthFormWrapper>
   );
 }
-

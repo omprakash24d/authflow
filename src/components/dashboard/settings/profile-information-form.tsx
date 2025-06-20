@@ -12,29 +12,27 @@ import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Label was used for emailDisplay but is fine.
+import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { FormAlert } from '@/components/ui/form-alert'; // New import
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { User as UserIcon, AlertTriangle, Loader2, Image as ImageIcon } from 'lucide-react';
+import { User as UserIcon, Loader2, Image as ImageIcon } from 'lucide-react'; // Removed AlertTriangle
 
-// Helper function to handle username update logic including Firestore checks and batch operations
 async function prepareUsernameUpdates(
   newUsername: string,
   currentUsername: string | null,
   userId: string,
-  userEmail: string | null, // FirebaseUser.email can be null
+  userEmail: string | null, 
   db: Firestore
 ): Promise<{ success: boolean; error?: string; usernameChanged: boolean; batchOperations?: (batch: WriteBatch) => void }> {
   const newUsernameLower = newUsername.toLowerCase();
   const currentUsernameLower = currentUsername?.toLowerCase();
 
   if (newUsernameLower === currentUsernameLower) {
-    return { success: true, usernameChanged: false }; // No change in username
+    return { success: true, usernameChanged: false };
   }
 
-  // Check availability of the new username
   try {
     const newUsernameRef = doc(db, 'usernames', newUsernameLower);
     const newUsernameSnap = await getDoc(newUsernameRef);
@@ -46,22 +44,19 @@ async function prepareUsernameUpdates(
     return { success: false, error: "Failed to verify username availability. Please try again.", usernameChanged: true };
   }
 
-  // Username changed and is available (or belongs to the current user already if somehow it was lowercase match)
   return {
     success: true,
     usernameChanged: true,
     batchOperations: (batch: WriteBatch) => {
-      // Delete old username document if it existed and is different from the new one
       if (currentUsernameLower && currentUsernameLower !== newUsernameLower) {
         const oldUsernameRef = doc(db, 'usernames', currentUsernameLower);
         batch.delete(oldUsernameRef);
       }
-      // Set/Overwrite new username document
       const newUsernameDocRef = doc(db, 'usernames', newUsernameLower);
       batch.set(newUsernameDocRef, {
         uid: userId,
-        email: userEmail, // Can be null
-        username: newUsername, // Store with original casing
+        email: userEmail,
+        username: newUsername, 
         updatedAt: serverTimestamp(),
       });
     },
@@ -125,7 +120,7 @@ export function ProfileInformationForm() {
   }, [user, profileForm, toast]);
 
   async function onSubmitProfile(values: ProfileSettingsFormValues) {
-    if (!user || !auth?.currentUser) { // Check auth.currentUser as well
+    if (!user || !auth?.currentUser) { 
       setProfileError("User not authenticated. Please sign in again.");
       toast({ title: "Authentication Error", description: "User not authenticated.", variant: "destructive" });
       return;
@@ -139,11 +134,10 @@ export function ProfileInformationForm() {
     setProfileSaving(true);
     setProfileError(null);
 
-    const currentUser = auth.currentUser; // Safe due to above check
+    const currentUser = auth.currentUser; 
     const newUsername = values.username.trim();
     let authDisplayNameUpdated = false;
 
-    // Handle username changes (availability check and preparing Firestore operations)
     const usernameUpdateResult = await prepareUsernameUpdates(
       newUsername,
       initialUsername,
@@ -159,7 +153,6 @@ export function ProfileInformationForm() {
       return;
     }
 
-    // Update Firebase Auth displayName if username changed
     if (usernameUpdateResult.usernameChanged) {
       try {
         await updateProfile(currentUser, { displayName: newUsername });
@@ -174,22 +167,19 @@ export function ProfileInformationForm() {
       }
     }
 
-    // Prepare and commit Firestore batch
     try {
       const batch = writeBatch(firestore);
       const userProfileRef = doc(firestore, 'users', currentUser.uid);
 
-      // User profile data
       const profileUpdateData: any = {
         firstName: values.firstName,
         lastName: values.lastName,
         username: newUsername,
-        email: currentUser.email, // Keep email in sync
+        email: currentUser.email, 
         updatedAt: serverTimestamp(),
       };
       batch.set(userProfileRef, profileUpdateData, { merge: true });
 
-      // Add username document operations if any
       if (usernameUpdateResult.batchOperations) {
         usernameUpdateResult.batchOperations(batch);
       }
@@ -197,7 +187,7 @@ export function ProfileInformationForm() {
       await batch.commit();
 
       if (usernameUpdateResult.usernameChanged) {
-        setInitialUsername(newUsername); // Update local state for next potential change
+        setInitialUsername(newUsername); 
       }
 
       toast({
@@ -211,7 +201,7 @@ export function ProfileInformationForm() {
       let specificErrorMessage = "An error occurred while saving your profile to the database.";
       if (firestoreError.code === 'permission-denied' || (firestoreError.message && firestoreError.message.toLowerCase().includes('permission denied'))) {
         specificErrorMessage = `Saving profile details to the database failed due to permissions. (Details: ${firestoreError.message})`;
-         if (authDisplayNameUpdated) { // Rollback not implemented, but inform user
+         if (authDisplayNameUpdated) { 
           specificErrorMessage = `Auth display name was updated to "${newUsername}", but ${specificErrorMessage}`;
         }
       } else {
@@ -229,37 +219,23 @@ export function ProfileInformationForm() {
   }
 
   if (!user) {
-    // AuthContext loading state should handle this, but as a fallback:
     return <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
-   if (profileError && profileError.includes("Firestore is not available")) {
-    return (
-      <section>
-         <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
-          <UserIcon className="mr-2 h-5 w-5" /> Profile Information
-        </h2>
-        <Alert variant="destructive" className="mb-4">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Configuration Error</AlertTitle>
-          <AlertDescription>{profileError}</AlertDescription>
-        </Alert>
-      </section>
-    );
-  }
-
+   
+  const isFirestoreUnavailableError = profileError && profileError.includes("Firestore is not available");
 
   return (
     <section>
       <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
         <UserIcon className="mr-2 h-5 w-5" /> Profile Information
       </h2>
-      {profileError && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Profile Error</AlertTitle>
-          <AlertDescription>{profileError}</AlertDescription>
-        </Alert>
+      
+      {isFirestoreUnavailableError ? (
+         <FormAlert title="Configuration Error" message={profileError} variant="destructive" className="mb-4" />
+      ) : (
+         <FormAlert title="Profile Error" message={profileError} variant="destructive" className="mb-4" />
       )}
+
       <Form {...profileForm}>
         <form onSubmit={profileForm.handleSubmit(onSubmitProfile)} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

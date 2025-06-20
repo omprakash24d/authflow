@@ -4,12 +4,12 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { verifyBeforeUpdateEmail } from 'firebase/auth'; // Removed reauthenticateWithCredential, EmailAuthProvider
-import { firestore } from '@/lib/firebase/config'; // Added firestore
-import { doc, setDoc } from 'firebase/firestore'; // Added for Firestore updates
+import { verifyBeforeUpdateEmail } from 'firebase/auth'; 
+import { firestore } from '@/lib/firebase/config'; 
+import { doc, setDoc } from 'firebase/firestore'; 
 import { ChangeEmailSchema, type ChangeEmailFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
-import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; // New import
+import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; 
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,8 +25,8 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, AlertTriangle, Eye, EyeOff, Mail } from 'lucide-react';
+import { FormAlert } from '@/components/ui/form-alert'; // New import
+import { Loader2, Eye, EyeOff, Mail } from 'lucide-react'; // Removed AlertTriangle
 
 interface ChangeEmailDialogProps {
   open: boolean;
@@ -49,7 +49,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
   });
 
   async function onSubmit(values: ChangeEmailFormValues) {
-    if (!user) { // Simplified check
+    if (!user) { 
       setFormError('User not authenticated.');
       toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
       return;
@@ -59,15 +59,15 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
     setFormError(null);
 
     try {
-      await reauthenticateCurrentUser(user, values.currentPassword); // Use utility function
+      await reauthenticateCurrentUser(user, values.currentPassword); 
       await verifyBeforeUpdateEmail(user, values.newEmail);
 
       if (firestore) {
         const userProfileRef = doc(firestore, 'users', user.uid);
         await setDoc(userProfileRef,
           {
-            email: user.email,
-            emailChangePendingTo: values.newEmail,
+            email: user.email, // This should actually be the new email once verified, or track pending
+            emailChangePendingTo: values.newEmail, // More accurate
             updatedAt: new Date()
           },
           { merge: true }
@@ -117,13 +117,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-            {formError && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            )}
+            <FormAlert title="Error" message={formError} variant="destructive" />
             <FormField
               control={form.control}
               name="currentPassword"
