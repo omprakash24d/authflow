@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendEmailVerification, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { SignInSchema, type SignInFormValues } from '@/lib/validators/auth';
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping';
@@ -18,13 +18,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { AuthFormWrapper } from './auth-form-wrapper';
 import { SocialLogins } from './social-logins';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, AlertTriangle, Loader2, MailCheck } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle, Loader2, MailCheck, Send } from 'lucide-react';
 
 export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -32,7 +34,6 @@ export function SignInForm() {
   useEffect(() => {
     if (searchParams.get('verificationEmailSent') === 'true') {
       setShowVerificationMessage(true);
-      // Optional: remove the query param from URL
       // router.replace('/signin', undefined); 
     }
   }, [searchParams, router]);
@@ -50,20 +51,20 @@ export function SignInForm() {
     setIsLoading(true);
     setFormError(null);
     setShowVerificationMessage(false);
+    setUnverifiedUser(null);
 
     try {
-      // For now, we assume identifier is email. Username login can be added later.
       const userCredential = await signInWithEmailAndPassword(auth, values.identifier, values.password);
       
       if (userCredential.user && !userCredential.user.emailVerified) {
-        const verifyErrorMsg = 'Please verify your email address before signing in. Check your inbox for a verification link.';
+        const verifyErrorMsg = 'Your email address is not verified. Please check your inbox for the verification link we sent you, or click below to resend.';
         setFormError(verifyErrorMsg);
+        setUnverifiedUser(userCredential.user);
         toast({
           title: 'Email Not Verified',
-          description: verifyErrorMsg,
+          description: "Check your inbox for a verification link or use the resend option.",
           variant: 'destructive',
         });
-        // Optionally, offer to resend verification email here
         setIsLoading(false);
         return;
       }
@@ -74,7 +75,8 @@ export function SignInForm() {
       });
       router.push('/dashboard');
 
-    } catch (error: any) {
+    } catch (error: any)
+{
       console.error("Sign In Error:", error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code);
       setFormError(errorMessage);
@@ -85,6 +87,34 @@ export function SignInForm() {
       });
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleResendVerificationEmail() {
+    if (!unverifiedUser) return;
+
+    setIsResendingVerification(true);
+    setFormError(null); // Clear previous error about needing verification
+
+    try {
+      await sendEmailVerification(unverifiedUser);
+      toast({
+        title: 'Verification Email Sent',
+        description: 'A new verification email has been sent to your address. Please check your inbox.',
+      });
+      // Optionally, clear unverifiedUser or disable button for a while
+      // setUnverifiedUser(null); // This would remove the resend button
+    } catch (error: any) {
+      console.error("Error resending verification email:", error);
+      const errorMessage = getFirebaseAuthErrorMessage(error.code);
+      setFormError(errorMessage); // Show resend error specifically
+      toast({
+        title: 'Resend Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResendingVerification(false);
     }
   }
 
@@ -110,12 +140,12 @@ export function SignInForm() {
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
-          {showVerificationMessage && (
+          {showVerificationMessage && !formError && ( // Hide if there's a more specific error
             <Alert variant="default" className="bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300">
               <MailCheck className="h-5 w-5 text-green-500 dark:text-green-400" />
-              <AlertTitle className="font-semibold">Verification Email Sent</AlertTitle>
+              <AlertTitle className="font-semibold">Verification Email Sent During Sign Up</AlertTitle>
               <AlertDescription>
-                Please check your inbox and click the verification link to activate your account.
+                If you just signed up, please check your inbox and click the verification link to activate your account before signing in.
               </AlertDescription>
             </Alert>
           )}
@@ -168,10 +198,23 @@ export function SignInForm() {
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading || isResendingVerification}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Sign In
           </Button>
+
+          {unverifiedUser && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-2"
+              onClick={handleResendVerificationEmail}
+              disabled={isResendingVerification || isLoading}
+            >
+              {isResendingVerification ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Resend Verification Email
+            </Button>
+          )}
         </form>
       </Form>
       <SocialLogins />
