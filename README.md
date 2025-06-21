@@ -66,7 +66,7 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 
 ## Screenshots
 
-*(Placeholder for screenshots of the sign-in, sign-up, and dashboard pages)*
+![AuthFlow Dashboard](/public/images/authflow_home.png)
 
 ## Getting Started
 

@@ -353,11 +353,6 @@ export function ProfileInformationForm() {
         specificErrorMessage = getFirebaseAuthErrorMessage(firestoreError.code) || specificErrorMessage;
       }
       setProfileError(specificErrorMessage);
-      toast({
-        title: 'Firestore Update Error',
-        description: specificErrorMessage,
-        variant: 'destructive',
-      });
     } finally {
       setProfileSaving(false); // Reset saving state
     }

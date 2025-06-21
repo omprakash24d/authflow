@@ -86,6 +86,12 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
       return;
     }
 
+    // Prevent user from "changing" to the same email address.
+    if (values.newEmail.toLowerCase() === user.email?.toLowerCase()) {
+      setFormError("The new email address cannot be the same as your current one.");
+      return;
+    }
+
     setIsLoading(true);
     setFormError(null);
 

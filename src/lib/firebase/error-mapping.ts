@@ -38,7 +38,7 @@ const errorMap: { [key: string]: string } = {
   'auth/wrong-password': 'Incorrect password. Please try again.',
   'auth/weak-password': 'The password is too weak. It must be at least 6 characters long. For better security, please use a stronger password.', // Firebase's minimum is 6. This app's custom validator is stricter.
   'auth/missing-password': 'Password is required to sign in or sign up.',
-  'auth/invalid-credential': 'Invalid credentials. Please check your email/username and password and try again.', // Generic for email/pass if specific cause isn't clear
+  'auth/invalid-credential': 'Invalid credentials. This error may occur if the user does not exist or the password was incorrect. Please check your details and try again.', // Generic for email/pass if specific cause isn't clear
 
   // Phone Authentication Specific Errors (Placeholders for future use if Phone Auth is added)
   'auth/captcha-check-failed': 'The reCAPTCHA response is invalid. Please try again.',
