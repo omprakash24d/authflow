@@ -25,6 +25,8 @@ body {
     --accent-foreground: 0 0% 98%; /* Adjusted for better contrast with Teal */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+    --success: 142.1 76.2% 36.3%; /* A nice green color for success states */
+    --success-foreground: 0 0% 98%;
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --ring: 231 48% 48%; /* Primary color for rings */
@@ -60,6 +62,8 @@ body {
     --accent-foreground: 0 0% 9%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+    --success: 142.1 70.6% 45.3%; /* A lighter green for dark mode */
+    --success-foreground: 0 0% 9%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 231 48% 58%; /* Primary color for rings in dark mode */

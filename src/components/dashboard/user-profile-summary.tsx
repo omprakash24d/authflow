@@ -109,13 +109,13 @@ export function UserProfileSummary({ user, profileData, loadingProfile, profileE
           <dd className="flex items-center gap-2">
               {user.emailVerified ? (
                   <>
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-green-600 dark:text-green-400 font-medium">Yes</span>
+                      <CheckCircle className="h-4 w-4 text-success" />
+                      <span className="font-medium text-success">Yes</span>
                   </>
               ) : (
                   <>
-                      <XCircle className="h-4 w-4 text-red-500" />
-                      <span className="text-red-600 dark:red-400 font-medium">No</span>
+                      <XCircle className="h-4 w-4 text-destructive" />
+                      <span className="font-medium text-destructive">No</span>
                   </>
               )}
           </dd>
