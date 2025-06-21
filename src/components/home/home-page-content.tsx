@@ -61,6 +61,6 @@ export default function HomePageContent() {
   // The middleware (`src/middleware.ts`) should have already redirected the user
   // from the homepage ('/') to an authenticated route (e.g., '/dashboard').
   // Showing a loader here is a fallback for the brief moment before the middleware's
-  // redirect takes effect or if something unexpected occurs.
+  // redirect takes effect. This prevents a "flash" of the logged-out homepage content.
   return <LoadingComponent />;
 }

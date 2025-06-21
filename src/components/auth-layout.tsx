@@ -8,7 +8,8 @@ import { AuthFooter } from '@/components/auth/auth-footer'; // Footer specific t
 
 /**
  * Props for the AuthLayout component.
- * @property children - The content of the specific authentication page (e.g., SignInForm, SignUpForm).
+ * @property {ReactNode} children - The content of the specific authentication page to be rendered,
+ *                                  for example, a SignInForm or SignUpForm component.
  */
 interface AuthLayoutProps {
   children: ReactNode;
@@ -18,7 +19,7 @@ interface AuthLayoutProps {
  * AuthLayout component.
  * Provides a consistent wrapper for authentication pages, including a logo at the top
  * and a specialized footer at the bottom. The main content (passed as children)
- * is centered on the page.
+ * is centered on the page. It's designed to be responsive for various screen sizes.
  * @param {AuthLayoutProps} props - The component's props.
  * @returns JSX.Element
  */
@@ -30,7 +31,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         <Logo />
       </div>
       {/* Main content area for the authentication form/page */}
-      <main className="w-full max-w-md ">
+      <main className="w-full max-w-md">
         {children}
       </main>
       {/* Footer specific to authentication pages */}

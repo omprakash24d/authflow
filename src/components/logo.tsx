@@ -9,6 +9,8 @@ import Link from 'next/link'; // Next.js Link component for client-side navigati
  * Logo component.
  * Displays the application logo, consisting of an icon and the app name.
  * Clicking the logo navigates to the homepage ('/').
+ * The application name is in a `span` for semantic correctness, as the logo
+ * itself is not a page heading on every page it appears on.
  * @returns JSX.Element
  */
 export function Logo() {
@@ -17,7 +19,7 @@ export function Logo() {
       {/* Icon for the logo */}
       <ShieldCheck className="h-8 w-8" /> 
       {/* Application name */}
-      <h1 className="text-2xl font-bold font-headline">AuthFlow</h1>
+      <span className="text-2xl font-bold font-headline">AuthFlow</span>
     </Link>
   );
 }

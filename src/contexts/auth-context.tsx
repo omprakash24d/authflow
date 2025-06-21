@@ -1,43 +1,18 @@
 // src/contexts/auth-context.tsx
 // This file provides an authentication context for the application.
 // It manages the user's authentication state using Firebase Auth on the client-side.
-//
-// How to use:
-// 1. Wrap your application's root layout (e.g., `src/app/layout.tsx`) with `<AuthProvider>`.
-//    ```tsx
-//    <AuthProvider>
-//      {/* Your application components */}
-//    </AuthProvider>
-//    ```
-//
-// 2. In client components that need access to authentication state or functions, use the `useAuth` hook:
-//    ```tsx
-//    import { useAuth } from '@/contexts/auth-context';
-//    // ...
-//    const { user, loading, signOut } = useAuth();
-//    ```
-//
-//    - `user`: A Firebase User object if authenticated, or `null` if not.
-//    - `loading`: A boolean indicating if the initial authentication state is being determined. True on first load, then false.
-//    - `signOut`: An asynchronous function to sign the user out. It handles both client-side Firebase sign-out
-//                 and calling an API endpoint to clear the server-side session cookie.
 
-'use client'; // This is a Client Component because it uses `createContext`, `useContext`, `useEffect`, `useState`.
+'use client'; // This is a Client Component because it uses client-side state and effects.
 
 import type { User as FirebaseUser } from 'firebase/auth';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode, useCallback } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config'; // Firebase Auth instance (can be null if config is missing)
-import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/firebase/config'; // Firebase Auth instance
 
 /**
  * Interface for the User object within the AuthContext.
- * Extends FirebaseUser, allowing for potential custom properties in the future.
  */
-interface User extends FirebaseUser {
-  // Custom user properties can be added here if needed, e.g.:
-  // role?: string;
-}
+interface User extends FirebaseUser {}
 
 /**
  * Defines the shape of the authentication context.
@@ -51,88 +26,67 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-// Create the AuthContext with an undefined initial value.
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
  * AuthProvider component.
- * Wraps parts of the application that need access to authentication state.
- * It initializes Firebase Auth listener and provides user state and signOut function via context.
+ * Wraps the application to provide global authentication state.
  * @param {object} props - The component's props.
  * @param {ReactNode} props.children - The child components to be wrapped by this provider.
  * @returns JSX.Element
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null); // Stores the authenticated user object or null
-  const [loading, setLoading] = useState(true); // True until initial auth state check completes
-  const router = useRouter(); // Hook for client-side navigation
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // If Firebase client auth service is not initialized (e.g., missing NEXT_PUBLIC_FIREBASE_* env vars),
-    // set user to null and loading to false, and log a warning.
+    // If Firebase client auth service is not initialized, stop loading and log a warning.
     if (!auth) {
       setUser(null);
       setLoading(false);
-      console.warn("AuthContext: Firebase Auth service (client-side) is not available. User authentication will be disabled. Check NEXT_PUBLIC_FIREBASE_* env vars.");
-      return; // Do not attempt to subscribe to auth state changes.
+      console.warn("AuthContext: Firebase Auth service (client-side) is not available. Check NEXT_PUBLIC_FIREBASE_* env vars.");
+      return;
     }
 
-    // Subscribe to Firebase authentication state changes.
-    // `onAuthStateChanged` is the primary way Firebase notifies about user login/logout on the client.
+    // Subscribe to Firebase auth state changes. This is the primary mechanism
+    // for updating the UI when a user signs in or out.
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser as User); // Set the user if authenticated.
-      } else {
-        setUser(null); // Set user to null if not authenticated.
-      }
-      setLoading(false); // Auth state determined, set loading to false.
+      setUser(firebaseUser as User | null);
+      setLoading(false); // Auth state determined, no longer loading.
     });
 
-    // Cleanup function: Unsubscribe from auth state changes when the AuthProvider component unmounts.
-    // This prevents memory leaks.
+    // Cleanup: Unsubscribe from the listener when the component unmounts to prevent memory leaks.
     return () => unsubscribe();
-  }, []); // Empty dependency array ensures this effect runs only once on mount.
+  }, []);
 
   /**
-   * Signs out the current user.
-   * This involves:
-   * 1. Calling an API endpoint to clear the server-side session cookie.
-   * 2. Signing out from the Firebase client-side SDK.
-   * 3. Redirecting the user to the homepage via Next.js router.
+   * Signs out the current user from both server-side session and client-side state.
+   * Memoized with `useCallback` to prevent unnecessary re-renders in consumer components.
    */
-  const signOut = async (): Promise<void> => {
-    setLoading(true); // Indicate an operation is in progress.
-    
+  const signOut = useCallback(async (): Promise<void> => {
     try {
-      // Step 1: Attempt to clear the server-side session cookie by calling the logout API.
+      // Step 1: Clear the server-side session cookie by calling our API endpoint.
       const logoutResponse = await fetch('/api/auth/session-logout', { method: 'POST' });
       if (!logoutResponse.ok) {
-          // Log error if API call fails, but proceed with client logout.
-          const errorText = await logoutResponse.text().catch(() => "Could not read error response text.");
-          console.error('AuthContext: Failed to clear session cookie via API. Status:', logoutResponse.status, 'Response:', errorText);
+          // Log if the API call fails, but proceed with client-side logout regardless.
+          console.warn('AuthContext: Failed to clear server session cookie. The user will be logged out on the client, but the cookie might persist until it expires.');
       }
     } catch (error) {
-      console.error('AuthContext: Error calling /api/auth/session-logout: ', error);
+      console.error('AuthContext: Error calling sign-out API.', error);
     }
 
-    // Step 2: Sign out from Firebase client-side if auth service is available.
+    // Step 2: Sign out from the Firebase client-side SDK if available.
     if (auth) {
-      try {
-        await firebaseSignOut(auth);
-        // `onAuthStateChanged` listener (above) will automatically handle setting `user` to null.
-      } catch (clientSignOutError) {
-        console.error('AuthContext: Error signing out from Firebase client: ', clientSignOutError);
-      }
-    } else {
-      setUser(null);
-      console.warn("AuthContext: Firebase Auth service not available for client-side signOut. Proceeding with redirect.");
+      await firebaseSignOut(auth);
     }
     
-    // Step 3: Redirect to homepage using Next.js router for a smoother navigation.
-    router.push('/');
-    // A small delay to ensure state updates before loading is false, preventing flashes.
-    setTimeout(() => setLoading(false), 300);
-  };
+    // Step 3: Redirect to the homepage with a full page reload.
+    // This ensures all application state is completely reset, which is a robust
+    // approach for sign-out. `onAuthStateChanged` will handle the user state update.
+    if (typeof window !== 'undefined') {
+      window.location.assign('/');
+    }
+  }, []);
 
   // Provide the authentication state and signOut function to child components.
   return (
@@ -144,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 /**
  * Custom hook to easily access the AuthContext.
- * Throws an error if used outside of an AuthProvider.
+ * Throws an error if used outside of an AuthProvider to prevent common bugs.
  * @returns {AuthContextType} The authentication context (user, loading, signOut).
  */
 export function useAuth() {
