@@ -2,7 +2,7 @@
 // This file defines the root layout for the entire application.
 // It wraps all pages and includes global providers like AuthProvider and ThemeProvider.
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next'; // Import Viewport
 import './globals.css'; // Imports global styles, including Tailwind CSS base and theme variables.
 import { Toaster } from '@/components/ui/toaster'; // Component for displaying toast notifications.
 import { AuthProvider } from '@/contexts/auth-context'; // Provides authentication state to the app.
@@ -17,16 +17,24 @@ export const metadata: Metadata = {
   title: 'AuthFlow', // Default title for the application
   description: 'Comprehensive User and Authentication System by Firebase Studio', // Default description
   manifest: '/site.webmanifest', // Link to the webmanifest file
-  themeColor: [ // Theme color for browsers and PWA
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ],
   icons: {
     icon: '/images/favicon.ico',
     shortcut: '/images/favicon-16x16.png',
     apple: '/images/apple-touch-icon.png',
   },
 };
+
+/**
+ * Viewport configuration for the application.
+ * Sets the theme color for the browser UI.
+ */
+export const viewport: Viewport = {
+  themeColor: [ // Theme color for browsers and PWA
+    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: dark)', color: 'black' },
+  ],
+};
+
 
 /**
  * RootLayout component.
