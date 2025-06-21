@@ -9,7 +9,7 @@ import { useState } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth'; // Firebase User type
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, User as UserIcon, CheckCircle, XCircle, Copy, Check } from 'lucide-react'; // Icons
+import { Loader2, User as UserIcon, CheckCircle, XCircle, Copy, Check, AlertTriangle } from 'lucide-react'; // Icons
 import type { UserProfileData } from './dashboard-page-content';
 
 /**
@@ -20,6 +20,7 @@ interface UserProfileSummaryProps {
   user: FirebaseUser;
   profileData: UserProfileData | null;
   loadingProfile: boolean;
+  profileError: string | null;
 }
 
 /**
@@ -29,7 +30,7 @@ interface UserProfileSummaryProps {
  * @param {UserProfileSummaryProps} props - The component's props.
  * @returns JSX.Element
  */
-export function UserProfileSummary({ user, profileData, loadingProfile }: UserProfileSummaryProps) {
+export function UserProfileSummary({ user, profileData, loadingProfile, profileError }: UserProfileSummaryProps) {
   const { toast } = useToast();
   const [isUidCopied, setIsUidCopied] = useState(false);
 
@@ -46,6 +47,7 @@ export function UserProfileSummary({ user, profileData, loadingProfile }: UserPr
 
   const renderProfileValue = (value: string | null) => {
     if (loadingProfile) return <Loader2 className="inline-block h-4 w-4 animate-spin" />;
+    if (profileError) return <span className="text-destructive text-xs flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{profileError}</span>;
     return value || <span className="text-muted-foreground">Not set</span>;
   };
 

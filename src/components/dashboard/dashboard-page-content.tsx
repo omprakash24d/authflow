@@ -36,14 +36,17 @@ export default function DashboardPageContent() {
   const { user, signOut } = useAuth();
   const [profileData, setProfileData] = useState<UserProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!user || !firestore) {
         setLoadingProfile(false);
+        if (!firestore) setProfileError("Database service is not available.");
         return;
       }
       setLoadingProfile(true);
+      setProfileError(null);
       try {
         const userProfileRef = doc(firestore, 'users', user.uid);
         const docSnap = await getDoc(userProfileRef);
@@ -58,6 +61,7 @@ export default function DashboardPageContent() {
         }
       } catch (error) {
         console.error("Error fetching user profile from Firestore:", error);
+        setProfileError("Could not load profile data.");
         setProfileData(null); // Set to null on error
       } finally {
         setLoadingProfile(false);
@@ -81,7 +85,7 @@ export default function DashboardPageContent() {
           <DashboardHeader user={user} profileData={profileData} loadingProfile={loadingProfile} />
           <Separator className="my-8" />
           <div className="space-y-8">
-            <UserProfileSummary user={user} profileData={profileData} loadingProfile={loadingProfile} />
+            <UserProfileSummary user={user} profileData={profileData} loadingProfile={loadingProfile} profileError={profileError} />
             <LoginActivitySummary user={user} />
             <AccountManagementActions user={user} signOut={signOut} />
           </div>

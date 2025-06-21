@@ -17,19 +17,14 @@ export function FormAlert({ message, title, variant, className }: FormAlertProps
   }
 
   const Icon = variant === 'destructive' ? AlertTriangle : CheckCircle;
-  const iconSpecificClasses = variant === 'destructive' ? '' : 'text-green-500 dark:text-green-400';
   
-  const alertBaseClasses = variant === 'success'
-    ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300'
-    : ''; // Destructive is handled by Alert's own variant prop
-
   return (
     <Alert
-      variant={variant === 'destructive' ? 'destructive' : 'default'}
-      className={cn(alertBaseClasses, className)}
+      variant={variant}
+      className={cn(className)}
       aria-live="assertive"
     >
-      <Icon className={cn('h-4 w-4', iconSpecificClasses)} />
+      <Icon className={cn('h-4 w-4')} />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>{message}</AlertDescription>
     </Alert>
