@@ -343,7 +343,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 AuthFlow was developed by Om Prakash.
 
--   **LinkedIn**: [Om Prakash](https://www.linkedin.com/in/omrakash24d/)
+-   **LinkedIn**: [Om Prakash](https://www.linkedin.com/in/omprakash24d/)
 -   **GitHub**: [@omprakash24d](https://github.com/omprakash24d)
 -   **Twitter**: [@omprakash24d](https://twitter.com/omprakash24d)
 

@@ -19,7 +19,7 @@ export function AuthFooter() {
   // Array of developer's social media links for easy mapping.
   const developerLinks = [
     {
-      href: "https://www.linkedin.com/in/omrakash24d/",
+      href: "https://www.linkedin.com/in/omprakash24d/",
       icon: <LinkedinIcon className="h-5 w-5" />,
       label: "LinkedIn"
     },
