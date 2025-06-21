@@ -96,8 +96,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         title: 'Password Updated',
         description: 'Your password has been changed successfully.',
       });
-      form.reset(); // Reset form fields
-      onOpenChange(false); // Close the dialog
+      handleDialogClose(false); // Use the handler to close and reset
     } catch (error: any) {
       console.error('Change Password Error:', error);
       // Map Firebase error codes to user-friendly messages.

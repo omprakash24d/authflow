@@ -32,8 +32,8 @@ export function AppearanceSettings() {
   if (!mounted) {
     return (
       <div className="space-y-2">
-        <p className="text-sm mb-4">
-          Customizing theme...
+        <p className="text-sm mb-4 text-muted-foreground">
+          Loading theme options...
         </p>
         {/* Skeleton UI for theme options */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -55,7 +55,7 @@ export function AppearanceSettings() {
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground mb-4">
-        Your current active theme is: <span className="font-semibold capitalize">{resolvedTheme}</span>.
+        Your current active theme is: <span className="font-semibold capitalize text-foreground">{resolvedTheme}</span>.
       </p>
       {/* RadioGroup for selecting the theme */}
       <RadioGroup

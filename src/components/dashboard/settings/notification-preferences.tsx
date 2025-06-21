@@ -32,8 +32,8 @@ export function NotificationPreferences() {
   const handleEmailNotificationChange = (checked: boolean) => {
     setEmailNotificationsEnabled(checked);
     toast({
-      title: 'Notification Preference Updated',
-      description: `Email notifications ${checked ? 'enabled' : 'disabled'}. (Simulated save)`,
+      title: 'Preference Updated (Demo)',
+      description: `Email notifications ${checked ? 'enabled' : 'disabled'}. In a real app, this would be saved to your profile.`,
     });
     // In a real application, you would call an API here to save this preference.
   };
@@ -46,8 +46,8 @@ export function NotificationPreferences() {
   const handleSmsNotificationChange = (checked: boolean) => {
     setSmsNotificationsEnabled(checked);
     toast({
-      title: 'Notification Preference Updated',
-      description: `SMS notifications ${checked ? 'enabled' : 'disabled'}. (Simulated save)`,
+      title: 'Preference Updated (Demo)',
+      description: `SMS notifications ${checked ? 'enabled' : 'disabled'}. In a real app, this would be saved to your profile.`,
     });
     // In a real application, you would call an API here to save this preference,
     // potentially after verifying the user's phone number if enabling for the first time.

@@ -30,7 +30,8 @@ import {
 } from '@/components/ui/dialog'; // ShadCN Dialog components
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FormAlert } from '@/components/ui/form-alert'; // For displaying form-level errors
-import { Loader2, Eye, EyeOff, Mail } from 'lucide-react'; // Icons
+import { PasswordInput } from '@/components/auth/password-input'; // Use consistent password input
+import { Loader2, Mail } from 'lucide-react'; // Icons
 
 /**
  * Props for the ChangeEmailDialog component.
@@ -54,7 +55,6 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false); // Loading state for form submission
   const [formError, setFormError] = useState<string | null>(null); // For displaying form-level errors
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false); // Toggle visibility of current password
 
   // Initialize react-hook-form with Zod resolver
   const form = useForm<ChangeEmailFormValues>({
@@ -89,7 +89,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
 
     // Prevent user from "changing" to the same email address.
     if (values.newEmail.toLowerCase() === user.email?.toLowerCase()) {
-      setFormError(ValidationErrors.newEmailSameAsCurrent);
+      form.setError('newEmail', { type: 'manual', message: ValidationErrors.newEmailSameAsCurrent });
       return;
     }
 
@@ -126,8 +126,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
         duration: 9000, // Longer duration for important messages
       });
 
-      form.reset(); // Reset form fields
-      onOpenChange(false); // Close the dialog
+      handleDialogClose(false); // Use the handler to close and reset
     } catch (error: any) {
       console.error('Change Email Error:', error);
       // Map Firebase error codes to user-friendly messages.
@@ -151,7 +150,6 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
     if (!isOpen) { // If dialog is being closed
       form.reset();
       setFormError(null);
-      setShowCurrentPassword(false);
       setIsLoading(false); // Ensure loading is reset
     }
     onOpenChange(isOpen); // Propagate open state change
@@ -178,26 +176,12 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
                 <FormItem>
                   <FormLabel>Current Password</FormLabel>
                   <FormControl>
-                    <div className="relative"> {/* For password visibility toggle */}
-                      <Input
-                        type={showCurrentPassword ? 'text' : 'password'}
+                    <PasswordInput
                         placeholder="••••••••"
-                        {...field}
                         disabled={isLoading}
                         autoComplete="current-password"
+                        {...field}
                       />
-                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                        aria-label={showCurrentPassword ? "Hide password" : "Show password"}
-                        disabled={isLoading}
-                      >
-                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
                   </FormControl>
                   <FormMessage /> {/* Field-specific validation errors */}
                 </FormItem>
