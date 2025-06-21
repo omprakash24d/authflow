@@ -78,9 +78,9 @@ export default function DashboardPageContent() {
   }
 
   return (
-    // Main container for the dashboard page content, centered and with padding.
-    <div className="container mx-auto max-w-2xl py-8 px-4">
-      <Card className="w-full shadow-lg">
+    // Main container for the dashboard page content.
+    <div className="p-4 sm:p-6 lg:p-8">
+      <Card className="w-full max-w-2xl mx-auto shadow-lg">
         <CardContent className="p-6">
           <DashboardHeader user={user} profileData={profileData} loadingProfile={loadingProfile} />
           <Separator className="my-8" />

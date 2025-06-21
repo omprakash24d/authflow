@@ -1,10 +1,9 @@
 // src/app/dashboard/page.tsx
 // This file defines the main Dashboard page, accessible only to authenticated users.
-// It uses `ProtectedRoute` to ensure authentication before rendering content.
+// Authentication is handled by the layout (`/dashboard/layout.tsx`).
 
 import type { Metadata } from 'next';
 import DashboardPageContent from '@/components/dashboard/dashboard-page-content';
-import { ProtectedRoute } from '@/components/protected-route'; // Component to handle route protection
 
 /**
  * Metadata for the Dashboard page.
@@ -17,16 +16,11 @@ export const metadata: Metadata = {
 
 /**
  * DashboardPage component.
- * This page is protected and requires user authentication.
- * It wraps `DashboardPageContent` with `ProtectedRoute` to enforce this.
+ * Renders the main content of the dashboard.
  * @returns JSX.Element
  */
 export default function DashboardPage() {
-  return (
-    // ProtectedRoute ensures that only authenticated users can access DashboardPageContent.
-    // If the user is not authenticated, ProtectedRoute will handle redirection (e.g., to /signin).
-    <ProtectedRoute>
-      <DashboardPageContent />
-    </ProtectedRoute>
-  );
+  // The `ProtectedRoute` wrapper is now in the layout file for this route group,
+  // so it doesn't need to be here.
+  return <DashboardPageContent />;
 }

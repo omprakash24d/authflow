@@ -1,11 +1,9 @@
 // src/app/dashboard/settings/page.tsx
-// This file defines the Account Settings page within the dashboard,
-// accessible only to authenticated users.
-// It uses `ProtectedRoute` to ensure authentication.
+// This file defines the Account Settings page within the dashboard.
+// Authentication is handled by the layout (`/dashboard/layout.tsx`).
 
 import type { Metadata } from 'next';
 import SettingsPageContent from '@/components/dashboard/settings-page-content';
-import { ProtectedRoute } from '@/components/protected-route'; // Component for route protection
 
 /**
  * Metadata for the Account Settings page.
@@ -18,16 +16,11 @@ export const metadata: Metadata = {
 
 /**
  * SettingsPage component.
- * This page is protected and requires user authentication.
- * It wraps `SettingsPageContent` with `ProtectedRoute`.
+ * Renders the main content of the settings page.
  * @returns JSX.Element
  */
 export default function SettingsPage() {
-  return (
-    // ProtectedRoute ensures that only authenticated users can access SettingsPageContent.
-    // If unauthenticated, the user will be redirected (e.g., to /signin).
-    <ProtectedRoute>
-      <SettingsPageContent />
-    </ProtectedRoute>
-  );
+  // The `ProtectedRoute` wrapper is now in the layout file for this route group,
+  // so it doesn't need to be here.
+  return <SettingsPageContent />;
 }
