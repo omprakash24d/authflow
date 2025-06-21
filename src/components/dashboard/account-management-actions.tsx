@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast'; // For displaying notifications
 import { deleteUser } from 'firebase/auth'; // Firebase function to delete a user
 import { LogOut, Settings, Trash2, Loader2 } from 'lucide-react'; // Icons
-import { ApiErrors } from '@/lib/constants/messages'; // Centralized error messages
+import { ApiErrors, AuthErrors } from '@/lib/constants/messages'; // Centralized error messages
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +54,7 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
 
     try {
       // Step 1: Call the API route to delete user data from Firestore.
+      // This is a critical first step to prevent orphaned data.
       const response = await fetch('/api/auth/delete-user-data', {
         method: 'DELETE',
       });
@@ -63,30 +64,33 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
         throw new Error(errorData.error);
       }
       
-      // Step 2: Delete the user from Firebase Authentication.
+      // Step 2: After successfully deleting database records, delete the user from Firebase Authentication.
       await deleteUser(user);
       
       toast({
         title: "Account Deleted",
-        description: "Your account and associated data have been successfully deleted. Redirecting...",
+        description: "Your account and all associated data have been successfully deleted. You will now be redirected.",
       });
       
-      // Step 3: Call signOut to handle session cleanup and redirection.
+      // Step 3: Call signOut to handle session cleanup and redirect the user.
       await signOut();
 
     } catch (error: any) {
       console.error("Error deleting account:", error);
-      let description = error.message || "Failed to delete your account. You may need to sign in again recently to perform this operation.";
-      // Firebase often requires recent re-authentication for sensitive operations like account deletion.
+      let description = error.message || "An unexpected error occurred while deleting your account.";
+      
+      // Provide a more specific and helpful message for the common 'requires-recent-login' error.
       if (error.code === 'auth/requires-recent-login') {
-        description = "This operation is sensitive and requires recent authentication. Please sign out and sign back in, then try again.";
+        description = AuthErrors.requiresRecentLogin;
       }
+      
       toast({
         title: "Error Deleting Account",
         description: description,
         variant: "destructive",
+        duration: 7000,
       });
-      setIsDeleting(false); // Only set loading to false on error, as success redirects.
+      setIsDeleting(false); // Only set loading to false on error, as success triggers a redirect.
     }
   };
 
@@ -114,7 +118,8 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete your
-              account and remove your data from our servers.
+              account and remove all your associated data (profile information, 
+              username, etc.) from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

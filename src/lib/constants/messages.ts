@@ -42,6 +42,7 @@ export const AuthErrors = {
   userNotAuthenticated: 'User not authenticated. Please sign in again.',
   sessionCreationError: 'Failed to create session. Server response not in expected format.',
   photoUploadPrereqsNotMet: "Prerequisites for upload not met. Please try again.",
+  requiresRecentLogin: "This operation is sensitive and requires recent authentication. Please sign out and sign back in, then try again.",
 };
 
 export const ProfileErrors = {

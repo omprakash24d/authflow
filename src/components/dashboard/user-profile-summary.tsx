@@ -47,7 +47,16 @@ export function UserProfileSummary({ user, profileData, loadingProfile, profileE
 
   const renderProfileValue = (value: string | null) => {
     if (loadingProfile) return <Loader2 className="inline-block h-4 w-4 animate-spin" />;
-    if (profileError) return <span className="text-destructive text-xs flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{profileError}</span>;
+    // If there's an error loading the profile, display a clear error message.
+    if (profileError) {
+      return (
+        <span className="text-destructive text-xs flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          {/* Using a generic message here as the specific error is logged. */}
+          Error loading
+        </span>
+      );
+    }
     return value || <span className="text-muted-foreground">Not set</span>;
   };
 
