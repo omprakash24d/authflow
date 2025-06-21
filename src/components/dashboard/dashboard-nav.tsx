@@ -46,18 +46,18 @@ export function DashboardNav() {
     <SidebarMenu>
       {navItems.map((item) => (
         <SidebarMenuItem key={item.href}>
-          {/* Using legacyBehavior with passHref is the correct pattern for wrapping third-party components like SidebarMenuButton in a Next.js Link */}
-          <Link href={item.href} passHref legacyBehavior>
-            <SidebarMenuButton
+          <SidebarMenuButton
+              asChild
               isActive={pathname === item.href} // Highlight if the current path is an exact match.
               variant="default"
               size="default"
               tooltip={item.label} // Tooltip is automatically shown when the sidebar is collapsed.
             >
+            <Link href={item.href}>
               {item.icon}
               <span>{item.label}</span>
-            </SidebarMenuButton>
-          </Link>
+            </Link>
+          </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
     </SidebarMenu>
