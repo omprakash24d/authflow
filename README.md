@@ -1,4 +1,3 @@
-
 # AuthFlow: Comprehensive User Authentication for Next.js & Firebase
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -10,25 +9,22 @@ AuthFlow is a robust and feature-rich user authentication starter system built w
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Tech Stack](#tech-stack)
+- [Screenshots](#screenshots)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Firebase Project Setup](#firebase-project-setup)
-  - [Environment Variables](#environment-variables)
-  - [Installation](#installation)
-  - [Running Locally](#running-locally)
-- [Integrating AuthFlow into Your Project](#integrating-authflow-into-your-project)
-  - [1. Copy Core AuthFlow Directories and Files](#1-copy-core-authflow-directories-and-files)
-  - [2. Install Dependencies](#2-install-dependencies)
-  - [3. Set Up Environment Variables (Crucial)](#3-set-up-environment-variables-crucial)
-  - [4. Update `src/app/layout.tsx`](#4-update-srcapplayouttsx)
-  - [5. Configure `next.config.ts`](#5-configure-nextconfigts)
-  - [6. Tailwind CSS and Global Styles](#6-tailwind-css-and-global-styles)
-  - [7. Using AuthFlow Features](#7-using-authflow-features)
-  - [8. Customization](#8-customization)
-- [Project Structure Highlights](#project-structure-highlights)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Run Locally](#run-locally)
+- [Running Tests](#running-tests)
+- [Usage & Integration](#usage--integration)
+- [API Reference](#api-reference)
 - [Deployment](#deployment)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
 - [License](#license)
 - [Author & Contact](#author--contact)
+- [Acknowledgements](#acknowledgements)
 
 ## Overview
 
@@ -68,6 +64,10 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 -   **Language**: TypeScript
 -   **Form Handling**: React Hook Form with Zod for validation
 
+## Screenshots
+
+*(Placeholder for screenshots of the sign-in, sign-up, and dashboard pages)*
+
 ## Getting Started
 
 Follow these steps to get a local copy of AuthFlow up and running.
@@ -96,7 +96,19 @@ Follow these steps to get a local copy of AuthFlow up and running.
     -   Scroll down to "Your apps". If you don't have a web app, click "Add app" and select the Web platform (`</>`).
     -   Register the app and Firebase will provide you with a `firebaseConfig` object. You'll use these values for your client-side environment variables.
 
-### Environment Variables
+## Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/omprakash24d/authflow.git # Or your project's URL
+cd authflow
+npm install
+# or
+# yarn install
+```
+
+## Environment Variables
 
 AuthFlow relies on environment variables for Firebase configuration and other settings.
 
@@ -138,19 +150,7 @@ GOOGLE_API_KEY=your_google_ai_api_key
 -   **`GOOGLE_APPLICATION_CREDENTIALS`**: This is the recommended method for deployed environments (like Firebase Hosting with Cloud Functions, Google Cloud Run, etc.). The SDK automatically finds and uses this file.
 -   **Individual `FIREBASE_ADMIN_*` vars**: Useful for local development or environments where mounting a file is tricky. **If you paste the `FIREBASE_ADMIN_PRIVATE_KEY` directly into the `.env.local` file, all newline characters (`\n`) within the key *must* be escaped as `\\n`.**
 
-### Installation
-
-Clone the repository and install dependencies:
-
-```bash
-git clone https://your-repository-url/authflow.git # Or your project's URL
-cd authflow
-npm install
-# or
-# yarn install
-```
-
-### Running Locally
+## Run Locally
 
 1.  **Ensure `.env.local` is set up correctly.**
 2.  Start the development server:
@@ -169,7 +169,11 @@ npm install
     # npx genkit start -- tsx src/ai/dev.ts
     ```
 
-## Integrating AuthFlow into Your Project
+## Running Tests
+
+*To be added. Currently, no automated tests are configured for this project.*
+
+## Usage & Integration
 
 AuthFlow is designed to be relatively portable. Here's how you can integrate it into another Next.js (App Router) project:
 
@@ -247,11 +251,7 @@ Ensure your target project's `package.json` includes the following dependencies 
 ```
 Run `npm install` or `yarn install`. Also ensure you have dev dependencies like `typescript`, `tailwindcss`, `postcss`, etc., configured in your target project.
 
-### 3. Set Up Environment Variables (Crucial)
-
-Refer to the [Environment Variables](#environment-variables) section above. Create a `.env.local` file in the root of your target project with your Firebase project credentials. **This is the most critical step for AuthFlow to function.**
-
-### 4. Update `src/app/layout.tsx`
+### 3. Update `src/app/layout.tsx`
 
 Wrap your root layout's children with `ThemeProvider` (for dark/light mode, optional but used by AuthFlow styles) and `AuthProvider`. Also, include the `Toaster` component for notifications.
 
@@ -293,7 +293,7 @@ export default function RootLayout({ children }: PropsWithChildren<{}>) {
 }
 ```
 
-### 5. Configure `next.config.ts`
+### 4. Configure `next.config.ts`
 
 Ensure your `next.config.ts` (or `next.config.js`) allows images from `placehold.co` (used by AuthFlow for image placeholders) and your Firebase Storage bucket if you plan to use profile photos.
 
@@ -334,13 +334,13 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-### 6. Tailwind CSS and Global Styles
+### 5. Tailwind CSS and Global Styles
 
 AuthFlow relies on Tailwind CSS and specific global styles (see `src/app/globals.css`). Ensure your target project has Tailwind CSS configured (`tailwind.config.ts`, `postcss.config.js`) and that you copy or adapt the theme variables from AuthFlow's `globals.css` into your project's global CSS file. This is crucial for the UI components to look correct. Pay attention to the HSL color variables for `--background`, `--foreground`, `--primary`, `--accent`, etc.
 
 Your `tailwind.config.ts` should also be set up to use these CSS variables, similar to AuthFlow's.
 
-### 7. Using AuthFlow Features
+### 6. Using AuthFlow Features
 
 -   **Protecting Routes**: Use the `ProtectedRoute` client component to wrap pages or layouts that require authentication.
     ```tsx
@@ -378,7 +378,7 @@ Your `tailwind.config.ts` should also be set up to use these CSS variables, simi
     ```
 -   **Middleware**: The copied `src/middleware.ts` will automatically handle redirects for protected routes and auth pages based on session cookies. No further action is usually needed for this once copied and configured. It ensures that unauthenticated users trying to access `/dashboard` are sent to `/signin`, and authenticated users trying to access `/signin` are sent to `/dashboard`.
 
-### 8. Customization
+### 7. Customization
 
 -   **Logo**: Update `src/components/logo.tsx` or replace its usage in `src/components/auth-layout.tsx` and other relevant places.
 -   **Styling**: Adjust Tailwind configuration (`tailwind.config.ts`) and global styles (`src/app/globals.css`) to match your project's branding.
@@ -387,19 +387,9 @@ Your `tailwind.config.ts` should also be set up to use these CSS variables, simi
 
 By following these steps, you should be able to integrate AuthFlow into a new Next.js project. Remember to test thoroughly, especially the authentication flows and environment variable configurations.
 
-## Project Structure Highlights
+## API Reference
 
--   `src/app/(auth)/`: Authentication-related pages (signin, signup, forgot-password). The `(auth)` is a route group.
--   `src/app/api/auth/`: Backend API routes for session management and user data lookups.
--   `src/app/dashboard/`: Example protected routes and UI for authenticated users.
--   `src/components/auth/`: UI components specifically for authentication forms and layouts.
--   `src/components/dashboard/`: UI components for the dashboard area.
--   `src/components/ui/`: ShadCN UI components.
--   `src/contexts/auth-context.tsx`: Provides authentication state globally.
--   `src/lib/firebase/`: Firebase client and admin SDK configurations and utilities.
--   `src/lib/validators/auth.ts`: Zod schemas for form validation.
--   `src/middleware.ts`: Handles route protection based on authentication status.
--   `src/ai/`: Genkit flows and configurations (optional).
+*No dedicated API endpoints are exposed for public consumption. The `/api/auth/*` routes are for internal use by the application to manage session cookies and user data lookups.*
 
 ## Deployment
 
@@ -412,6 +402,23 @@ When deploying AuthFlow:
 3.  **Firebase Security Rules**: **CRITICAL**: Before going live, ensure your Firebase Authentication settings and Firestore/Storage security rules are properly configured for production to prevent unauthorized access. The default "test mode" rules are insecure.
 4.  **Build Command**: Use `npm run build` or `yarn build`.
 5.  **Next.js Output**: AuthFlow uses the Next.js App Router. Ensure your hosting provider supports Next.js (preferably version 13.4+ for stable App Router support). Firebase Hosting is a good option.
+
+## Roadmap
+
+-   [ ] Implement multi-factor authentication (MFA).
+-   [ ] Add account linking for multiple social providers.
+-   [ ] Build out a more comprehensive admin dashboard for user management.
+-   [ ] Add full implementation for profile photo uploads to Firebase Storage.
+
+## Contributing
+
+Contributions are welcome! If you have suggestions for improvements, please feel free to open an issue or submit a pull request.
+
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
 ## License
 
@@ -426,3 +433,11 @@ AuthFlow was developed by Om Prakash.
 -   **Twitter**: [@omprakash25d](https://twitter.com/omprakash25d)
 
 For issues, questions, or contributions, please feel free to open an issue or pull request on the project repository.
+
+## Acknowledgements
+
+-   [Next.js](https://nextjs.org/)
+-   [Firebase](https://firebase.google.com/)
+-   [Tailwind CSS](https://tailwindcss.com/)
+-   [ShadCN UI](https://ui.shadcn.com/)
+-   [Genkit](https://firebase.google.com/docs/genkit)
