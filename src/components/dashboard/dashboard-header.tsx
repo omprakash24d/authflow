@@ -1,13 +1,14 @@
 // src/components/dashboard/dashboard-header.tsx
 // This component renders the header section of the user dashboard.
-// It typically displays the user's avatar, a welcome message, and their name/email.
+// It displays the user's avatar, a welcome message, and their name/email.
+// It is a presentational component that receives its data via props.
 
 'use client'; // Client component as it might interact with user data passed as props.
 
 import type { User as FirebaseUser } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { UserProfileData } from './dashboard-page-content';
+import type { UserProfileData } from './dashboard-page-content'; // Import shared type
 
 /**
  * Props for the DashboardHeader component.
@@ -24,6 +25,7 @@ interface DashboardHeaderProps {
 /**
  * Generates initials from a user's name or email.
  * This is used as a fallback for the Avatar if no profile image is available.
+ * Extracted into a helper function for clarity and reusability.
  * @param firstName - The user's first name from Firestore, if available.
  * @param displayName - The user's displayName from Firebase Auth profile, as a fallback.
  * @param email - The user's email, as a final fallback.
@@ -55,12 +57,12 @@ const getInitials = (firstName: string | null, displayName: string | null, email
  * @returns JSX.Element | null - Renders the header or null if no user is provided.
  */
 export function DashboardHeader({ user, profileData, loadingProfile }: DashboardHeaderProps) {
+  // If there's no user, there's nothing to display in the header.
   if (!user) return null;
 
   /**
-   * Gets the user's display name for the welcome message, with fallbacks.
-   * This logic is self-contained and simple, so it doesn't need to be extracted.
-   * In a more complex scenario, this could be a shared utility function.
+   * Determines the user's display name for the welcome message, with fallbacks.
+   * This is a simple, self-contained function.
    * @returns The name to display in the header greeting.
    */
   const getDisplayName = () => {
@@ -75,15 +77,19 @@ export function DashboardHeader({ user, profileData, loadingProfile }: Dashboard
 
   return (
     <div className="flex flex-col items-center text-center space-y-4 pt-4">
+      {/* User Avatar with fallback */}
       <Avatar className="h-24 w-24 border-2 border-primary/10 shadow-sm">
         <AvatarImage src={user.photoURL || undefined} alt={displayName} data-ai-hint="person avatar" />
         <AvatarFallback className="text-3xl">
           {avatarInitials}
         </AvatarFallback>
       </Avatar>
+      
+      {/* Welcome message with loading skeleton */}
       <div>
         {loadingProfile ? (
-          <Skeleton className="h-8 w-48 mt-1" />
+          // Skeleton loader provides a better UX than a text loader or content flash.
+          <Skeleton className="h-8 w-48 mt-1" aria-label="Loading user name" />
         ) : (
           <h2 className="text-3xl font-bold font-headline">
             Welcome back, {displayName}!

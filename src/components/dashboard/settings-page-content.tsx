@@ -18,6 +18,7 @@ import { AppearanceSettings } from '@/components/dashboard/settings/appearance-s
  * SettingsPageContent component.
  * Displays the structure for the account settings page, organizing different
  * settings forms and components into a user-friendly tabbed interface.
+ * The use of tabs makes the UI cleaner and more scalable as new settings are added.
  * @returns JSX.Element
  */
 export default function SettingsPageContent() {
@@ -26,13 +27,13 @@ export default function SettingsPageContent() {
     {
       value: "profile",
       title: "Profile Information",
-      description: "Update your personal details.",
+      description: "Update your personal details and profile picture.",
       component: <ProfileInformationForm />,
     },
     {
       value: "security",
       title: "Security",
-      description: "Change your password and manage other security settings.",
+      description: "Change your password, email, and manage other security settings.",
       component: <SecuritySettings />,
     },
     {
@@ -54,12 +55,12 @@ export default function SettingsPageContent() {
       <div>
         <h1 className="text-3xl font-bold font-headline">Account Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Manage your account settings and set e-mail preferences.
+          Manage your account settings, profile, and preferences.
         </p>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        {/* Tab triggers for each section */}
+        {/* Tab triggers for each section, responsive grid layout */}
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
           {settingsSections.map((section) => (
             <TabsTrigger key={section.value} value={section.value}>

@@ -1,9 +1,10 @@
 // src/components/dashboard/dashboard-page-content.tsx
 // This component renders the main content of the user dashboard page.
 // It uses the `useAuth` hook to access authenticated user data and sign-out functionality.
-// It's typically wrapped by `ProtectedRoute` at the page level.
+// It also acts as a data-fetching container for the user's Firestore profile,
+// passing down the data, loading, and error states to child components.
 
-'use client'; // Client component due to use of hooks like `useAuth`.
+'use client'; // Client component due to use of hooks like `useAuth`, `useState`, `useEffect`.
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authentication state and functions
@@ -19,6 +20,9 @@ import { LoginActivitySummary } from './login-activity-summary';
 import { AccountManagementActions } from './account-management-actions';
 import { Separator } from '../ui/separator';
 
+/**
+ * Type definition for the user profile data fetched from Firestore.
+ */
 export type UserProfileData = {
   firstName: string | null;
   lastName: string | null;
@@ -32,20 +36,29 @@ export type UserProfileData = {
  * @returns JSX.Element | null - Renders the dashboard content or null if user data is unexpectedly missing.
  */
 export default function DashboardPageContent() {
-  // `useAuth` provides the authenticated user object and signOut function.
-  // The `loading` state from `useAuth` is typically handled by `ProtectedRoute` at the page level.
   const { user, signOut } = useAuth();
+  // State for Firestore profile data
   const [profileData, setProfileData] = useState<UserProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  /**
+   * Effect to fetch the user's profile from Firestore upon component mount or when the user object changes.
+   * This is the single source of truth for profile data in the dashboard.
+   */
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!user || !firestore) {
+      // Guard clauses: ensure user and Firestore service are available.
+      if (!user) {
         setLoadingProfile(false);
-        if (!firestore) setProfileError(ProfileErrors.dbServiceUnavailable);
-        return;
+        return; // No user, no profile to fetch.
       }
+       if (!firestore) {
+        setLoadingProfile(false);
+        setProfileError(ProfileErrors.dbServiceUnavailable);
+        return; // Firestore not configured.
+      }
+      
       setLoadingProfile(true);
       setProfileError(null);
       try {
@@ -53,29 +66,32 @@ export default function DashboardPageContent() {
         const docSnap = await getDoc(userProfileRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
+          // Set the fetched profile data.
           setProfileData({
             firstName: data.firstName || null,
             lastName: data.lastName || null,
           });
         } else {
+          // If no document exists, set profile data to nulls.
+           console.warn(`No Firestore profile document found for user UID: ${user.uid}`);
           setProfileData({ firstName: null, lastName: null });
         }
       } catch (error) {
         console.error("Error fetching user profile from Firestore:", error);
         setProfileError(ProfileErrors.loadProfileError);
-        setProfileData(null); // Set to null on error
+        setProfileData(null); // Ensure data is null on error.
       } finally {
         setLoadingProfile(false);
       }
     };
 
     fetchUserProfile();
-  }, [user]);
+  }, [user]); // Re-run effect if the user object changes.
 
-  // Fallback: If `user` is somehow null despite `ProtectedRoute` (should not happen in normal flow).
   // `ProtectedRoute` is the primary guard and should redirect before this component renders with a null user.
+  // This check is a fallback.
   if (!user) {
-      return null; // Or a minimal error/loader, but ProtectedRoute should prevent this.
+      return null;
   }
 
   return (
@@ -83,9 +99,11 @@ export default function DashboardPageContent() {
     <div className="p-4 sm:p-6 lg:p-8">
       <Card className="w-full max-w-2xl mx-auto shadow-lg">
         <CardContent className="p-6">
+          {/* Pass user object and profile loading/data states to the header. */}
           <DashboardHeader user={user} profileData={profileData} loadingProfile={loadingProfile} />
           <Separator className="my-8" />
           <div className="space-y-8">
+            {/* Pass all relevant states to the profile summary component. */}
             <UserProfileSummary user={user} profileData={profileData} loadingProfile={loadingProfile} profileError={profileError} />
             <LoginActivitySummary user={user} />
             <AccountManagementActions user={user} signOut={signOut} />

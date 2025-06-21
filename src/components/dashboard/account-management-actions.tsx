@@ -37,6 +37,7 @@ interface AccountManagementActionsProps {
 /**
  * AccountManagementActions component.
  * Renders a set of buttons for account settings, account deletion (with confirmation), and sign out.
+ * This component orchestrates the multi-step process for secure account deletion.
  * @param {AccountManagementActionsProps} props - The component's props.
  * @returns JSX.Element
  */
@@ -45,8 +46,10 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
   const [isDeleting, setIsDeleting] = useState(false); // State to manage loading during account deletion
 
   /**
-   * Handles the account deletion process.
-   * Prompts for confirmation, deletes Firestore data via API, and then deletes the Firebase Auth user.
+   * Handles the account deletion process. This is a critical security-sensitive operation.
+   * 1. Calls a secure API endpoint to delete user data from Firestore.
+   * 2. If Firestore deletion is successful, proceeds to delete the user from Firebase Authentication.
+   * 3. Provides detailed error feedback to the user, especially for re-authentication requirements.
    */
   const handleDeleteAccount = async () => {
     if (!user) return;
@@ -88,7 +91,7 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
         title: "Error Deleting Account",
         description: description,
         variant: "destructive",
-        duration: 7000,
+        duration: 7000, // Longer duration for important error messages
       });
       setIsDeleting(false); // Only set loading to false on error, as success triggers a redirect.
     }
