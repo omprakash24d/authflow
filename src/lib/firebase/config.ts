@@ -16,6 +16,7 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app'; // Core Firebase app SDK
 import { getAuth, type Auth } from 'firebase/auth'; // Firebase Authentication SDK
 import { getFirestore, type Firestore } from 'firebase/firestore'; // Firebase Firestore SDK
+import { getStorage, type FirebaseStorage } from 'firebase/storage'; // Import Firebase Storage
 
 // Structure for Firebase configuration, populated from environment variables.
 const firebaseConfig = {
@@ -69,9 +70,8 @@ if (missingKeys.length === 0) {
 export const firebaseApp: FirebaseApp | null = firebaseAppInstance;
 export const auth: Auth | null = firebaseAppInstance ? getAuth(firebaseAppInstance) : null;
 export const firestore: Firestore | null = firebaseAppInstance ? getFirestore(firebaseAppInstance) : null;
-// Example for Firebase Storage (if used):
-// import { getStorage, type FirebaseStorage } from 'firebase/storage';
-// export const storage: FirebaseStorage | null = firebaseAppInstance ? getStorage(firebaseAppInstance) : null;
+export const storage: FirebaseStorage | null = firebaseAppInstance ? getStorage(firebaseAppInstance) : null;
+
 
 // Log the status of services for easier debugging during setup.
 // This helps quickly identify if a service is unavailable due to configuration issues.
@@ -84,6 +84,6 @@ if (!auth) {
 if (!firestore) {
   console.warn("Firebase Firestore instance (firestore) is not available (client-side). Ensure Firebase App initialized correctly.");
 }
-// if (!storage) { // Example for storage
-//   console.warn("Firebase Storage instance (storage) is not available (client-side). Ensure Firebase App initialized correctly and NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is set if needed.");
-// }
+if (!storage) {
+  console.warn("Firebase Storage instance (storage) is not available (client-side). Ensure Firebase App initialized correctly and NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is set if needed.");
+}
