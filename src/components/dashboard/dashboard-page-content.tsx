@@ -5,8 +5,11 @@
 
 'use client'; // Client component due to use of hooks like `useAuth`.
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authentication state and functions
 import { Card, CardContent } from '@/components/ui/card'; // ShadCN Card components for layout
+import { firestore } from '@/lib/firebase/config';
+import { doc, getDoc } from 'firebase/firestore';
 
 // Import child components that make up the dashboard sections
 import { DashboardHeader } from './dashboard-header';
@@ -14,6 +17,11 @@ import { UserProfileSummary } from './user-profile-summary';
 import { LoginActivitySummary } from './login-activity-summary';
 import { AccountManagementActions } from './account-management-actions';
 import { Separator } from '../ui/separator';
+
+export type UserProfileData = {
+  firstName: string | null;
+  lastName: string | null;
+};
 
 /**
  * DashboardPageContent component.
@@ -25,7 +33,39 @@ import { Separator } from '../ui/separator';
 export default function DashboardPageContent() {
   // `useAuth` provides the authenticated user object and signOut function.
   // The `loading` state from `useAuth` is typically handled by `ProtectedRoute` at the page level.
-  const { user, signOut } = useAuth(); 
+  const { user, signOut } = useAuth();
+  const [profileData, setProfileData] = useState<UserProfileData | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user || !firestore) {
+        setLoadingProfile(false);
+        return;
+      }
+      setLoadingProfile(true);
+      try {
+        const userProfileRef = doc(firestore, 'users', user.uid);
+        const docSnap = await getDoc(userProfileRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setProfileData({
+            firstName: data.firstName || null,
+            lastName: data.lastName || null,
+          });
+        } else {
+          setProfileData({ firstName: null, lastName: null });
+        }
+      } catch (error) {
+        console.error("Error fetching user profile from Firestore:", error);
+        setProfileData(null); // Set to null on error
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user]);
 
   // Fallback: If `user` is somehow null despite `ProtectedRoute` (should not happen in normal flow).
   // `ProtectedRoute` is the primary guard and should redirect before this component renders with a null user.
@@ -36,17 +76,17 @@ export default function DashboardPageContent() {
   return (
     // Main container for the dashboard page content, centered and with padding.
     <div className="container mx-auto max-w-2xl py-8 px-4">
-        <Card className="w-full shadow-lg">
-            <CardContent className="p-6 space-y-8">
-                <DashboardHeader user={user} />
-                <Separator />
-                <UserProfileSummary user={user} />
-                <Separator />
-                <LoginActivitySummary user={user} />
-                <Separator />
-                <AccountManagementActions user={user} signOut={signOut} />
-            </CardContent>
-        </Card>
+      <Card className="w-full shadow-lg">
+        <CardContent className="p-6">
+          <DashboardHeader user={user} profileData={profileData} loadingProfile={loadingProfile} />
+          <Separator className="my-8" />
+          <div className="space-y-8">
+            <UserProfileSummary user={user} profileData={profileData} loadingProfile={loadingProfile} />
+            <LoginActivitySummary user={user} />
+            <AccountManagementActions user={user} signOut={signOut} />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

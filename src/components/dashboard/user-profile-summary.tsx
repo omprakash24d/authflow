@@ -5,13 +5,12 @@
 
 'use client'; // Client component due to useEffect for data fetching and state.
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth'; // Firebase User type
-import { firestore } from '@/lib/firebase/config'; // Firestore instance
-import { doc, getDoc } from 'firebase/firestore'; // Firestore functions
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, User as UserIcon, CheckCircle, XCircle, Copy, Check } from 'lucide-react'; // Icons
+import type { UserProfileData } from './dashboard-page-content';
 
 /**
  * Props for the UserProfileSummary component.
@@ -19,6 +18,8 @@ import { Loader2, User as UserIcon, CheckCircle, XCircle, Copy, Check } from 'lu
  */
 interface UserProfileSummaryProps {
   user: FirebaseUser;
+  profileData: UserProfileData | null;
+  loadingProfile: boolean;
 }
 
 /**
@@ -28,60 +29,9 @@ interface UserProfileSummaryProps {
  * @param {UserProfileSummaryProps} props - The component's props.
  * @returns JSX.Element
  */
-export function UserProfileSummary({ user }: UserProfileSummaryProps) {
+export function UserProfileSummary({ user, profileData, loadingProfile }: UserProfileSummaryProps) {
   const { toast } = useToast();
-  // State for first name and last name, fetched from Firestore
-  const [firstName, setFirstName] = useState<string | null>(null);
-  const [lastName, setLastName] = useState<string | null>(null);
-  const [profileLoading, setProfileLoading] = useState<boolean>(true); // Loading state for Firestore fetch
-  const [profileError, setProfileError] = useState<string | null>(null); // Error state for Firestore fetch
   const [isUidCopied, setIsUidCopied] = useState(false);
-
-  // useEffect to fetch additional profile details (first/last name) from Firestore
-  // when the component mounts or the user/firestore objects change.
-  useEffect(() => {
-    if (user) { // Only proceed if user object is available
-      if (firestore) { // Check if Firestore service instance is available
-        const fetchUserProfile = async () => {
-          setProfileLoading(true);
-          setProfileError(null);
-          try {
-            // Reference to the user's profile document in the 'users' collection
-            const userProfileRef = doc(firestore, 'users', user.uid);
-            const docSnap = await getDoc(userProfileRef);
-            if (docSnap.exists()) {
-              // If document exists, extract data
-              const profileData = docSnap.data();
-              setFirstName(profileData.firstName || null); // Set first name, fallback to null
-              setLastName(profileData.lastName || null);   // Set last name, fallback to null
-            } else {
-              // Document doesn't exist (e.g., user signed up via social login before profile creation, or data missing)
-              console.warn(`User profile document not found for UID: ${user.uid} in Firestore.`);
-              setFirstName(null); 
-              setLastName(null);
-            }
-          } catch (error: any) {
-            console.error("Error fetching user profile from Firestore:", error);
-            setProfileError("Could not load profile information from database.");
-          } finally {
-            setProfileLoading(false); // Finished loading (success or error)
-          }
-        };
-        fetchUserProfile();
-      } else {
-        // Firestore service is not available (e.g., config issue)
-        setProfileLoading(false);
-        setProfileError("Database service is not available for profile information.");
-        setFirstName(null); 
-        setLastName(null);
-      }
-    } else { // No user object provided (should not happen if called correctly)
-      setFirstName(null);
-      setLastName(null);
-      setProfileLoading(false);
-      setProfileError(null);
-    }
-  }, [user]); // Dependencies: re-run if user or firestore instance changes
 
   const handleCopyUid = () => {
     navigator.clipboard.writeText(user.uid).then(() => {
@@ -95,52 +45,63 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
   };
 
   const renderProfileValue = (value: string | null) => {
-    if (profileLoading) return <Loader2 className="inline-block h-4 w-4 animate-spin" />;
-    if (profileError) return <span className="text-destructive text-xs">{profileError}</span>;
+    if (loadingProfile) return <Loader2 className="inline-block h-4 w-4 animate-spin" />;
     return value || <span className="text-muted-foreground">Not set</span>;
-  }
+  };
 
   return (
     <div className="space-y-4"> {/* Container with vertical spacing */}
       <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
         <UserIcon className="mr-2 h-5 w-5" /> Account Information
       </h3>
-      <dl className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 text-sm">
-        <dt className="font-medium text-muted-foreground">Username</dt>
-        <dd className="md:col-span-2">{user.displayName || 'Not set'}</dd>
-
-        <dt className="font-medium text-muted-foreground">First Name</dt>
-        <dd className="md:col-span-2">{renderProfileValue(firstName)}</dd>
+      <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+        <div className="space-y-1">
+          <dt className="font-medium text-muted-foreground">Username</dt>
+          <dd>{user.displayName || <span className="text-muted-foreground">Not set</span>}</dd>
+        </div>
         
-        <dt className="font-medium text-muted-foreground">Last Name</dt>
-        <dd className="md:col-span-2">{renderProfileValue(lastName)}</dd>
+        <div className="space-y-1">
+          <dt className="font-medium text-muted-foreground">First Name</dt>
+          <dd>{renderProfileValue(profileData?.firstName ?? null)}</dd>
+        </div>
+
+        <div className="space-y-1">
+          <dt className="font-medium text-muted-foreground">Last Name</dt>
+          <dd>{renderProfileValue(profileData?.lastName ?? null)}</dd>
+        </div>
         
-        <dt className="font-medium text-muted-foreground">Email</dt>
-        <dd className="md:col-span-2">{user.email || 'N/A'}</dd>
+        <div className="space-y-1">
+          <dt className="font-medium text-muted-foreground">Email</dt>
+          <dd className="truncate">{user.email || 'N/A'}</dd>
+        </div>
 
-        <dt className="font-medium text-muted-foreground">Email Verified</dt>
-        <dd className="md:col-span-2 flex items-center gap-2">
-            {user.emailVerified ? (
-                <>
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="text-green-600 dark:text-green-400 font-medium">Yes</span>
-                </>
-            ) : (
-                <>
-                    <XCircle className="h-4 w-4 text-red-500" />
-                    <span className="text-red-600 dark:text-red-400 font-medium">No</span>
-                </>
-            )}
-        </dd>
+        <div className="space-y-1">
+          <dt className="font-medium text-muted-foreground">Email Verified</dt>
+          <dd className="flex items-center gap-2">
+              {user.emailVerified ? (
+                  <>
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="text-green-600 dark:text-green-400 font-medium">Yes</span>
+                  </>
+              ) : (
+                  <>
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-red-600 dark:text-red-400 font-medium">No</span>
+                  </>
+              )}
+          </dd>
+        </div>
 
-        <dt className="font-medium text-muted-foreground">User ID (UID)</dt>
-        <dd className="md:col-span-2 flex items-center gap-2">
-            <span className="text-xs font-mono">{user.uid}</span>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopyUid}>
+        <div className="space-y-1">
+          <dt className="font-medium text-muted-foreground">User ID (UID)</dt>
+          <dd className="flex items-center gap-2">
+            <span className="truncate font-mono text-xs">{user.uid}</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleCopyUid}>
                  {isUidCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                 <span className="sr-only">Copy User ID</span>
             </Button>
-        </dd>
+          </dd>
+        </div>
       </dl>
     </div>
   );

@@ -4,8 +4,10 @@
 
 'use client'; // Client component as it might interact with user data passed as props.
 
-import type { User as FirebaseUser } from 'firebase/auth'; // Firebase User type
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // ShadCN Avatar components
+import type { User as FirebaseUser } from 'firebase/auth';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { UserProfileData } from './dashboard-page-content';
 
 /**
  * Props for the DashboardHeader component.
@@ -13,6 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; //
  */
 interface DashboardHeaderProps {
   user: FirebaseUser | null;
+  profileData: UserProfileData | null;
+  loadingProfile: boolean;
 }
 
 /**
@@ -22,13 +26,19 @@ interface DashboardHeaderProps {
  * @param email - The user's email (string), or null/undefined, used as a fallback.
  * @returns A string of initials (e.g., "JD" for "John Doe"), or "??" if name is unavailable.
  */
-const getInitials = (name: string | null | undefined, email: string | null | undefined): string => {
-  const targetName = name || email;
-  if (!targetName) return '??';
-  const names = targetName.split(' ').filter(Boolean); // Split by space and remove empty strings
-  if (names.length === 0) return '??';
-  if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
-  return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+const getInitials = (firstName: string | null, displayName: string | null, email: string | null): string => {
+  const name = firstName || displayName;
+  if (name) {
+    const nameParts = name.split(' ');
+    if (nameParts.length > 1) {
+      return `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+  if (email) {
+    return email[0].toUpperCase();
+  }
+  return '??';
 };
 
 /**
@@ -37,24 +47,37 @@ const getInitials = (name: string | null | undefined, email: string | null | und
  * @param {DashboardHeaderProps} props - The component's props.
  * @returns JSX.Element | null - Renders the header or null if no user is provided.
  */
-export function DashboardHeader({ user }: DashboardHeaderProps) {
-  if (!user) return null; // Don't render if no user data
+export function DashboardHeader({ user, profileData, loadingProfile }: DashboardHeaderProps) {
+  if (!user) return null;
 
-  const displayName = user.displayName || user.email || "User"; // Fallback display name
+  const getDisplayName = () => {
+    if (profileData?.firstName) return profileData.firstName;
+    if (user.displayName) return user.displayName.split(' ')[0]; // Use first part of display name
+    if (user.email) return user.email.split('@')[0]; // Fallback to email prefix
+    return "User";
+  };
+
+  const displayName = getDisplayName();
 
   return (
-    <div className="flex flex-col items-center text-center space-y-3">
-        <p className="text-muted-foreground">Welcome back,</p>
-      {/* User Avatar */}
-      <Avatar className="h-20 w-20">
-        {/* AvatarImage attempts to load user.photoURL. If it fails or is null, AvatarFallback is shown. */}
+    <div className="flex flex-col items-center text-center space-y-4 pt-4">
+      <Avatar className="h-24 w-24 border-2 border-primary/10 shadow-sm">
         <AvatarImage src={user.photoURL || undefined} alt={displayName} data-ai-hint="person avatar" />
-        <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
+        <AvatarFallback className="text-3xl">
+          {getInitials(profileData?.firstName || null, user.displayName, user.email)}
+        </AvatarFallback>
       </Avatar>
-      {/* Welcome Message */}
       <div>
-        <h2 className="text-2xl font-bold font-headline">{displayName}!</h2>
-        <p className="text-sm text-muted-foreground">This is your personalized dashboard.</p>
+        {loadingProfile ? (
+          <Skeleton className="h-8 w-48 mt-1" />
+        ) : (
+          <h2 className="text-3xl font-bold font-headline">
+            Welcome back, {displayName}!
+          </h2>
+        )}
+        <p className="text-md text-muted-foreground mt-2">
+          This is your personalized dashboard.
+        </p>
       </div>
     </div>
   );
