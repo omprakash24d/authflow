@@ -55,11 +55,10 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
       await deleteUser(user);
       toast({
         title: "Account Deleted",
-        description: "Your account has been successfully deleted.",
+        description: "Your account has been successfully deleted. Redirecting...",
       });
-      // The `signOut` function (which should be called after successful deletion by the AuthContext or redirect logic)
-      // will handle redirecting the user, typically to the sign-in page.
-      // Note: `signOut` function in AuthContext already handles API session logout and client-side Firebase logout.
+      // Explicitly call signOut to handle session cleanup and redirection to homepage.
+      await signOut();
     } catch (error: any) {
       console.error("Error deleting account:", error);
       let description = "Failed to delete your account. You may need to sign in again recently to perform this operation.";
@@ -72,8 +71,7 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
         description: description,
         variant: "destructive",
       });
-    } finally {
-      setIsDeleting(false);
+      setIsDeleting(false); // Only set loading to false on error, as success redirects.
     }
   };
 

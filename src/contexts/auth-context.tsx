@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * This involves:
    * 1. Calling an API endpoint to clear the server-side session cookie.
    * 2. Signing out from the Firebase client-side SDK.
-   * 3. Redirecting the user to the sign-in page via a full page reload.
+   * 3. Redirecting the user to the homepage via a full page reload.
    */
   const signOut = async (): Promise<void> => {
     setLoading(true); // Indicate an operation is in progress (optional, as redirect happens quickly).
@@ -130,10 +130,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn("AuthContext: Firebase Auth service not available for client-side signOut. Proceeding with redirect.");
     }
     
-    // Step 3: Redirect to sign-in page using a full page reload.
+    // Step 3: Redirect to homepage page using a full page reload.
     // This helps ensure cookie state is consistent for the middleware and a clean state.
     if (typeof window !== 'undefined') { // Ensure running in browser
-      window.location.assign('/signin');
+      window.location.assign('/');
     }
   };
 
