@@ -7,8 +7,9 @@
 import type { ControllerRenderProps, FieldValues, FieldPath } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, EyeOff } from 'lucide-react'; // Icons for show/hide toggle
+import { Eye, EyeOff, Lock } from 'lucide-react'; // Icons for show/hide toggle and lock
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 /**
  * Props for the PasswordInput component.
@@ -55,13 +56,14 @@ export function PasswordInput<
   const toggleShowPassword = () => setShowPassword(!showPassword);
 
   return (
-    <div className="relative"> {/* Relative positioning for the toggle button */}
+    <div className="relative"> {/* Relative positioning for the icons and toggle button */}
+      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         type={showPassword ? 'text' : 'password'} // Dynamically set input type
         placeholder={placeholder}
         {...field} // Spread react-hook-form field props (name, value, onChange, onBlur, ref)
         disabled={disabled}
-        className={inputClassName}
+        className={cn('pl-10 pr-10', inputClassName)} // Padding for icon and toggle
         autoComplete={autoComplete} // Useful for password managers (e.g., "current-password", "new-password")
       />
       <Button

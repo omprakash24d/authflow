@@ -17,19 +17,19 @@ interface DashboardHeaderProps {
 }
 
 /**
- * Generates initials from a user's display name.
+ * Generates initials from a user's display name or email.
  * Used as a fallback for the Avatar if no image is available.
  * @param name - The user's display name (string), or null/undefined.
+ * @param email - The user's email (string), or null/undefined, used as a fallback.
  * @returns A string of initials (e.g., "JD" for "John Doe"), or "??" if name is unavailable.
  */
-const getInitials = (name: string | null | undefined): string => {
-  if (!name) return '??';
-  const names = name.split(' ');
-  if (names.length === 1 && name.length > 0) return name.substring(0, 2).toUpperCase(); // For single names
-  if (names.length > 1 && names[0].length > 0 && names[names.length - 1].length > 0) {
-    return (names[0][0] + names[names.length - 1][0]).toUpperCase(); // First and last initial
-  }
-  return name.substring(0,1).toUpperCase() || '??'; // Fallback to first letter or ??
+const getInitials = (name: string | null | undefined, email: string | null | undefined): string => {
+  const targetName = name || email;
+  if (!targetName) return '??';
+  const names = targetName.split(' ').filter(Boolean); // Split by space and remove empty strings
+  if (names.length === 0) return '??';
+  if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
+  return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 };
 
 /**
@@ -49,12 +49,12 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       <div className="flex justify-center mb-4">
         <Avatar className="h-24 w-24"> {/* Large avatar */}
           {/* AvatarImage attempts to load user.photoURL. If it fails or is null, AvatarFallback is shown. */}
-          <AvatarImage src={user.photoURL || undefined} alt={displayName} />
-          <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+          <AvatarImage src={user.photoURL || undefined} alt={displayName} data-ai-hint="person avatar" />
+          <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
         </Avatar>
       </div>
       {/* Welcome Message */}
-      <CardTitle className="text-3xl font-headline">Welcome to AuthFlow, {getInitials(displayName)}!</CardTitle>
+      <CardTitle className="text-3xl font-headline">Welcome to AuthFlow, {displayName}!</CardTitle>
       <CardDescription>This is your personalized dashboard.</CardDescription>
     </>
   );

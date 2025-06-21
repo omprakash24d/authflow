@@ -32,7 +32,8 @@ export const SignUpSchema = z.object({
     .min(3, 'Username must be at least 3 characters.')
     .max(30, 'Username must be 30 characters or less.')
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.') // Alphanumeric and underscores
-    .refine(val => val.toLowerCase() !== 'admin', { message: 'Username "admin" is not allowed for security reasons.' }), // Disallow "admin"
+    .refine(val => val.toLowerCase() !== 'admin', { message: 'Username "admin" is not allowed for security reasons.' }) // Disallow "admin"
+    .refine(val => !val.includes('@'), { message: 'Username cannot contain the "@" symbol.'}),
   email: emailValidation, // Use the reusable email schema
   password: passwordValidation, // Use the reusable password schema
   confirmPassword: passwordValidation, // Password confirmation field
