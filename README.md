@@ -66,7 +66,32 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 
 ## Screenshots
 
-![AuthFlow Dashboard](/public/images/authflow_home.png)
+<table>
+  <tr>
+    <td align="center"><strong>Home Page</strong></td>
+    <td align="center"><strong>Sign In Page</strong></td>
+  </tr>
+  <tr>
+    <td><img src="/public/images/authflow_home.png" alt="AuthFlow Home Page"></td>
+    <td><img src="/public/images/authflow_signin.png" alt="AuthFlow Sign In Page"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Sign Up Page</strong></td>
+    <td align="center"><strong>Forgot Password Page</strong></td>
+  </tr>
+  <tr>
+    <td><img src="/public/images/authflow_signup.png" alt="AuthFlow Sign Up Page"></td>
+    <td><img src="/public/images/authflow_forgot_password.png" alt="AuthFlow Forgot Password Page"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Dashboard</strong></td>
+    <td align="center"><strong>Account Settings</strong></td>
+  </tr>
+  <tr>
+    <td><img src="/public/images/authflow_dashboard.png" alt="AuthFlow Dashboard"></td>
+    <td><img src="/public/images/authflow_settings.png" alt="AuthFlow Settings Page"></td>
+  </tr>
+</table>
 
 ## Getting Started
 
