@@ -10,8 +10,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // The 'Inter' font is now applied globally via next/font in layout.tsx.
-        // Custom font families can still be defined here if needed for other sections.
+        // Set the default sans-serif font to use the CSS variable from next/font.
+        sans: ['var(--font-inter)', 'sans-serif'],
+        // Define 'font-headline' to use the same font, fixing the missing utility class.
+        headline: ['var(--font-inter)', 'sans-serif'],
         code: ['monospace', 'monospace'],
       },
       colors: {

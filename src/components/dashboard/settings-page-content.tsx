@@ -1,11 +1,12 @@
 // src/components/dashboard/settings-page-content.tsx
 // This component renders the main content for the Account Settings page.
-// It structures various settings sections like Profile Information, Security, etc.
+// It uses a tabbed layout to organize various settings sections.
 // Assumes it's rendered within a `ProtectedRoute` which handles auth checks via layout.
 
-'use client'; // Client component as it might use client-side hooks or state.
+'use client'; // Client component as it uses client-side hooks and state for tabs.
 
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Import child components for different settings categories
 import { ProfileInformationForm } from '@/components/dashboard/settings/profile-information-form';
@@ -16,27 +17,32 @@ import { AppearanceSettings } from '@/components/dashboard/settings/appearance-s
 /**
  * SettingsPageContent component.
  * Displays the structure for the account settings page, organizing different
- * settings forms and components into sections.
+ * settings forms and components into a user-friendly tabbed interface.
  * @returns JSX.Element
  */
 export default function SettingsPageContent() {
+  // Define the sections for the settings page. Each object corresponds to a tab.
   const settingsSections = [
     {
+      value: "profile",
       title: "Profile Information",
       description: "Update your personal details.",
       component: <ProfileInformationForm />,
     },
     {
+      value: "security",
       title: "Security",
       description: "Change your password and manage other security settings.",
       component: <SecuritySettings />,
     },
     {
+      value: "notifications",
       title: "Notification Preferences",
       description: "Manage how you receive notifications from us.",
       component: <NotificationPreferences />,
     },
     {
+      value: "appearance",
       title: "Appearance",
       description: "Choose how AuthFlow looks to you.",
       component: <AppearanceSettings />,
@@ -52,21 +58,31 @@ export default function SettingsPageContent() {
         </p>
       </div>
 
-      <Card className="w-full shadow-lg">
-        <CardContent className="divide-y divide-border p-0">
-          {settingsSections.map((section, index) => (
-            <div key={index} className="p-6 grid grid-cols-1 md:grid-cols-3 md:gap-6">
-              <div className="md:col-span-1 mb-4 md:mb-0">
-                <h3 className="text-lg font-medium text-foreground">{section.title}</h3>
-                <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
-              </div>
-              <div className="md:col-span-2">
-                {section.component}
-              </div>
-            </div>
+      <Tabs defaultValue="profile" className="w-full">
+        {/* Tab triggers for each section */}
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+          {settingsSections.map((section) => (
+            <TabsTrigger key={section.value} value={section.value}>
+              {section.title}
+            </TabsTrigger>
           ))}
-        </CardContent>
-      </Card>
+        </TabsList>
+
+        {/* Tab content panels for each section */}
+        {settingsSections.map((section) => (
+          <TabsContent key={section.value} value={section.value} className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>{section.title}</CardTitle>
+                <CardDescription>{section.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {section.component}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
     </div>
   );
 }

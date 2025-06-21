@@ -11,9 +11,11 @@ import { ThemeProvider } from '@/components/theme-provider';
 import type { PropsWithChildren } from 'react';
 
 // Configure the Inter font from Google Fonts using next/font
+// Exporting it as a CSS variable allows for more flexible use in Tailwind CSS.
 const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
+  variable: '--font-inter',
 });
 
 /**
@@ -53,8 +55,8 @@ export default function RootLayout({ children }: PropsWithChildren<{}>) {
       <head>
         {/* next/font handles font optimization, so manual <link> tags are no longer needed. */}
       </head>
-      {/* Apply the font class from next/font and enable anti-aliasing. */}
-      <body className={`${inter.className} antialiased`}>
+      {/* Apply the font variable to the body and default to font-sans. */}
+      <body className={`${inter.variable} font-sans antialiased`}>
         {/* ThemeProvider manages dark/light mode switching. */}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           {/* AuthProvider manages user authentication state across the app. */}
