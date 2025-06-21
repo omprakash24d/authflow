@@ -5,8 +5,17 @@
 
 import { z } from 'zod';
 
-// Reusable password validation schema.
-// Defines criteria for a strong password.
+// --- Reusable Validation Schemas & Constants ---
+
+/**
+ * Reusable password validation schema.
+ * Defines criteria for a strong password:
+ * - At least 8 characters long
+ * - At least one lowercase letter
+ * - At least one uppercase letter
+ * - At least one number
+ * - At least one special character
+ */
 const passwordValidation = z
   .string()
   .min(8, { message: 'Password must be at least 8 characters long.' })
@@ -16,7 +25,10 @@ const passwordValidation = z
   // Regex for common special characters.
   .regex(/[\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~]/, { message: 'Password must contain at least one special character.' });
 
-// Reusable email validation schema.
+/**
+ * Reusable email validation schema.
+ * Enforces standard email format and disallows email sub-addressing (aliases with '+').
+ */
 export const emailValidation = z
   .string()
   .email({ message: 'Invalid email address format.' }) // Standard email format check
@@ -24,19 +36,31 @@ export const emailValidation = z
     message: 'Email subaddresses (using +) are not permitted.',
   });
 
-// Schema for the Sign Up form.
+/**
+ * Reusable username validation schema.
+ * Enforces length, character set, and reserved names.
+ */
+const usernameValidation = z.string()
+  .min(3, 'Username must be at least 3 characters.')
+  .max(30, 'Username must be 30 characters or less.')
+  .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.') // Alphanumeric and underscores
+  .refine(val => val.toLowerCase() !== 'admin', { message: 'Username "admin" is not allowed for security reasons.' }) // Disallow "admin" case-insensitively
+  .refine(val => !val.includes('@'), { message: 'Username cannot contain the "@" symbol.'});
+
+
+// --- Form-Specific Schemas ---
+
+/**
+ * Zod schema for the user Sign-Up form.
+ * Validates all fields required for creating a new user account.
+ */
 export const SignUpSchema = z.object({
   firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
   lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
-  username: z.string()
-    .min(3, 'Username must be at least 3 characters.')
-    .max(30, 'Username must be 30 characters or less.')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.') // Alphanumeric and underscores
-    .refine(val => val.toLowerCase() !== 'admin', { message: 'Username "admin" is not allowed for security reasons.' }) // Disallow "admin"
-    .refine(val => !val.includes('@'), { message: 'Username cannot contain the "@" symbol.'}),
-  email: emailValidation, // Use the reusable email schema
-  password: passwordValidation, // Use the reusable password schema
-  confirmPassword: passwordValidation, // Password confirmation field
+  username: usernameValidation,
+  email: emailValidation,
+  password: passwordValidation,
+  confirmPassword: passwordValidation,
   termsAccepted: z.boolean().refine(val => val === true, { // Checkbox for terms and conditions
     message: 'You must accept the Terms of Service and Privacy Policy.',
   }),
@@ -48,31 +72,39 @@ export const SignUpSchema = z.object({
 // TypeScript type inferred from the SignUpSchema.
 export type SignUpFormValues = z.infer<typeof SignUpSchema>;
 
-// Schema for the Sign In form.
+
+/**
+ * Zod schema for the user Sign-In form.
+ * Validates the identifier (email or username) and password.
+ */
 export const SignInSchema = z.object({
-  // 'identifier' can be either an email or a username.
-  identifier: z.string().min(1, 'Email or username is required.'), 
+  // 'identifier' can be either an email or a username. Specific logic to handle this is in the form component.
+  identifier: z.string().min(1, 'Email or username is required.'),
   password: z.string().min(1, 'Password is required.'), // Basic check; actual validation is done by Firebase
 });
 
 // TypeScript type inferred from the SignInSchema.
 export type SignInFormValues = z.infer<typeof SignInSchema>;
 
-// Schema for Profile Settings form (updating user profile information).
+
+/**
+ * Zod schema for the Profile Settings form.
+ * Validates fields for updating user profile information.
+ */
 export const ProfileSettingsSchema = z.object({
   firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
   lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
-  username: z.string()
-    .min(3, 'Username must be at least 3 characters.')
-    .max(30, 'Username must be 30 characters or less.')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.')
-    .refine(val => val.toLowerCase() !== 'admin', { message: 'Username "admin" is not allowed for security reasons.' })
-    .refine(val => !val.includes('@'), { message: 'Username cannot contain the "@" symbol.'}), // Username cannot be an email
+  username: usernameValidation,
 });
+
 // TypeScript type inferred from the ProfileSettingsSchema.
 export type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
 
-// Schema for the Change Password form.
+
+/**
+ * Zod schema for the Change Password form.
+ * Validates current password, new password, and confirmation.
+ */
 export const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required.'),
   newPassword: passwordValidation, // New password must meet strength criteria
@@ -81,13 +113,19 @@ export const ChangePasswordSchema = z.object({
   message: 'New passwords do not match.',
   path: ['confirmNewPassword'],
 });
+
 // TypeScript type inferred from the ChangePasswordSchema.
 export type ChangePasswordFormValues = z.infer<typeof ChangePasswordSchema>;
 
-// Schema for the Change Email form.
+
+/**
+ * Zod schema for the Change Email form.
+ * Validates current password (for re-authentication) and the new email address.
+ */
 export const ChangeEmailSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required."), // For re-authentication
   newEmail: emailValidation, // New email must be valid
 });
+
 // TypeScript type inferred from the ChangeEmailSchema.
 export type ChangeEmailFormValues = z.infer<typeof ChangeEmailSchema>;
