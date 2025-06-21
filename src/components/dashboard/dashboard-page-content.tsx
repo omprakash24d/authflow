@@ -13,6 +13,7 @@ import { DashboardHeader } from './dashboard-header';
 import { UserProfileSummary } from './user-profile-summary';
 import { LoginActivitySummary } from './login-activity-summary';
 import { AccountManagementActions } from './account-management-actions';
+import { Separator } from '../ui/separator';
 
 /**
  * DashboardPageContent component.
@@ -34,18 +35,33 @@ export default function DashboardPageContent() {
 
   return (
     // Main container for the dashboard page content, centered and with padding.
-    <div className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 lg:p-8 bg-background">
-      {/* Card component to structure the dashboard content. */}
-      <Card className="w-full max-w-lg shadow-xl">
-        <CardHeader className="text-center"> {/* Header section of the card */}
-          <DashboardHeader user={user} /> {/* Displays user avatar and welcome message */}
-        </CardHeader>
-        <CardContent className="space-y-6"> {/* Content section with spacing between elements */}
-          <UserProfileSummary user={user} /> {/* Displays user profile details */}
-          <LoginActivitySummary user={user} /> {/* Displays login activity (currently with mocked location) */}
-          <AccountManagementActions user={user} signOut={signOut} /> {/* Provides account actions like settings, delete, sign out */}
-        </CardContent>
-      </Card>
+    <div className="container mx-auto max-w-2xl py-8 px-4">
+      {/* Header section with welcome message and avatar */}
+       <DashboardHeader user={user} />
+       <Separator className="my-8" />
+
+      <div className="space-y-6">
+         {/* Card for Account Information */}
+        <Card className="w-full shadow-lg">
+            <CardContent className="p-6">
+                <UserProfileSummary user={user} />
+            </CardContent>
+        </Card>
+
+        {/* Card for Login Activity */}
+        <Card className="w-full shadow-lg">
+            <CardContent className="p-6">
+                <LoginActivitySummary user={user} />
+            </CardContent>
+        </Card>
+
+        {/* Card for Account Management Actions */}
+        <Card className="w-full shadow-lg">
+            <CardContent className="p-6">
+                <AccountManagementActions user={user} signOut={signOut} />
+            </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

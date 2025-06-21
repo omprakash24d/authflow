@@ -26,7 +26,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { FormAlert } from '@/components/ui/form-alert'; // For displaying form-level errors
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authenticated user
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
-import { User as UserIcon, Loader2, Image as ImageIcon, UploadCloud } from 'lucide-react'; // Icons
+import { User as UserIcon, Loader2, Image as ImageIcon, UploadCloud, UserCheck } from 'lucide-react'; // Icons
 
 /**
  * Prepares Firestore batch operations for updating or creating username documents.
@@ -156,7 +156,6 @@ export function ProfileInformationForm() {
       } catch (error: any) {
         console.error("Error fetching user profile for settings:", error);
         setProfileError("Could not load your profile data from the database.");
-        // Toast is removed as FormAlert covers this
       } finally {
         setInitialDataLoaded(true); // Mark initial data loading as complete
       }
@@ -217,10 +216,6 @@ export function ProfileInformationForm() {
         setProfilePhotoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      toast({
-        title: 'Image Selected for Preview',
-        description: 'Image preview updated. Actual upload to server is not implemented in this version.',
-      });
     }
   };
 
@@ -405,7 +400,10 @@ export function ProfileInformationForm() {
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your first name" {...field} disabled={profileSaving || !isFirestoreAvailable} />
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input placeholder="Your first name" {...field} disabled={profileSaving || !isFirestoreAvailable} className="pl-10" />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -418,7 +416,10 @@ export function ProfileInformationForm() {
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your last name" {...field} disabled={profileSaving || !isFirestoreAvailable} />
+                    <div className="relative">
+                        <UserIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input placeholder="Your last name" {...field} disabled={profileSaving || !isFirestoreAvailable} className="pl-10" />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -433,7 +434,10 @@ export function ProfileInformationForm() {
               <FormItem>
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input placeholder="Your username" {...field} disabled={profileSaving || !isFirestoreAvailable} />
+                  <div className="relative">
+                    <UserCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input placeholder="Your username" {...field} disabled={profileSaving || !isFirestoreAvailable} className="pl-10" />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -488,8 +492,8 @@ export function ProfileInformationForm() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-                {profilePhotoFile ? `Selected: ${profilePhotoFile.name}` : "Select a PNG, JPG, or GIF."}
-                 <br/>Actual upload to server requires backend implementation (currently placeholder). Click save to update text fields.
+                {profilePhotoFile ? `Selected: ${profilePhotoFile.name}. ` : "Select a PNG, JPG, or GIF. "}
+                Actual photo upload is not implemented in this version.
             </p>
           </div>
 

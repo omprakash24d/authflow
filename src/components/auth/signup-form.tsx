@@ -28,7 +28,7 @@ import { SocialLogins } from './social-logins'; // Social login options
 import { PasswordBreachDialog } from './password-breach-dialog'; // Dialog for breached password warning
 import { FormAlert } from '@/components/ui/form-alert'; // General form alert
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
-import { Loader2 } from 'lucide-react'; // Loading icon
+import { Loader2, User, UserCheck } from 'lucide-react'; // Loading icon
 
 /**
  * SignUpForm component.
@@ -257,7 +257,10 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Om" {...field} disabled={isLoading} autoComplete="given-name" />
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input placeholder="Om" {...field} disabled={isLoading} autoComplete="given-name" className="pl-10" />
+                    </div>
                   </FormControl>
                   <FormMessage /> {/* Field-specific validation errors */}
                 </FormItem>
@@ -270,7 +273,10 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Prakash" {...field} disabled={isLoading} autoComplete="family-name" />
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input placeholder="Prakash" {...field} disabled={isLoading} autoComplete="family-name" className="pl-10" />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -286,7 +292,10 @@ export function SignUpForm() {
               <FormItem>
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input placeholder="omprakash24d" {...field} disabled={isLoading} autoComplete="username" />
+                   <div className="relative">
+                      <UserCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input placeholder="omprakash24d" {...field} disabled={isLoading} autoComplete="username" className="pl-10" />
+                    </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

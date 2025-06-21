@@ -6,7 +6,6 @@
 
 import type { User as FirebaseUser } from 'firebase/auth'; // Firebase User type
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // ShadCN Avatar components
-import { CardDescription, CardTitle } from '@/components/ui/card'; // ShadCN Card components for text styling
 
 /**
  * Props for the DashboardHeader component.
@@ -44,18 +43,18 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
   const displayName = user.displayName || user.email || "User"; // Fallback display name
 
   return (
-    <>
+    <div className="flex flex-col items-center text-center space-y-4">
       {/* User Avatar */}
-      <div className="flex justify-center mb-4">
-        <Avatar className="h-24 w-24"> {/* Large avatar */}
-          {/* AvatarImage attempts to load user.photoURL. If it fails or is null, AvatarFallback is shown. */}
-          <AvatarImage src={user.photoURL || undefined} alt={displayName} data-ai-hint="person avatar" />
-          <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
-        </Avatar>
-      </div>
+      <Avatar className="h-24 w-24"> {/* Large avatar */}
+        {/* AvatarImage attempts to load user.photoURL. If it fails or is null, AvatarFallback is shown. */}
+        <AvatarImage src={user.photoURL || undefined} alt={displayName} data-ai-hint="person avatar" />
+        <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
+      </Avatar>
       {/* Welcome Message */}
-      <CardTitle className="text-3xl font-headline">Welcome to AuthFlow, {displayName}!</CardTitle>
-      <CardDescription>This is your personalized dashboard.</CardDescription>
-    </>
+      <div>
+        <h2 className="text-3xl font-bold font-headline">Welcome back, {displayName}!</h2>
+        <p className="text-muted-foreground">This is your personalized dashboard.</p>
+      </div>
+    </div>
   );
 }

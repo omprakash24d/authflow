@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator'; // For visual separation between sections
 
 // Import child components for different settings categories
@@ -33,37 +33,55 @@ export default function SettingsPageContent() {
   // Thus, if this component renders, the user is assumed to be authenticated.
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-background p-4 sm:p-6 lg:p-8">
-      {/* Container to constrain the width of the settings content */}
-      <div className="w-full max-w-2xl">
+    <div className="container mx-auto max-w-2xl py-8 px-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold font-headline">Account Settings</h1>
         {/* Back button to navigate to the main dashboard */}
-        <Button variant="outline" size="sm" asChild className="mb-6">
+        <Button variant="outline" size="sm" asChild>
           <Link href="/dashboard">
             <ChevronLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Link>
         </Button>
+      </div>
 
-        {/* Main card containing all settings sections */}
-        <Card className="w-full shadow-xl">
+      <div className="space-y-8"> {/* Vertical spacing between settings cards */}
+        {/* Profile Information Card */}
+        <Card className="w-full shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl font-headline">Account Settings</CardTitle>
-            <CardDescription>Manage your profile, security, and other preferences.</CardDescription>
+             <CardTitle className="text-xl font-semibold font-headline">Profile Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-8"> {/* Vertical spacing between settings sections */}
-            {/* Profile Information Section */}
+          <CardContent>
             <ProfileInformationForm />
-            <Separator /> {/* Visual separator */}
-            
-            {/* Security Settings Section */}
+          </CardContent>
+        </Card>
+        
+        {/* Security Settings Card */}
+         <Card className="w-full shadow-lg">
+          <CardHeader>
+             <CardTitle className="text-xl font-semibold font-headline">Security</CardTitle>
+          </CardHeader>
+          <CardContent>
             <SecuritySettings />
-            <Separator />
-            
-            {/* Notification Preferences Section */}
+          </CardContent>
+        </Card>
+        
+        {/* Notification Preferences Card */}
+         <Card className="w-full shadow-lg">
+          <CardHeader>
+             <CardTitle className="text-xl font-semibold font-headline">Notification Preferences</CardTitle>
+          </CardHeader>
+          <CardContent>
             <NotificationPreferences />
-            <Separator />
-            
-            {/* Appearance Settings Section */}
+          </CardContent>
+        </Card>
+        
+        {/* Appearance Settings Card */}
+         <Card className="w-full shadow-lg">
+          <CardHeader>
+             <CardTitle className="text-xl font-semibold font-headline">Appearance</CardTitle>
+          </CardHeader>
+          <CardContent>
             <AppearanceSettings />
           </CardContent>
         </Card>
