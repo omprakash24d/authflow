@@ -28,6 +28,7 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config'; // Firebase Auth instance (can be null if config is missing)
+import { useRouter } from 'next/navigation';
 
 /**
  * Interface for the User object within the AuthContext.
@@ -64,6 +65,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null); // Stores the authenticated user object or null
   const [loading, setLoading] = useState(true); // True until initial auth state check completes
+  const router = useRouter(); // Hook for client-side navigation
 
   useEffect(() => {
     // If Firebase client auth service is not initialized (e.g., missing NEXT_PUBLIC_FIREBASE_* env vars),
@@ -96,10 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * This involves:
    * 1. Calling an API endpoint to clear the server-side session cookie.
    * 2. Signing out from the Firebase client-side SDK.
-   * 3. Redirecting the user to the homepage via a full page reload.
+   * 3. Redirecting the user to the homepage via Next.js router.
    */
   const signOut = async (): Promise<void> => {
-    setLoading(true); // Indicate an operation is in progress (optional, as redirect happens quickly).
+    setLoading(true); // Indicate an operation is in progress.
     
     try {
       // Step 1: Attempt to clear the server-side session cookie by calling the logout API.
@@ -120,21 +122,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // `onAuthStateChanged` listener (above) will automatically handle setting `user` to null.
       } catch (clientSignOutError) {
         console.error('AuthContext: Error signing out from Firebase client: ', clientSignOutError);
-        // Even if client sign out fails locally, proceed to redirect as server session *should* be cleared.
       }
     } else {
-      // If auth service isn't available, we can't call Firebase sign out.
-      // Manually set user to null and ensure loading is false before redirect.
       setUser(null);
-      setLoading(false); // Explicitly set loading to false here
       console.warn("AuthContext: Firebase Auth service not available for client-side signOut. Proceeding with redirect.");
     }
     
-    // Step 3: Redirect to homepage page using a full page reload.
-    // This helps ensure cookie state is consistent for the middleware and a clean state.
-    if (typeof window !== 'undefined') { // Ensure running in browser
-      window.location.assign('/');
-    }
+    // Step 3: Redirect to homepage using Next.js router for a smoother navigation.
+    router.push('/');
+    // A small delay to ensure state updates before loading is false, preventing flashes.
+    setTimeout(() => setLoading(false), 300);
   };
 
   // Provide the authentication state and signOut function to child components.

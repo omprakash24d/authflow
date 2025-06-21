@@ -45,23 +45,37 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
 
   /**
    * Handles the account deletion process.
-   * Prompts for confirmation and then attempts to delete the user's Firebase account.
+   * Prompts for confirmation, deletes Firestore data via API, and then deletes the Firebase Auth user.
    */
   const handleDeleteAccount = async () => {
-    if (!user) return; // Should not happen if this component is rendered for an authenticated user
+    if (!user) return;
     setIsDeleting(true);
+
     try {
-      // Attempt to delete the user from Firebase Authentication
+      // Step 1: Call the API route to delete user data from Firestore.
+      const response = await fetch('/api/auth/delete-user-data', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete account data from the database.' }));
+        throw new Error(errorData.error);
+      }
+      
+      // Step 2: Delete the user from Firebase Authentication.
       await deleteUser(user);
+      
       toast({
         title: "Account Deleted",
-        description: "Your account has been successfully deleted. Redirecting...",
+        description: "Your account and associated data have been successfully deleted. Redirecting...",
       });
-      // Explicitly call signOut to handle session cleanup and redirection to homepage.
+      
+      // Step 3: Call signOut to handle session cleanup and redirection.
       await signOut();
+
     } catch (error: any) {
       console.error("Error deleting account:", error);
-      let description = "Failed to delete your account. You may need to sign in again recently to perform this operation.";
+      let description = error.message || "Failed to delete your account. You may need to sign in again recently to perform this operation.";
       // Firebase often requires recent re-authentication for sensitive operations like account deletion.
       if (error.code === 'auth/requires-recent-login') {
         description = "This operation is sensitive and requires recent authentication. Please sign out and sign back in, then try again.";
