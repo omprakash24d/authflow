@@ -17,14 +17,14 @@ export const metadata: Metadata = {
   title: 'AuthFlow', // Default title for the application
   description: 'Comprehensive User and Authentication System by Firebase Studio', // Default description
   manifest: '/site.webmanifest', // Link to the webmanifest file
+  themeColor: [ // Theme color for browsers and PWA
+    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: dark)', color: 'black' },
+  ],
   icons: {
-    icon: [
-        { url: '/favicon.ico', sizes: 'any', type: 'image/x-icon' },
-        { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
-        { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
-        { url: '/images/AuthFlow.svg', type: 'image/svg+xml' }, // Keep the high-quality SVG as well
-    ],
-    apple: '/apple-touch-icon.png', // Simplified apple touch icon link
+    icon: '/favicon.ico',
+    shortcut: '/favicon-16x16.png',
+    apple: '/apple-touch-icon.png',
   },
 };
 
