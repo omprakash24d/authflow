@@ -45,7 +45,7 @@ export function UserProfileSummary({ user, profileData, loadingProfile, profileE
     navigator.clipboard.writeText(user.uid).then(() => {
         toast({ title: "Copied!", description: "User ID has been copied to your clipboard." });
         setIsUidCopied(true);
-        setTimeout(() => setIsUidCopied(false), 2000); // Reset icon after 2 seconds
+        setTimeout(() => setIsUidCopied(false), 2000); // Reset icon after 2 seconds.
     }, (err) => {
         toast({ title: "Failed to Copy", description: "Could not copy User ID.", variant: "destructive" });
         console.error('Failed to copy text: ', err);
@@ -127,7 +127,7 @@ export function UserProfileSummary({ user, profileData, loadingProfile, profileE
           <dd className="flex items-center gap-2">
             <span className="truncate font-code text-xs">{user.uid}</span>
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={handleCopyUid} aria-label="Copy User ID">
-                 {isUidCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                 {isUidCopied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
             </Button>
           </dd>
         </div>
