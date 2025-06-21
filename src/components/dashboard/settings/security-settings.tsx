@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { ChangePasswordDialog } from '@/components/dashboard/settings/change-password-dialog'; // Dialog for password change
 import { ChangeEmailDialog } from '@/components/dashboard/settings/change-email-dialog'; // Dialog for email change
 import { useToast } from '@/hooks/use-toast'; // For "Coming Soon" messages
-import { Lock, Mail } from 'lucide-react'; // Icons
 
 /**
  * SecuritySettings component.
@@ -25,39 +24,34 @@ export function SecuritySettings() {
   const [isChangeEmailDialogOpen, setIsChangeEmailDialogOpen] = useState(false);
 
   return (
-    <section>
-      <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
-        <Lock className="mr-2 h-5 w-5" /> Security
-      </h2>
-      <div className="space-y-3"> {/* Vertical spacing for buttons */}
-        {/* Button to open Change Password Dialog */}
-        <Button variant="outline" className="w-full justify-start" onClick={() => setIsChangePasswordDialogOpen(true)}>
-          Change Password
-        </Button>
-        
-        {/* Button to open Change Email Dialog */}
-        <Button variant="outline" className="w-full justify-start" onClick={() => setIsChangeEmailDialogOpen(true)}>
-          <Mail className="mr-2 h-4 w-4" /> Change Email Address
-        </Button>
-        
-        {/* Placeholder for Two-Factor Authentication */}
-        <Button 
-          variant="outline" 
-          className="w-full justify-start" 
-          onClick={() => toast({ title: 'Coming Soon', description: 'Two-Factor Authentication (2FA) will be added in a future update.' })}
-        >
-          Enable Two-Factor Authentication (2FA)
-        </Button>
-        
-        {/* Placeholder for viewing login history */}
-        <Button 
-          variant="link" 
-          className="text-primary p-0 h-auto" 
-          onClick={() => toast({ title: 'Coming Soon', description: 'Login history view will be added in a future update.' })}
-        >
-          View login history
-        </Button>
-      </div>
+    <div className="space-y-3"> {/* Vertical spacing for buttons */}
+      {/* Button to open Change Password Dialog */}
+      <Button variant="outline" className="w-full justify-start" onClick={() => setIsChangePasswordDialogOpen(true)}>
+        Change Password
+      </Button>
+      
+      {/* Button to open Change Email Dialog */}
+      <Button variant="outline" className="w-full justify-start" onClick={() => setIsChangeEmailDialogOpen(true)}>
+        Change Email Address
+      </Button>
+      
+      {/* Placeholder for Two-Factor Authentication */}
+      <Button 
+        variant="outline" 
+        className="w-full justify-start" 
+        onClick={() => toast({ title: 'Coming Soon', description: 'Two-Factor Authentication (2FA) will be added in a future update.' })}
+      >
+        Enable Two-Factor Authentication (2FA)
+      </Button>
+      
+      {/* Placeholder for viewing login history */}
+      <Button 
+        variant="link" 
+        className="text-primary p-0 h-auto" 
+        onClick={() => toast({ title: 'Coming Soon', description: 'Login history view will be added in a future update.' })}
+      >
+        View login history
+      </Button>
 
       {/* Dialog components (rendered but hidden until `open` prop is true) */}
       <ChangePasswordDialog 
@@ -68,6 +62,6 @@ export function SecuritySettings() {
         open={isChangeEmailDialogOpen} 
         onOpenChange={setIsChangeEmailDialogOpen} 
       />
-    </section>
+    </div>
   );
 }

@@ -7,7 +7,6 @@
 'use client'; // Client component due to state for switch controls.
 
 import { useState } from 'react';
-import { Bell } from 'lucide-react'; // Icon
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch'; // ShadCN Switch component
 import { useToast } from '@/hooks/use-toast'; // For feedback on changes
@@ -55,53 +54,42 @@ export function NotificationPreferences() {
   };
 
   return (
-    <section>
-      <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
-        <Bell className="mr-2 h-5 w-5" /> Notification Preferences
-      </h2>
-      <div className="space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Manage how you receive notifications from us.
-        </p>
-
-        <div className="space-y-4">
-          {/* Email Notifications Setting */}
-          <div>
-            <Label htmlFor="email-notifications" className="text-base font-medium">
-              Email Notifications
-            </Label>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-sm text-muted-foreground max-w-md">
-                Receive important account updates, newsletters, and promotional emails.
-              </p>
-              <Switch
-                id="email-notifications"
-                checked={emailNotificationsEnabled}
-                onCheckedChange={handleEmailNotificationChange}
-                aria-label="Toggle email notifications"
-              />
-            </div>
-          </div>
-
-          {/* SMS Notifications Setting */}
-          <div>
-            <Label htmlFor="sms-notifications" className="text-base font-medium">
-              SMS Notifications
-            </Label>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-sm text-muted-foreground max-w-md">
-                Receive critical alerts and verification codes via text message. (Requires phone number setup)
-              </p>
-              <Switch
-                id="sms-notifications"
-                checked={smsNotificationsEnabled}
-                onCheckedChange={handleSmsNotificationChange}
-                aria-label="Toggle SMS notifications"
-              />
-            </div>
-          </div>
+    <div className="space-y-4">
+      {/* Email Notifications Setting */}
+      <div>
+        <Label htmlFor="email-notifications" className="text-base font-medium">
+          Email Notifications
+        </Label>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-sm text-muted-foreground max-w-md">
+            Receive important account updates, newsletters, and promotional emails.
+          </p>
+          <Switch
+            id="email-notifications"
+            checked={emailNotificationsEnabled}
+            onCheckedChange={handleEmailNotificationChange}
+            aria-label="Toggle email notifications"
+          />
         </div>
       </div>
-    </section>
+
+      {/* SMS Notifications Setting */}
+      <div>
+        <Label htmlFor="sms-notifications" className="text-base font-medium">
+          SMS Notifications
+        </Label>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-sm text-muted-foreground max-w-md">
+            Receive critical alerts and verification codes via text message. (Requires phone number setup)
+          </p>
+          <Switch
+            id="sms-notifications"
+            checked={smsNotificationsEnabled}
+            onCheckedChange={handleSmsNotificationChange}
+            aria-label="Toggle SMS notifications"
+          />
+        </div>
+      </div>
+    </div>
   );
 }

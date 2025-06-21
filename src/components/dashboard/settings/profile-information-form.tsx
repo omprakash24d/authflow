@@ -234,7 +234,6 @@ export function ProfileInformationForm() {
     // Ensure Firestore service is available
     if (!firestore) {
       setProfileError("Database service is not available. Profile cannot be saved.");
-      toast({ title: "Configuration Error", description: "Database service is not available, cannot save profile.", variant: "destructive" });
       setProfileSaving(false); // Reset saving state if already true
       return;
     }
@@ -361,21 +360,12 @@ export function ProfileInformationForm() {
   // Display a loader while initial data is being fetched
   if (!initialDataLoaded) {
     return (
-      <section className="space-y-4">
-         <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
-            <UserIcon className="mr-2 h-5 w-5" /> Profile Information
-        </h2>
-        <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /> Loading profile...</div>
-      </section>
+      <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /> Loading profile...</div>
     );
   }
 
   return (
     <section>
-      <h2 className="text-xl font-semibold font-headline text-primary mb-4 flex items-center">
-        <UserIcon className="mr-2 h-5 w-5" /> Profile Information
-      </h2>
-
       {/* Display general profile errors */}
       <FormAlert title="Profile Error" message={profileError} variant="destructive" className="mb-4" />
 

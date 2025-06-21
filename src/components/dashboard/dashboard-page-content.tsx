@@ -6,7 +6,7 @@
 'use client'; // Client component due to use of hooks like `useAuth`.
 
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authentication state and functions
-import { Card, CardContent, CardHeader } from '@/components/ui/card'; // ShadCN Card components for layout
+import { Card, CardContent } from '@/components/ui/card'; // ShadCN Card components for layout
 
 // Import child components that make up the dashboard sections
 import { DashboardHeader } from './dashboard-header';
@@ -40,28 +40,15 @@ export default function DashboardPageContent() {
        <DashboardHeader user={user} />
        <Separator className="my-8" />
 
-      <div className="space-y-6">
-         {/* Card for Account Information */}
         <Card className="w-full shadow-lg">
-            <CardContent className="p-6">
+            <CardContent className="p-6 space-y-6">
                 <UserProfileSummary user={user} />
-            </CardContent>
-        </Card>
-
-        {/* Card for Login Activity */}
-        <Card className="w-full shadow-lg">
-            <CardContent className="p-6">
+                <Separator />
                 <LoginActivitySummary user={user} />
-            </CardContent>
-        </Card>
-
-        {/* Card for Account Management Actions */}
-        <Card className="w-full shadow-lg">
-            <CardContent className="p-6">
+                <Separator />
                 <AccountManagementActions user={user} signOut={signOut} />
             </CardContent>
         </Card>
-      </div>
     </div>
   );
 }
