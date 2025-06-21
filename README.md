@@ -1,3 +1,4 @@
+
 # AuthFlow: Comprehensive User Authentication for Next.js & Firebase
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
