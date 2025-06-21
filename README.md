@@ -34,7 +34,7 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 
 -   **Email/Password Authentication**: Secure sign-up and sign-in with email and password.
 -   **Username or Email Login**: Users can sign in using either their registered email or username.
--   **Social Logins**: Integrated with Google, GitHub, and Microsoft for easy OAuth sign-in.
+-   **Social Logins**: Integrated with Google, GitHub, and Microsoft for easy OAuth sign-in. New social users are assigned a unique, auto-generated username which they can change in their settings.
 -   **Password Reset**: "Forgot Password" functionality via email.
 -   **Email Verification**: Users are prompted to verify their email address after sign-up.
 -   **Session Management**: Uses HTTP-only cookies for secure session handling.
@@ -68,31 +68,31 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 
 <table>
   <tr>
-    <td align="center"><strong>Sign In Page</strong></td>
-    <td align="center"><strong>Sign Up Page</strong></td>
-
-  </tr>
-  <tr>
-    <td><img src="public/images/sign_in.png" alt="AuthFlow Sign In Page"></td>
-    <td><img src="public/images/sign_up.png" alt="AuthFlow Sign Up Page"></td>
-  </tr>
-  <tr>
     <td align="center"><strong>Home Page</strong></td>
+    <td align="center"><strong>Sign In Page</strong></td>
+  </tr>
+  <tr>
+    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Home Page" data-ai-hint="home page"></td>
+    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Sign In Page" data-ai-hint="signin form"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Sign Up Page</strong></td>
     <td align="center"><strong>Forgot Password Page</strong></td>
   </tr>
   <tr>
-     <td><img src="public/images/authflow_home.png" alt="AuthFlow Home Page"></td>
-    <td><img src="public/images/forgot_password.png" alt="AuthFlow Forgot Password Page"></td>
+    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Sign Up Page" data-ai-hint="signup form"></td>
+    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Forgot Password Page" data-ai-hint="forgot password"></td>
   </tr>
   <tr>
     <td align="center"><strong>Dashboard</strong></td>
     <td align="center"><strong>Account Settings</strong></td>
   </tr>
   <tr>
-    <td><img src="public/images/dashboard.png" alt="AuthFlow Dashboard"></td>
-    <td><img src="public/images/setting.png" alt="AuthFlow Settings Page"></td>
+    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Dashboard" data-ai-hint="user dashboard"></td>
+    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Settings Page" data-ai-hint="settings page"></td>
   </tr>
 </table>
+
 
 ## Getting Started
 
