@@ -1,23 +1,33 @@
-<!-- IMPORTANT: Remember to replace "https://www.your-domain.com" with your actual domain name. -->
+<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://www.your-domain.com/</loc>
-    <lastmod>2024-01-01</lastmod>
+    <loc>https://authflow.indhinditech.com/</loc>
+    <lastmod>2024-07-27</lastmod>
     <priority>1.00</priority>
   </url>
   <url>
-    <loc>https://www.your-domain.com/signin</loc>
-    <lastmod>2024-01-01</lastmod>
+    <loc>https://authflow.indhinditech.com/signin</loc>
+    <lastmod>2024-07-27</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
-    <loc>https://www.your-domain.com/signup</loc>
-    <lastmod>2024-01-01</lastmod>
+    <loc>https://authflow.indhinditech.com/signup</loc>
+    <lastmod>2024-07-27</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
-    <loc>https://www.your-domain.com/forgot-password</loc>
-    <lastmod>2024-01-01</lastmod>
-    <priority>0.60</priority>
+    <loc>https://authflow.indhinditech.com/forgot-password</loc>
+    <lastmod>2024-07-27</lastmod>
+    <priority>0.64</priority>
+  </url>
+  <url>
+    <loc>https://authflow.indhinditech.com/terms-of-service</loc>
+    <lastmod>2024-07-27</lastmod>
+    <priority>0.50</priority>
+  </url>
+  <url>
+    <loc>https://authflow.indhinditech.com/privacy-policy</loc>
+    <lastmod>2024-07-27</lastmod>
+    <priority>0.50</priority>
   </url>
 </urlset>

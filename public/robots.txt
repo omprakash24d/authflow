@@ -1,5 +1,8 @@
-# IMPORTANT: Remember to replace "https://www.your-domain.com" with your actual domain name.
+# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+#
+# Allow all crawling
 User-agent: *
-Allow: /
+Disallow:
 
-Sitemap: https://www.your-domain.com/sitemap.xml
+# Sitemap location
+Sitemap: https://authflow.indhinditech.com/sitemap.xml

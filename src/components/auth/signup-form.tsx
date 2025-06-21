@@ -5,7 +5,7 @@
 
 'use client'; // Client component due to extensive state, form handling, and effects.
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
@@ -380,11 +380,11 @@ export function SignUpForm() {
                 <div className="space-y-1 leading-none">
                   <FormLabel className="text-sm font-normal">
                     I agree to the{' '}
-                    <Link href="https://indhinditech.com/" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+                    <Link href="/terms-of-service" className="font-medium text-primary hover:underline">
                       Terms of Service
                     </Link>{' '}
                     and{' '}
-                    <Link href="https://indhinditech.com" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+                    <Link href="/privacy-policy" className="font-medium text-primary hover:underline">
                       Privacy Policy
                     </Link>
                     .
