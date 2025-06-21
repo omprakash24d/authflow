@@ -45,15 +45,15 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
   return (
     <div className="flex items-center space-x-4">
       {/* User Avatar */}
-      <Avatar className="h-20 w-20"> {/* Slightly smaller avatar */}
+      <Avatar className="h-12 w-12">
         {/* AvatarImage attempts to load user.photoURL. If it fails or is null, AvatarFallback is shown. */}
         <AvatarImage src={user.photoURL || undefined} alt={displayName} data-ai-hint="person avatar" />
         <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
       </Avatar>
       {/* Welcome Message */}
       <div>
-        <h2 className="text-2xl font-bold font-headline">Welcome back, {displayName}!</h2>
-        <p className="text-muted-foreground">This is your personalized dashboard.</p>
+        <h2 className="text-xl font-bold font-headline">Welcome back, {displayName}!</h2>
+        <p className="text-sm text-muted-foreground">This is your personalized dashboard.</p>
       </div>
     </div>
   );
