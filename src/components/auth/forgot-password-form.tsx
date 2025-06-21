@@ -32,7 +32,6 @@ type ForgotPasswordFormValues = z.infer<typeof ForgotPasswordSchema>;
 export function ForgotPasswordForm() {
   const [isLoading, setIsLoading] = useState(false); // Manages loading state for form submission
   const [formError, setFormError] = useState<string | null>(null); // Stores general form error messages
-  const [formSuccess, setFormSuccess] = useState<string | null>(null); // Stores success messages
   const { toast } = useToast(); // Hook for showing toast notifications
 
   // Initialize react-hook-form with Zod resolver for validation.
@@ -51,7 +50,6 @@ export function ForgotPasswordForm() {
   async function onSubmit(values: ForgotPasswordFormValues) {
     setIsLoading(true);
     setFormError(null);
-    setFormSuccess(null);
 
     if (!auth) {
       setFormError(AuthErrors.serviceUnavailable);
@@ -63,12 +61,13 @@ export function ForgotPasswordForm() {
     try {
       // Attempt to send password reset email via Firebase.
       await sendPasswordResetEmail(auth, values.email);
-      setFormSuccess(SuccessMessages.passwordResetEmailSent);
+      
+      // Use a toast notification for success feedback. This is more consistent with other forms.
       toast({
-        title: 'Password Reset Email Sent',
-        description: 'Check your inbox for instructions to reset your password.',
+        title: 'Check Your Email',
+        description: SuccessMessages.passwordResetEmailSent,
       });
-      form.reset(); // Reset form fields on success
+      form.reset(); // Reset form fields on success for a clean state
     } catch (error: unknown) {
       // Handle errors from Firebase or other issues.
       if (error instanceof Error) {
@@ -76,12 +75,13 @@ export function ForgotPasswordForm() {
       } else {
         console.error('Password Reset Error:', error);
       }
-      // Note: Firebase often doesn't throw specific errors for non-existent emails for security reasons.
-      // The success message is phrased to account for this.
-      setFormError('An error occurred while trying to send the reset email. Please try again.');
+      // Note: For security, Firebase often doesn't throw errors for non-existent emails.
+      // The success message accounts for this, so client-side errors are typically for other issues.
+      const errorMessage = 'An error occurred. Please try again.';
+      setFormError(errorMessage);
       toast({
-        title: 'Error Sending Reset Email',
-        description: 'Could not send password reset email. Please try again.',
+        title: 'Error',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -104,9 +104,8 @@ export function ForgotPasswordForm() {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Display form-level error or success messages */}
+          {/* Display form-level error messages */}
           <FormAlert title="Error" message={formError} variant="destructive" />
-          <FormAlert title="Success" message={formSuccess} variant="success" />
           
           <FormField
             control={form.control}

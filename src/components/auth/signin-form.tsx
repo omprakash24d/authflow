@@ -106,7 +106,8 @@ export function SignInForm() {
         setFormError(AuthErrors.serviceUnavailable);
         toast({ title: 'Service Unavailable', description: AuthErrors.serviceUnavailable, variant: 'destructive' });
         setIsLoading(false);
-        throw new Error("Auth service unavailable"); 
+        // The return here prevents further execution. No need to throw.
+        return;
     }
     // Sign in with Firebase Auth
     const userCredential = await signInWithEmailAndPassword(auth, emailToUse, passwordToUse); 

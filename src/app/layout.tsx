@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     default: 'AuthFlow', // Default title for the application (e.g., on the homepage).
     template: '%s | AuthFlow', // Template for titles on other pages (e.g., "Sign In | AuthFlow").
   },
-  description: 'Comprehensive User and Authentication System by Firebase Studio',
+  description: 'A comprehensive, secure, and feature-rich user authentication system built with Next.js, Firebase, and Tailwind CSS.',
 };
 
 /**
