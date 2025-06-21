@@ -1,7 +1,6 @@
-// src/components/auth/auth-footer.tsx
-// This component renders the footer section specifically for authentication pages.
-// It includes copyright information and links to the developer's social profiles.
+'use client'; // This component uses client-side state for the current year.
 
+import { useState, useEffect } from 'react';
 import { TwitterIcon, GithubIcon, LinkedinIcon } from 'lucide-react'; 
 
 /**
@@ -10,6 +9,13 @@ import { TwitterIcon, GithubIcon, LinkedinIcon } from 'lucide-react';
  * @returns JSX.Element
  */
 export function AuthFooter() {
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+
+  // This prevents hydration mismatch by ensuring the year is determined on the client-side.
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
+
   // Array of developer's social media links for easy mapping.
   const developerLinks = [
     {
@@ -31,7 +37,7 @@ export function AuthFooter() {
 
   return (
     <footer className="mt-12 text-center text-sm text-muted-foreground">
-      <p className="font-semibold">&copy; {new Date().getFullYear()} AuthFlow. All rights reserved.</p>
+      <p className="font-semibold">&copy; {currentYear} AuthFlow. All rights reserved.</p>
       <p className="mt-1">
         Developed with <span className="text-accent">&hearts;</span> by Om Prakash.
       </p>

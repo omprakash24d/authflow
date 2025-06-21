@@ -1,7 +1,3 @@
-// src/components/auth/forgot-password-form.tsx
-// This component renders the form for users to request a password reset email.
-// It handles form input, validation, and interaction with Firebase Auth for sending the reset email.
-
 'use client'; // Client component due to form handling and state.
 
 import { useState } from 'react';
