@@ -8,13 +8,17 @@ import type { ReactNode } from 'react';
 
 /**
  * AuthPagesLayout component.
- * A layout component that wraps authentication pages.
+ * A server-side layout component that wraps all authentication pages.
+ * It renders the `AuthLayoutComponent`, which provides the common visual
+ * structure for auth pages, including the application logo and footer, ensuring a
+ * consistent branding experience during the authentication flow.
+ *
  * @param {object} props - The component's props.
- * @param {ReactNode} props.children - The child components to be rendered within this layout (typically the page content).
- * @returns JSX.Element
+ * @param {ReactNode} props.children - The child components to be rendered within this layout
+ *   (this will be the specific page content, e.g., the sign-in form).
+ * @returns {JSX.Element} The authentication layout wrapping the page content.
  */
 export default function AuthPagesLayout({ children }: { children: ReactNode }) {
   // Renders the AuthLayoutComponent, passing children through to it.
-  // AuthLayoutComponent typically includes common elements like a logo and footer for auth pages.
   return <AuthLayoutComponent>{children}</AuthLayoutComponent>;
 }

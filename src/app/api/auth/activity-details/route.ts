@@ -1,46 +1,53 @@
 // src/app/api/auth/activity-details/route.ts
 // This API route provides details about the user's current session activity,
-// such as IP address. It requires an authenticated session.
+// such as their IP address. It's protected and requires an authenticated session.
 
 import { type NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebase/admin-config'; // Firebase Admin SDK for session verification
 
 /**
- * GET handler for fetching activity details.
- * Verifies the user's session cookie and returns IP address information.
- * @param request The incoming NextRequest object.
- * @returns A NextResponse object with activity details or an error.
+ * GET handler for fetching user activity details.
+ * This endpoint verifies the user's session cookie to ensure they are authenticated.
+ * On success, it returns the user's IP address. Location data is mocked.
+ *
+ * @param {NextRequest} request - The incoming Next.js request object.
+ * @returns {NextResponse} A NextResponse object containing activity details or an error response.
  */
 export async function GET(request: NextRequest) {
-  // Retrieve the session cookie from the request.
   const sessionCookie = request.cookies.get('firebaseIdToken')?.value;
 
   if (!sessionCookie) {
-    // If no session cookie is found, return an unauthorized error.
     return NextResponse.json({ error: 'Unauthorized: No session cookie provided.' }, { status: 401 });
   }
 
   try {
     // Verify the session cookie using Firebase Admin SDK.
-    // The `true` argument checks if the cookie has been revoked.
+    // The `true` argument ensures the cookie has not been revoked.
     await admin.auth().verifySessionCookie(sessionCookie, true);
 
     // Attempt to get the IP address from the request.
-    // `request.ip` is preferred for Vercel Edge Functions.
-    // `x-forwarded-for` is a common header for proxies.
+    // `request.ip` is the preferred method for Vercel Edge Functions.
+    // `x-forwarded-for` is a fallback for common proxy headers.
     const ipAddress = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'IP Not Available';
     
-    // Mock location data as actual geolocation is beyond the scope of this basic example
-    // and would require a third-party service or more complex setup.
+    // NOTE: Real geolocation would require a third-party service (e.g., MaxMind, ip-api.com).
+    // For this example, location data is mocked.
     const location = 'Location data unavailable';
 
     // Return the IP address and mocked location data.
     return NextResponse.json({ ipAddress, location }, { status: 200 });
 
-  } catch (error) {
-    // Log any errors during session verification or processing.
-    console.error('Error verifying session cookie or getting activity details:', error);
-    // Respond with a generic error for security; specific error is logged server-side.
-    return NextResponse.json({ error: 'Unauthorized: Invalid session or failed to process request.' }, { status: 401 });
+  } catch (error: any) {
+    // Log the detailed error for debugging purposes on the server.
+    console.error('Error verifying session cookie or fetching activity details:', error);
+
+    let errorMessage = 'Unauthorized: Invalid session or failed to process request.';
+    // Provide a more specific error message if the session cookie is invalid or revoked.
+    if (error.code === 'auth/session-cookie-revoked' || error.code === 'auth/invalid-session-cookie') {
+        errorMessage = 'Unauthorized: Your session has expired or is invalid. Please sign in again.';
+    }
+
+    // Respond with a clear error message.
+    return NextResponse.json({ error: errorMessage }, { status: 401 });
   }
 }

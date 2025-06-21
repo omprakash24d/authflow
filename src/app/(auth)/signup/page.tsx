@@ -1,13 +1,13 @@
 // src/app/(auth)/signup/page.tsx
 // This file defines the Sign Up page for the AuthFlow system.
-// It allows new users to create an account.
+// It allows new users to create an account using the `SignUpForm` component.
 
 import { SignUpForm } from '@/components/auth/signup-form';
 import type { Metadata } from 'next';
 
 /**
  * Metadata for the Sign Up page.
- * Provides title and description for SEO and browser tab.
+ * Provides title and description for SEO and browser tab identification.
  */
 export const metadata: Metadata = {
   title: 'Sign Up',
@@ -16,9 +16,10 @@ export const metadata: Metadata = {
 
 /**
  * SignUpPage component.
- * Renders the `SignUpForm` component which contains the logic and UI
- * for the user registration process.
- * @returns JSX.Element
+ * This page component's primary role is to render the `SignUpForm`, which encapsulates
+ * all logic and UI for the user registration process.
+ *
+ * @returns {JSX.Element} The rendered Sign Up form.
  */
 export default function SignUpPage() {
   return <SignUpForm />;

@@ -1,6 +1,7 @@
 // src/app/(auth)/signin/page.tsx
 // This file defines the Sign In page for the AuthFlow system.
-// It allows existing users to log into their accounts.
+// It allows existing users to log into their accounts using the `SignInForm` component.
+// React Suspense is used to provide a loading fallback, improving user experience.
 
 import { SignInForm } from '@/components/auth/signin-form';
 import type { Metadata } from 'next';
@@ -9,7 +10,7 @@ import { AuthPageLoader } from '@/components/auth/auth-page-loader';
 
 /**
  * Metadata for the Sign In page.
- * Provides title and description for SEO and browser tab.
+ * Provides title and description for SEO and browser tab identification.
  */
 export const metadata: Metadata = {
   title: 'Sign In',
@@ -18,14 +19,16 @@ export const metadata: Metadata = {
 
 /**
  * SignInPage component.
- * Renders the `SignInForm` which handles the sign-in logic and UI.
- * It uses React Suspense to show a loader while the form component might be loading.
- * @returns JSX.Element
+ * Renders the `SignInForm`, which handles all sign-in logic and UI.
+ * It wraps the form in a React `Suspense` boundary to show a user-friendly
+ * loader (`AuthPageLoader`) while the form component or its dependencies are loading.
+ *
+ * @returns {JSX.Element} The rendered Sign In page with Suspense.
  */
 export default function SignInPage() {
   return (
-    // Suspense is used here to provide a fallback UI (AuthPageLoader)
-    // if SignInForm or its dependencies are code-split and take time to load.
+    // Suspense provides a fallback UI if SignInForm is code-split or takes time to load,
+    // preventing a blank screen and improving perceived performance.
     <Suspense fallback={<AuthPageLoader message="Loading sign-in form..." />} >
       <SignInForm />
     </Suspense>

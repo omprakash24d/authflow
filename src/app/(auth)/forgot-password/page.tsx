@@ -1,13 +1,14 @@
 // src/app/(auth)/forgot-password/page.tsx
 // This file defines the "Forgot Password" page for the AuthFlow system.
 // It allows users who have forgotten their password to request a reset link via email.
+// The actual form logic and UI are encapsulated in the `ForgotPasswordForm` component.
 
 import type { Metadata } from 'next';
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form';
 
 /**
  * Metadata for the Forgot Password page.
- * Provides title and description for SEO and browser tab.
+ * Provides title and description for SEO and browser tab identification.
  */
 export const metadata: Metadata = {
   title: 'Forgot Password',
@@ -16,9 +17,10 @@ export const metadata: Metadata = {
 
 /**
  * ForgotPasswordPage component.
- * Renders the `ForgotPasswordForm` component which contains the logic and UI
- * for the password reset request process.
- * @returns JSX.Element
+ * This page component simply renders the `ForgotPasswordForm`, which contains all
+ * the necessary logic and UI for the password reset request process.
+ *
+ * @returns {JSX.Element} The rendered Forgot Password form.
  */
 export default function ForgotPasswordPage() {
   return <ForgotPasswordForm />;
