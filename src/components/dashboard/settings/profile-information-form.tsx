@@ -1,7 +1,7 @@
 // src/components/dashboard/settings/profile-information-form.tsx
 // This component provides a form for users to update their profile information,
-// such as first name, last name, username, and profile photo.
-// It interacts with Firebase Auth for updating the main profile (displayName, photoURL)
+// such as first name, last name, and username.
+// It interacts with Firebase Auth for updating the main profile (displayName)
 // and Firestore for storing/updating additional details and username uniqueness.
 
 'use client'; // Client component due to form handling, state, and Firebase interactions.
@@ -26,7 +26,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { FormAlert } from '@/components/ui/form-alert'; // For displaying form-level errors
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authenticated user
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
-import { User as UserIcon, Loader2, Image as ImageIcon, UploadCloud, UserCheck } from 'lucide-react'; // Icons
+import { Loader2, Image as ImageIcon } from 'lucide-react'; // Icons
 
 /**
  * Prepares Firestore batch operations for updating or creating username documents.
@@ -89,7 +89,7 @@ async function prepareUsernameUpdates(
 
 /**
  * ProfileInformationForm component.
- * Allows users to update their first name, last name, username, and profile photo.
+ * Allows users to update their first name, last name, and username.
  * @returns JSX.Element
  */
 export function ProfileInformationForm() {
@@ -100,9 +100,7 @@ export function ProfileInformationForm() {
   const [profileSaving, setProfileSaving] = useState(false); // Loading state for profile save
   const [profileError, setProfileError] = useState<string | null>(null); // Form-level error messages
   const [initialUsername, setInitialUsername] = useState<string | null>(null); // Stores username on load to check for changes
-  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null); // Stores selected photo file
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null); // Data URL for photo preview
-  const fileInputRef = useRef<HTMLInputElement>(null); // Ref for hidden file input
   const [isFirestoreAvailable, setIsFirestoreAvailable] = useState(false); // Tracks if Firestore service is up
   const [initialDataLoaded, setInitialDataLoaded] = useState(false); // Tracks if initial profile data has loaded
 
@@ -115,6 +113,8 @@ export function ProfileInformationForm() {
       username: '',
     },
   });
+
+  const { formState } = profileForm;
 
   // useEffect to fetch and populate user profile data when the component mounts or user/firestore changes.
   useEffect(() => {
@@ -183,41 +183,8 @@ export function ProfileInformationForm() {
     // Call fetchUserProfile with the confirmed non-null user and firestore instances.
     fetchUserProfile(firestore, user);
 
-  }, [user, firestore, profileForm, profileError]); // Dependencies for useEffect
-
-  /**
-   * Triggers a click on the hidden file input element for photo selection.
-   */
-  const handlePhotoUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  /**
-   * Handles file selection for the profile photo.
-   * Validates file type and generates a preview.
-   * @param {React.ChangeEvent<HTMLInputElement>} event - The file input change event.
-   */
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Basic client-side validation for image type.
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: 'Invalid File Type',
-          description: 'Please select an image file (e.g., PNG, JPG, GIF).',
-          variant: 'destructive',
-        });
-        return;
-      }
-      setProfilePhotoFile(file); // Store the file object
-      // Generate a data URL for client-side preview.
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, firestore]); // Dependencies for useEffect
 
   /**
    * Handles submission of the profile information form.
@@ -245,35 +212,6 @@ export function ProfileInformationForm() {
     const newUsername = values.username.trim();
     let authDisplayNameUpdated = false; // Flag to track if Auth profile update was attempted/succeeded
 
-    // --- Firebase Storage Upload Logic - Placeholder ---
-    // let newPhotoURL = currentUser.photoURL; // Start with current photo URL
-    // if (profilePhotoFile) {
-    //   toast({
-    //       title: "Profile Photo (Upload Skipped)",
-    //       description: "Profile photo upload to Firebase Storage is not yet implemented. This save will not include photo changes.",
-    //       duration: 7000,
-    //   });
-    //   // console.log("Profile photo selected, actual upload to Firebase Storage needs implementation.", profilePhotoFile.name);
-    //   // try {
-    //   //   // Example: Uploading to Firebase Storage (requires `firebase/storage` and setup)
-    //   //   // import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-    //   //   // const storage = getStorage(firebaseApp); // Assuming firebaseApp is your initialized app
-    //   //   // const photoRef = storageRef(storage, `profilePhotos/${currentUser.uid}/${profilePhotoFile.name}`);
-    //   //   // const snapshot = await uploadBytes(photoRef, profilePhotoFile);
-    //   //   // newPhotoURL = await getDownloadURL(snapshot.ref);
-    //   //   // toast({ title: "Photo Uploaded", description: "Your new profile photo has been uploaded." });
-    //   // } catch (storageError: any) {
-    //   //   console.error("Error uploading profile photo to Firebase Storage:", storageError);
-    //   //   const storageErrorMessage = getFirebaseAuthErrorMessage(storageError.code);
-    //   //   setProfileError(`Failed to upload photo: ${storageErrorMessage}. Profile text changes might still be saved.`);
-    //   //   toast({ title: "Photo Upload Error", description: `Failed to upload photo: ${storageErrorMessage}`, variant: "destructive" });
-    //   //   // Decide whether to stop or continue with text updates
-    //   //   // setProfileSaving(false); // Optionally stop here
-    //   //   // return; 
-    //   // }
-    // }
-    // --- End of Firebase Storage Upload Logic Placeholder ---
-
     // Prepare username updates (checks availability, prepares Firestore batch ops)
     const usernameUpdateResult = await prepareUsernameUpdates(
       newUsername,
@@ -291,10 +229,9 @@ export function ProfileInformationForm() {
     }
 
     try {
-      // Update Firebase Auth profile (displayName, potentially photoURL later)
+      // Update Firebase Auth profile (displayName)
       await updateProfile(currentUser, {
           displayName: newUsername,
-          // photoURL: newPhotoURL, // Add this back when storage upload is implemented
       });
       authDisplayNameUpdated = true; // Mark Auth profile as updated
     } catch (authError: any) {
@@ -317,7 +254,6 @@ export function ProfileInformationForm() {
         lastName: values.lastName,
         username: newUsername,
         email: currentUser.email, // Keep email synced, though it's changed via Security section
-        // photoURL: newPhotoURL, // Add this back when storage upload is implemented
         updatedAt: serverTimestamp(),
       };
       batch.set(userProfileRef, profileUpdateData, { merge: true }); // Merge to avoid overwriting unrelated fields
@@ -338,6 +274,7 @@ export function ProfileInformationForm() {
         title: 'Profile Updated',
         description: 'Your profile information has been successfully saved.',
       });
+      profileForm.reset(values); // Reset form state to make it not "dirty"
 
     } catch (firestoreError: any) { // Handle Firestore update errors
       console.error("Error updating profile in Firestore:", firestoreError);
@@ -385,10 +322,7 @@ export function ProfileInformationForm() {
                 <FormItem>
                   <FormLabel>First Name</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <UserIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input placeholder="Your first name" {...field} disabled={profileSaving || !isFirestoreAvailable} className="pl-10" />
-                    </div>
+                    <Input placeholder="Your first name" {...field} disabled={profileSaving || !isFirestoreAvailable} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -401,10 +335,7 @@ export function ProfileInformationForm() {
                 <FormItem>
                   <FormLabel>Last Name</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                        <UserIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input placeholder="Your last name" {...field} disabled={profileSaving || !isFirestoreAvailable} className="pl-10" />
-                    </div>
+                      <Input placeholder="Your last name" {...field} disabled={profileSaving || !isFirestoreAvailable} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -419,10 +350,7 @@ export function ProfileInformationForm() {
               <FormItem>
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <UserCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="Your username" {...field} disabled={profileSaving || !isFirestoreAvailable} className="pl-10" />
-                  </div>
+                    <Input placeholder="Your username" {...field} disabled={profileSaving || !isFirestoreAvailable} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -456,34 +384,14 @@ export function ProfileInformationForm() {
                   <ImageIcon size={32} /> // Placeholder icon
                 )}
               </div>
-              {/* Upload Button */}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePhotoUploadClick}
-                disabled={profileSaving || !isFirestoreAvailable} // Disable if saving or Firestore unavailable
-              >
-                <UploadCloud className="mr-2 h-4 w-4" />
-                {profilePhotoPreview ? 'Change Photo' : 'Upload Photo'}
-              </Button>
-              {/* Hidden file input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/png, image/jpeg, image/gif" // Accepted image types
-                className="hidden"
-                aria-label="Upload profile photo"
-              />
             </div>
             <p className="text-xs text-muted-foreground">
-                {profilePhotoFile ? `Selected: ${profilePhotoFile.name}. ` : "Select a PNG, JPG, or GIF. "}
-                Actual photo upload is not implemented in this version.
+                Profile photo upload is not implemented in this version.
             </p>
           </div>
 
           {/* Save Button */}
-          <Button type="submit" disabled={profileSaving || !isFirestoreAvailable || !user}>
+          <Button type="submit" disabled={profileSaving || !isFirestoreAvailable || !user || !formState.isDirty}>
             {(profileSaving) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Profile Changes
           </Button>

@@ -56,39 +56,39 @@ export function NotificationPreferences() {
   return (
     <div className="space-y-4">
       {/* Email Notifications Setting */}
-      <div>
-        <Label htmlFor="email-notifications" className="text-base font-medium">
-          Email Notifications
-        </Label>
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-sm text-muted-foreground max-w-md">
-            Receive important account updates, newsletters, and promotional emails.
+      <div className="flex items-center justify-between space-x-2">
+        <div className="flex-grow">
+          <Label htmlFor="email-notifications" className="font-medium">
+            Email Notifications
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Receive important account updates and newsletters.
           </p>
-          <Switch
-            id="email-notifications"
-            checked={emailNotificationsEnabled}
-            onCheckedChange={handleEmailNotificationChange}
-            aria-label="Toggle email notifications"
-          />
         </div>
+        <Switch
+          id="email-notifications"
+          checked={emailNotificationsEnabled}
+          onCheckedChange={handleEmailNotificationChange}
+          aria-label="Toggle email notifications"
+        />
       </div>
 
       {/* SMS Notifications Setting */}
-      <div>
-        <Label htmlFor="sms-notifications" className="text-base font-medium">
-          SMS Notifications
-        </Label>
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-sm text-muted-foreground max-w-md">
-            Receive critical alerts and verification codes via text message. (Requires phone number setup)
+      <div className="flex items-center justify-between space-x-2">
+        <div className="flex-grow">
+          <Label htmlFor="sms-notifications" className="font-medium">
+            SMS Notifications
+          </Label>
+           <p className="text-xs text-muted-foreground">
+            Get critical alerts via text. (Requires phone setup)
           </p>
-          <Switch
-            id="sms-notifications"
-            checked={smsNotificationsEnabled}
-            onCheckedChange={handleSmsNotificationChange}
-            aria-label="Toggle SMS notifications"
-          />
         </div>
+        <Switch
+          id="sms-notifications"
+          checked={smsNotificationsEnabled}
+          onCheckedChange={handleSmsNotificationChange}
+          aria-label="Toggle SMS notifications"
+        />
       </div>
     </div>
   );

@@ -46,8 +46,8 @@ export function SecuritySettings() {
       
       {/* Placeholder for viewing login history */}
       <Button 
-        variant="link" 
-        className="text-primary p-0 h-auto" 
+        variant="outline" 
+        className="w-full justify-start" 
         onClick={() => toast({ title: 'Coming Soon', description: 'Login history view will be added in a future update.' })}
       >
         View login history
