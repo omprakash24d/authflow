@@ -213,9 +213,7 @@ export function SignUpForm() {
     form.setValue('password', ''); // Clear password fields
     form.setValue('confirmPassword', '');
     // Focus the password input for convenience
-    if (passwordInputRef.current && passwordInputRef.current.querySelector('input')) {
-        (passwordInputRef.current.querySelector('input') as HTMLInputElement).focus();
-    }
+    passwordInputRef.current?.focus();
     toast({
         title: 'Choose a New Password',
         description: 'Please enter a new, secure password.',
@@ -314,24 +312,17 @@ export function SignUpForm() {
           <FormField
             control={form.control}
             name="password"
-            render={({ field }) => {
-              // Pass down the ref correctly to the PasswordInput component
-              const { ref: fieldRef, ...otherFieldProps } = field;
-              return (
+            render={({ field }) => (
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    {/* `div` wrapper for the ref from react-hook-form to be correctly applied to a focusable element if PasswordInput uses forwardRef internally for its own input */}
-                    <div ref={passwordInputRef}> 
-                        <PasswordInput
-                            field={{...otherFieldProps, ref: (el) => {
-                                fieldRef(el); // Assign react-hook-form's ref
-                            }}}
-                            placeholder="••••••••"
-                            disabled={isLoading}
-                            autoComplete="new-password"
-                        />
-                    </div>
+                    <PasswordInput
+                        placeholder="••••••••"
+                        disabled={isLoading}
+                        autoComplete="new-password"
+                        {...field}
+                        ref={passwordInputRef}
+                    />
                   </FormControl>
                   {/* Display password strength indicator if password has input */}
                   {watchedPassword && watchedPassword.length > 0 && (
@@ -339,8 +330,8 @@ export function SignUpForm() {
                   )}
                   <FormMessage />
                 </FormItem>
-              );
-            }}
+              )
+            }
           />
 
           {/* Confirm Password Field */}
@@ -352,10 +343,10 @@ export function SignUpForm() {
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
                   <PasswordInput
-                    field={field}
                     placeholder="••••••••"
                     disabled={isLoading}
                     autoComplete="new-password"
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />

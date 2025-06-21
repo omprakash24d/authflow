@@ -146,11 +146,11 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>Current Password</FormLabel>
                   <FormControl>
-                    <PasswordInput<ChangePasswordFormValues, "currentPassword">
-                      field={field}
+                    <PasswordInput
                       placeholder="••••••••"
                       disabled={isLoading}
                       autoComplete="current-password" // Helps password managers
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage /> {/* Field-specific validation errors */}
@@ -166,11 +166,11 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>New Password</FormLabel>
                   <FormControl>
-                     <PasswordInput<ChangePasswordFormValues, "newPassword">
-                      field={field}
+                     <PasswordInput
                       placeholder="••••••••"
                       disabled={isLoading}
                       autoComplete="new-password" // Helps password managers
+                      {...field}
                     />
                   </FormControl>
                   {/* Display password strength indicator if new password has input */}
@@ -190,11 +190,11 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 <FormItem>
                   <FormLabel>Confirm New Password</FormLabel>
                   <FormControl>
-                    <PasswordInput<ChangePasswordFormValues, "confirmNewPassword">
-                      field={field}
+                    <PasswordInput
                       placeholder="••••••••"
                       disabled={isLoading}
                       autoComplete="new-password"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

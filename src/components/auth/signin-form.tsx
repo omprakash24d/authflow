@@ -355,10 +355,10 @@ export function SignInForm() {
                 </div>
                 <FormControl>
                   <PasswordInput // Custom password input with show/hide
-                    field={field}
                     placeholder="••••••••"
                     disabled={anyLoading}
                     autoComplete="current-password" // Helps password managers
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />

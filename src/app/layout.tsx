@@ -39,8 +39,8 @@ export default function RootLayout({ children }: PropsWithChildren<{}>) {
         {/* Other head elements like favicons, meta tags can be added here or in page-specific metadata. */}
       </head>
       <body className="font-body antialiased"> {/* Sets default font and enables anti-aliasing. */}
-        {/* ThemeProvider manages dark/light mode switching. */}
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        {/* ThemeProvider manages dark/light mode switching. Default is now 'light'. */}
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           {/* AuthProvider manages user authentication state across the app. */}
           <AuthProvider>
             {children} {/* Renders the active page content. */}
