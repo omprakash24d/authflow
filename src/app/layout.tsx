@@ -24,9 +24,7 @@ export const metadata: Metadata = {
         { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
         { url: '/images/AuthFlow.svg', type: 'image/svg+xml' }, // Keep the high-quality SVG as well
     ],
-    apple: [
-      { url: '/apple-touch-icon.png' },
-    ],
+    apple: '/apple-touch-icon.png', // Simplified apple touch icon link
   },
 };
 
