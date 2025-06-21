@@ -68,28 +68,29 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 
 <table>
   <tr>
-    <td align="center"><strong>Home Page</strong></td>
     <td align="center"><strong>Sign In Page</strong></td>
-  </tr>
-  <tr>
-    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Home Page" data-ai-hint="home page"></td>
-    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Sign In Page" data-ai-hint="signin form"></td>
-  </tr>
-  <tr>
     <td align="center"><strong>Sign Up Page</strong></td>
+
+  </tr>
+  <tr>
+    <td><img src="public/images/sign_in.png" alt="AuthFlow Sign In Page"></td>
+    <td><img src="public/images/sign_up.png" alt="AuthFlow Sign Up Page"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Home Page</strong></td>
     <td align="center"><strong>Forgot Password Page</strong></td>
   </tr>
   <tr>
-    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Sign Up Page" data-ai-hint="signup form"></td>
-    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Forgot Password Page" data-ai-hint="forgot password"></td>
+     <td><img src="public/images/authflow_home.png" alt="AuthFlow Home Page"></td>
+    <td><img src="public/images/forgot_password.png" alt="AuthFlow Forgot Password Page"></td>
   </tr>
   <tr>
     <td align="center"><strong>Dashboard</strong></td>
     <td align="center"><strong>Account Settings</strong></td>
   </tr>
   <tr>
-    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Dashboard" data-ai-hint="user dashboard"></td>
-    <td><img src="https://placehold.co/800x450.png" alt="AuthFlow Settings Page" data-ai-hint="settings page"></td>
+    <td><img src="public/images/dashboard.png" alt="AuthFlow Dashboard"></td>
+    <td><img src="public/images/setting.png" alt="AuthFlow Settings Page"></td>
   </tr>
 </table>
 

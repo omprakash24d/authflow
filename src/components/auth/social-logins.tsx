@@ -233,7 +233,7 @@ export function SocialLogins() {
 
     } catch (error: any) { // Handle errors from signInWithPopup, createSessionCookie, or Firestore helper
       console.error(`Error during ${providerName} sign-in:`, error);
-      let errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
+      let errorMessage = getFirebaseAuthErrorMessage(error.code);
       // Provide more specific messages for common OAuth errors
       if (error.code === 'auth/account-exists-with-different-credential') {
         errorMessage = "An account already exists with the same email address but was created using a different sign-in method (e.g., Google, Email/Password). Please sign in using the original method, or link your accounts if that feature is available.";
@@ -296,7 +296,7 @@ export function SocialLogins() {
           aria-label="Sign in with Microsoft"
         >
           {isMicrosoftLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MicrosoftIcon />} 
-          <span className="ml-2">Microsoft</span>
+          Microsoft
         </Button>
       </div>
     </>
