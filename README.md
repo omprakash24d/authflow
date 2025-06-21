@@ -345,7 +345,7 @@ AuthFlow was developed by Om Prakash.
 
 -   **LinkedIn**: [Om Prakash](https://www.linkedin.com/in/omrakash24d/)
 -   **GitHub**: [@omprakash24d](https://github.com/omprakash24d)
--   **Twitter**: [@omprakash25d](https://twitter.com/omprakash25d)
+-   **Twitter**: [@omprakash24d](https://twitter.com/omprakash24d)
 
 For issues, questions, or contributions, please feel free to open an issue or pull request on the project repository.
 

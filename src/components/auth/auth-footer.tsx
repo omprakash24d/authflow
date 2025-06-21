@@ -29,7 +29,7 @@ export function AuthFooter() {
       label: "GitHub"
     },
     {
-      href: "https://twitter.com/omprakash25d",
+      href: "https://twitter.com/omprakash24d",
       icon: <TwitterIcon className="h-5 w-5" />,
       label: "Twitter"
     },
