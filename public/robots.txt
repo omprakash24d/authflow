@@ -1,0 +1,8 @@
+# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+#
+# Allow all search engines to crawl the entire site.
+User-agent: *
+Allow: /
+
+# Point to the sitemap file.
+Sitemap: https://www.your-domain.com/sitemap.xml
