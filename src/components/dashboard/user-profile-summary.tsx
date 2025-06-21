@@ -9,7 +9,9 @@ import { useState, useEffect } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth'; // Firebase User type
 import { firestore } from '@/lib/firebase/config'; // Firestore instance
 import { doc, getDoc } from 'firebase/firestore'; // Firestore functions
-import { Loader2, User as UserIcon } from 'lucide-react'; // Icons
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, User as UserIcon, CheckCircle, XCircle, Copy, Check } from 'lucide-react'; // Icons
 
 /**
  * Props for the UserProfileSummary component.
@@ -27,11 +29,13 @@ interface UserProfileSummaryProps {
  * @returns JSX.Element
  */
 export function UserProfileSummary({ user }: UserProfileSummaryProps) {
+  const { toast } = useToast();
   // State for first name and last name, fetched from Firestore
   const [firstName, setFirstName] = useState<string | null>(null);
   const [lastName, setLastName] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState<boolean>(true); // Loading state for Firestore fetch
   const [profileError, setProfileError] = useState<string | null>(null); // Error state for Firestore fetch
+  const [isUidCopied, setIsUidCopied] = useState(false);
 
   // useEffect to fetch additional profile details (first/last name) from Firestore
   // when the component mounts or the user/firestore objects change.
@@ -77,50 +81,67 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
       setProfileLoading(false);
       setProfileError(null);
     }
-  }, [user, firestore]); // Dependencies: re-run if user or firestore instance changes
+  }, [user]); // Dependencies: re-run if user or firestore instance changes
+
+  const handleCopyUid = () => {
+    navigator.clipboard.writeText(user.uid).then(() => {
+        toast({ title: "Copied!", description: "User ID has been copied to your clipboard." });
+        setIsUidCopied(true);
+        setTimeout(() => setIsUidCopied(false), 2000); // Reset icon after 2 seconds
+    }, (err) => {
+        toast({ title: "Failed to Copy", description: "Could not copy User ID.", variant: "destructive" });
+        console.error('Failed to copy text: ', err);
+    });
+  };
+
+  const renderProfileValue = (value: string | null) => {
+    if (profileLoading) return <Loader2 className="inline-block h-4 w-4 animate-spin" />;
+    if (profileError) return <span className="text-destructive text-xs">{profileError}</span>;
+    return value || <span className="text-muted-foreground">Not set</span>;
+  }
 
   return (
-    <div className="space-y-3 text-sm"> {/* Container with vertical spacing */}
+    <div className="space-y-4"> {/* Container with vertical spacing */}
       <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
         <UserIcon className="mr-2 h-5 w-5" /> Account Information
       </h3>
-      <p><strong>Username:</strong> {user.displayName || 'Not set'}</p>
-      
-      {/* Display First Name with loading/error/fallback states */}
-      <p>
-        <strong>First Name:</strong>{' '}
-        {profileLoading ? (
-          <Loader2 className="inline-block h-4 w-4 animate-spin" /> // Loading spinner
-        ) : profileError ? (
-          <span className="text-destructive">{profileError}</span> // Error message
-        ) : firstName ? (
-          firstName // Display first name
-        ) : (
-          <span className="text-muted-foreground">Not set</span> // Fallback if not set
-        )}
-      </p>
+      <dl className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3 text-sm">
+        <dt className="font-medium text-muted-foreground">Username</dt>
+        <dd className="md:col-span-2">{user.displayName || 'Not set'}</dd>
 
-      {/* Display Last Name with loading/error/fallback states */}
-      <p>
-        <strong>Last Name:</strong>{' '}
-        {profileLoading ? (
-          <Loader2 className="inline-block h-4 w-4 animate-spin" />
-        ) : profileError ? (
-          <span className="text-destructive">{profileError}</span>
-        ) : lastName ? (
-          lastName
-        ) : (
-          <span className="text-muted-foreground">Not set</span>
-        )}
-      </p>
-      <p><strong>Email:</strong> {user.email || 'N/A'}</p>
-      <p>
-        <strong>Email Verified:</strong> {user.emailVerified ? 
-          <span className="text-green-600 dark:text-green-400 font-medium">Yes</span> : 
-          <span className="text-red-600 dark:text-red-400 font-medium">No</span>
-        }
-      </p>
-      <p><strong>User ID (UID):</strong> <span className="text-xs">{user.uid}</span></p>
+        <dt className="font-medium text-muted-foreground">First Name</dt>
+        <dd className="md:col-span-2">{renderProfileValue(firstName)}</dd>
+        
+        <dt className="font-medium text-muted-foreground">Last Name</dt>
+        <dd className="md:col-span-2">{renderProfileValue(lastName)}</dd>
+        
+        <dt className="font-medium text-muted-foreground">Email</dt>
+        <dd className="md:col-span-2">{user.email || 'N/A'}</dd>
+
+        <dt className="font-medium text-muted-foreground">Email Verified</dt>
+        <dd className="md:col-span-2 flex items-center gap-2">
+            {user.emailVerified ? (
+                <>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="text-green-600 dark:text-green-400 font-medium">Yes</span>
+                </>
+            ) : (
+                <>
+                    <XCircle className="h-4 w-4 text-red-500" />
+                    <span className="text-red-600 dark:text-red-400 font-medium">No</span>
+                </>
+            )}
+        </dd>
+
+        <dt className="font-medium text-muted-foreground">User ID (UID)</dt>
+        <dd className="md:col-span-2 flex items-center gap-2">
+            <span className="text-xs font-mono">{user.uid}</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopyUid}>
+                 {isUidCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                <span className="sr-only">Copy User ID</span>
+            </Button>
+        </dd>
+      </dl>
     </div>
   );
 }

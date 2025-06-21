@@ -37,7 +37,7 @@ export default function DashboardPageContent() {
     // Main container for the dashboard page content, centered and with padding.
     <div className="container mx-auto max-w-2xl py-8 px-4">
         <Card className="w-full shadow-lg">
-            <CardContent className="p-6 space-y-6">
+            <CardContent className="p-6 space-y-8">
                 <DashboardHeader user={user} />
                 <Separator />
                 <UserProfileSummary user={user} />

@@ -78,31 +78,36 @@ export function LoginActivitySummary({ user }: LoginActivitySummaryProps) {
     : 'N/A';
 
   return (
-    <div className="space-y-3 text-sm"> {/* Container with vertical spacing */}
+    <div className="space-y-4"> {/* Container with vertical spacing */}
       <h3 className="text-lg font-semibold font-headline text-primary flex items-center">
         <Clock className="mr-2 h-5 w-5" /> Login Activity
       </h3>
-      <p><strong>Last Sign-In:</strong> {lastSignInTime}</p>
-      
-      {/* IP Address display with loading/error states */}
-      <p className="flex items-center">
-        <WifiOff className="mr-2 h-4 w-4 text-muted-foreground" /> {/* Icon for IP */}
-        <strong>IP Address:</strong>&nbsp;
-        {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{ipAddress} (Error: {activityError})</span> : ipAddress}
-      </p>
-      
-      {/* Location display with loading/error states (location is mocked in API) */}
-      <p className="flex items-center">
-        <MapPin className="mr-2 h-4 w-4 text-muted-foreground" /> {/* Icon for Location */}
-        <strong>Location:</strong>&nbsp;
-         {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{location} (Error: {activityError})</span> : location}
-      </p>
-      
+      <dl className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+        <dt className="font-medium text-muted-foreground">Last Sign-In</dt>
+        <dd className="md:col-span-2">{lastSignInTime}</dd>
+
+        <dt className="font-medium text-muted-foreground flex items-center">
+            <WifiOff className="mr-2 h-4 w-4" />
+            IP Address
+        </dt>
+        <dd className="md:col-span-2">
+            {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{ipAddress} (Error: {activityError})</span> : ipAddress}
+        </dd>
+
+        <dt className="font-medium text-muted-foreground flex items-center">
+            <MapPin className="mr-2 h-4 w-4" />
+            Approx. Location
+        </dt>
+        <dd className="md:col-span-2">
+            {activityLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activityError ? <span className="text-destructive">{location} (Error: {activityError})</span> : location}
+        </dd>
+      </dl>
+
       {/* Placeholder button for viewing full activity log */}
        <Button
-        variant="link"
+        variant="outline"
         size="sm"
-        className="p-0 h-auto text-primary"
+        className="w-full sm:w-auto"
         onClick={() => {
           toast({ // Show a "Coming Soon" toast as this feature is not implemented
             title: 'Coming Soon',

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     
     // Mock location data as actual geolocation is beyond the scope of this basic example
     // and would require a third-party service or more complex setup.
-    const location = 'Location data N/A (mocked)';
+    const location = 'Location data unavailable';
 
     // Return the IP address and mocked location data.
     return NextResponse.json({ ipAddress, location }, { status: 200 });
