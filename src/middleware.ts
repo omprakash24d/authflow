@@ -7,80 +7,78 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SESSION_COOKIE_NAME } from '@/lib/constants/auth';
 
-// Configuration for paths:
-// PROTECTED_PATHS: Routes that require an authenticated user.
-// AUTH_PATHS: Routes primarily for unauthenticated users (e.g., sign-in, sign-up, landing page).
-//             Authenticated users accessing these will be redirected (e.g., to dashboard).
-const PROTECTED_PATHS: string[] = ['/dashboard']; // Add other protected base paths as needed (e.g., '/settings', '/profile')
-const AUTH_PATHS: string[] = ['/', '/signin', '/signup', '/forgot-password']; // Paths for authentication flow or public landing
+// --- Configuration for Paths ---
+// PROTECTED_PATHS: Routes that require an authenticated user. Unauthenticated users will be redirected to the sign-in page.
+// AUTH_PATHS: Routes for unauthenticated users (e.g., sign-in, sign-up, landing page). Authenticated users accessing these will be redirected to the dashboard.
+const PROTECTED_PATHS: string[] = ['/dashboard'];
+const AUTH_PATHS: string[] = ['/', '/signin', '/signup', '/forgot-password'];
 
 /**
- * Helper function to create a redirect response.
- * Clones the request's URL, changes the pathname, clears search params, and creates a redirect.
- * @param request - The original NextRequest.
- * @param targetPath - The path to redirect to.
- * @returns A NextResponse object configured for redirection.
+ * Creates a redirect response to a specified path.
+ * It preserves the original request's protocol and host.
+ * @param {NextRequest} request - The original NextRequest.
+ * @param {string} targetPath - The path to redirect to (e.g., '/signin').
+ * @returns {NextResponse} A NextResponse object configured for redirection.
  */
 function createRedirectResponse(request: NextRequest, targetPath: string): NextResponse {
-  const url = request.nextUrl.clone(); // Clone the original URL
-  url.pathname = targetPath; // Set the new path
-  url.search = ''; // Clear any existing query parameters from the original request to avoid unintended state.
+  const url = request.nextUrl.clone();
+  url.pathname = targetPath;
+  url.search = ''; // Clear query parameters to avoid unintended state transfer.
   return NextResponse.redirect(url);
 }
 
 /**
- * Middleware function executed for matched routes.
- * @param request - The incoming NextRequest object.
- * @returns A NextResponse object (either proceed with `NextResponse.next()` or redirect).
+ * Middleware function executed for matched routes. It enforces authentication rules.
+ * @param {NextRequest} request - The incoming NextRequest object.
+ * @returns {NextResponse} A NextResponse object, which either allows the request to proceed or redirects it.
  */
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl; // Get the current path from the request URL
-  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value; // Get the session token value from cookies
+  const { pathname } = request.nextUrl;
+  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  const requestIp = request.ip || 'unknown'; // Get request IP for logging
 
-  // Determine if the current path is one of the protected paths (e.g., /dashboard, /dashboard/settings).
   const isAccessingProtectedPath = PROTECTED_PATHS.some(p => pathname.startsWith(p));
-  // Determine if the current path is one of the exact authentication-related paths.
-  const isOnExactAuthPath = AUTH_PATHS.includes(pathname);
+  const isOnAuthPath = AUTH_PATHS.includes(pathname);
 
-  // Scenario 1: User tries to access a protected path WITHOUT a session token.
+  // Scenario 1: User is NOT authenticated and tries to access a protected path.
   // Action: Redirect to the sign-in page.
   if (isAccessingProtectedPath && !sessionToken) {
-    console.log(`Middleware: Unauthorized access attempt to protected path ${pathname}. Redirecting to /signin.`);
+    console.log(
+      `Middleware: Unauthorized access attempt from IP [${requestIp}] to protected path "${pathname}". Redirecting to /signin.`
+    );
     return createRedirectResponse(request, '/signin');
   }
 
-  // Scenario 2: User IS authenticated (has a session token) AND tries to access an exact auth page
-  // (e.g., sign-in, sign-up, or the homepage if it's considered an auth path).
-  // Action: Redirect to the main dashboard page. This prevents authenticated users from seeing login/signup forms again.
-  if (isOnExactAuthPath && sessionToken) {
-    console.log(`Middleware: Authenticated user accessing auth path ${pathname}. Redirecting to /dashboard.`);
+  // Scenario 2: User IS authenticated and tries to access an authentication path (e.g., login page).
+  // Action: Redirect to the main dashboard to prevent re-authentication loops.
+  if (isOnAuthPath && sessionToken) {
+    console.log(
+      `Middleware: Authenticated user from IP [${requestIp}] accessing auth path "${pathname}". Redirecting to /dashboard.`
+    );
     return createRedirectResponse(request, '/dashboard');
   }
 
-  // If none of the above conditions are met (e.g., accessing a public page, or
-  // an authenticated user accessing a non-auth, non-protected page, or
-  // an unauthenticated user accessing a non-protected, non-auth page),
-  // allow the request to proceed to the intended destination.
+  // If no specific rule matches, allow the request to proceed.
   return NextResponse.next();
 }
 
-// Configuration for the middleware:
-// Specifies which paths the middleware should run on using a matcher.
+// --- Middleware Configuration ---
 export const config = {
+  /*
+   * The `matcher` property specifies which paths the middleware should run on.
+   * This regex is designed to match most application paths while excluding static assets
+   * and API routes, which generally do not require this type of authentication check.
+   * 
+   * The regex breaks down as follows:
+   *   - `\/`: Matches the leading slash of the path.
+   *   - `((?!... ).*)`: This is a negative lookahead. It ensures the path does NOT start with:
+   *     - `api`: Excludes all API routes (e.g., /api/auth/session-login).
+   *     - `_next/static`: Excludes Next.js static files (JS, CSS).
+   *     - `_next/image`: Excludes Next.js image optimization files.
+   *     - `favicon.ico`: Excludes the favicon file.
+   *     - `.*\\..*`: A simple way to exclude paths that contain a dot, which typically represent files (e.g., 'logo.svg', 'manifest.json').
+   */
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes - these often have their own token/auth validation)
-     * - _next/static (static files like JS, CSS, fonts)
-     * - _next/image (Next.js image optimization files)
-     * - favicon.ico (favicon file)
-     * - Any files in the public folder (e.g., images, manifests - typically identified by a file extension like .png, .json, .svg)
-     * The regex `\/((?!api|_next\/static|_next\/image|favicon\.ico|.*\..*).*)` aims to achieve this:
-     *   - `\/`: Matches the leading slash.
-     *   - `((?!... ).*)`: This is a negative lookahead. It matches any sequence of characters (`.*`)
-     *     as long as it's NOT followed by `api`, `_next/static`, etc.
-     *   - `.*\..*`: This part tries to exclude paths that look like files with extensions (e.g., `image.png`, `manifest.json`).
-     */
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };

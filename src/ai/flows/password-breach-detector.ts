@@ -1,11 +1,13 @@
 
 'use server';
 /**
- * @fileOverview Implements a password breach detection system using the HaveIBeenPwned API via a Genkit flow.
- * This system allows checking if a given password has appeared in known data breaches.
+ * @fileOverview Implements a password breach detection system using the HaveIBeenPwned (HIBP) API.
+ * This system checks if a given password has appeared in known data breaches, providing a crucial
+ * layer of security during user registration or password changes. The check is performed using
+ * k-Anonymity to protect the user's password privacy.
  *
  * Exported Functions:
- * - checkPasswordBreach: An asynchronous function that takes a password and returns whether it's breached and the count.
+ * - checkPasswordBreach: An async function that takes a password and returns whether it's breached and the count.
  *
  * Exported Types:
  * - CheckPasswordBreachInput: The Zod schema type for the input to `checkPasswordBreach`.
@@ -17,7 +19,6 @@ import {z} from 'genkit';
 
 /**
  * Zod schema for the input to the password breach check flow.
- * Requires a 'password' string.
  */
 const CheckPasswordBreachInputSchema = z.object({
   password: z.string().describe('The password to check for breaches.'),
@@ -26,30 +27,39 @@ export type CheckPasswordBreachInput = z.infer<typeof CheckPasswordBreachInputSc
 
 /**
  * Zod schema for the output of the password breach check flow.
- * Returns 'isBreached' (boolean) and optionally 'breachCount' (number).
  */
 const CheckPasswordBreachOutputSchema = z.object({
   isBreached: z.boolean().describe('Whether the password has been breached.'),
   breachCount: z
     .number()
-    .describe('The number of times the password has been breached.')
+    .describe('The number of times the password has appeared in known breaches.')
     .optional(),
 });
 export type CheckPasswordBreachOutput = z.infer<typeof CheckPasswordBreachOutputSchema>;
 
 /**
  * Publicly exported wrapper function to invoke the password breach check flow.
+ * This is the primary entry point for application code to use the breach detection feature.
  * @param input An object containing the password to check, conforming to `CheckPasswordBreachInput`.
- * @returns A Promise resolving to an object indicating if the password is breached and the breach count, conforming to `CheckPasswordBreachOutput`.
+ * @returns A Promise resolving to an object indicating if the password is breached and the breach count.
  */
 export async function checkPasswordBreach(input: CheckPasswordBreachInput): Promise<CheckPasswordBreachOutput> {
   return checkPasswordBreachFlow(input);
 }
 
 /**
- * Genkit tool definition for interacting with the HaveIBeenPwned API.
- * This tool takes a password, hashes it (SHA-1, as required by HIBP for k-anonymity),
- * and queries the HIBP API to get the breach count.
+ * Genkit tool definition for interacting with the HaveIBeenPwned (HIBP) API.
+ * This tool securely checks if a password has been compromised.
+ * 
+ * It uses the k-Anonymity model required by the HIBP Pwned Passwords API:
+ * 1. The password is hashed using SHA-1.
+ * 2. Only the first 5 characters of the hash (the prefix) are sent to the API.
+ * 3. The API returns a list of hash suffixes that match the prefix, along with their breach counts.
+ * 4. The tool then locally checks if the rest of the password's hash (the suffix) is in the returned list.
+ * This ensures the full password hash is never sent over the network.
+ * 
+ * NOTE (Production Consideration): For high-traffic applications, consider adding rate-limiting
+ * to your API endpoint that calls this flow to prevent abuse and manage costs.
  */
 const haveIBeenPwnedTool = ai.defineTool({
   name: 'haveIBeenPwned',
@@ -60,68 +70,61 @@ const haveIBeenPwnedTool = ai.defineTool({
   outputSchema: z.number().describe('The number of times the password has been breached.'),
 },
 async (input) => {
-  // Hash the password using SHA-1 (as required by HIBP Pwned Passwords API for k-anonymity)
+  // Hash the password using SHA-1
   const passwordHash = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(input.password));
   const passwordHashHex = Array.from(new Uint8Array(passwordHash))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('')
     .toUpperCase();
 
-  // The HIBP API requires sending only the first 5 characters of the SHA-1 hash (prefix)
   const prefix = passwordHashHex.slice(0, 5);
-  // The rest of the hash (suffix) is used to find matches in the API's response
   const suffix = passwordHashHex.slice(5);
 
-  // Fetch the range of hashes from HIBP API
+  console.log(`Checking HIBP for password hash prefix: ${prefix}`);
+
   const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch breach data from HaveIBeenPwned API: ${response.status} ${response.statusText}`);
   }
   const responseText = await response.text();
-  // Response is a list of hash suffixes and their counts, separated by newlines
-  const matches = responseText.split('\r\n').map(line => line.split(':'))
+  const matches = responseText.split('\r\n').map(line => line.split(':'));
 
-  let breachCount = 0;
-  // Find the matching suffix in the response
   for (const [hashSuffix, count] of matches) {
     if (hashSuffix === suffix) {
-      breachCount = parseInt(count, 10);
-      break;
+      const breachCount = parseInt(count, 10);
+      console.log(`Password breach found. Count: ${breachCount}`);
+      return breachCount;
     }
   }
-  return breachCount; // Return the count of breaches for the given password
+
+  console.log("No password breach found for the given hash.");
+  return 0; // Return 0 if no match is found
 });
 
 /**
  * Genkit prompt definition for the password breach check.
  * This prompt instructs the AI model (LLM) to use the `haveIBeenPwnedTool`
- * to check the provided password and then structure the output according to `CheckPasswordBreachOutputSchema`.
+ * and then structure the output according to `CheckPasswordBreachOutputSchema`.
  */
 const checkPasswordBreachPrompt = ai.definePrompt({
   name: 'checkPasswordBreachPrompt',
-  tools: [haveIBeenPwnedTool], // Makes the tool available to the LLM
+  tools: [haveIBeenPwnedTool], // Makes the HIBP tool available to the LLM.
   input: { schema: CheckPasswordBreachInputSchema },
-  output: { schema: CheckPasswordBreachOutputSchema }, // Specifies the desired output format
-  prompt: `You are a security expert assisting users in selecting secure passwords.
+  output: { schema: CheckPasswordBreachOutputSchema },
+  prompt: `You are a security expert. Your task is to determine if a password is breached using the haveIBeenPwned tool.
+  
+  Based on the tool's output:
+  - If the breach count is greater than 0, set 'isBreached' to true.
+  - If the breach count is 0, set 'isBreached' to false.
+  - Always return the 'breachCount' field with the exact number provided by the tool.
 
-  I will provide you with a password. Your task is to use the haveIBeenPwned tool to check if this password has been involved in any data breaches.
-
-  Please follow these steps:
-  1. Check the breach count returned by the tool.
-  2. If the breach count is greater than 0, set isBreached to true.
-  3. If the breach count is 0, set isBreached to false.
-  4. Always return the breachCount exactly as provided by the tool's output. 
-     - If the breachCount is undefined or null, do not include the breachCount field in your output.
-
-  **Important:** A breached password means it has been exposed in a data leak, which can compromise user security. Always encourage users to choose strong, unique passwords.
-
-  Password: {{{password}}}`, // Handlebars template to insert the password from input
+  Password to check: {{{password}}}`,
 });
 
 /**
- * Genkit flow definition for the password breach check process.
- * This flow takes the password input, invokes the `checkPasswordBreachPrompt` (which uses the tool),
- * and returns the structured output.
+ * Genkit flow that orchestrates the password breach check process.
+ * It takes the user's password, invokes the prompt that uses the HIBP tool,
+ * and returns the final structured output.
  */
 const checkPasswordBreachFlow = ai.defineFlow(
   {
@@ -130,11 +133,9 @@ const checkPasswordBreachFlow = ai.defineFlow(
     outputSchema: CheckPasswordBreachOutputSchema,
   },
   async (input: CheckPasswordBreachInput) => {
-    // Invoke the prompt with the input
     const {output} = await checkPasswordBreachPrompt(input);
-    // The output from the prompt should conform to CheckPasswordBreachOutputSchema
-    // The '!' non-null assertion is used here assuming the LLM successfully follows the output schema.
+    // The '!' non-null assertion is safe here as the prompt is configured with a required output schema,
+    // and the LLM is instructed to always produce a valid output.
     return output!;
   }
 );
-
