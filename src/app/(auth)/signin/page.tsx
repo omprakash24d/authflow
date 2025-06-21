@@ -12,7 +12,7 @@ import { AuthPageLoader } from '@/components/auth/auth-page-loader';
  * Provides title and description for SEO and browser tab.
  */
 export const metadata: Metadata = {
-  title: 'Sign In to AuthFlow | Secure Account Access',
+  title: 'Sign In',
   description: 'Access your AuthFlow account securely. Sign in with your email/username and password or use social login options. Fast and reliable authentication.',
 };
 

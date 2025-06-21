@@ -11,7 +11,7 @@ import { ProtectedRoute } from '@/components/protected-route'; // Component to h
  * Provides title and description for SEO and browser tab.
  */
 export const metadata: Metadata = {
-  title: 'User Dashboard | AuthFlow Account Management',
+  title: 'Dashboard',
   description: 'Manage your AuthFlow account from your personalized dashboard. View profile details, update settings, and manage your authentication preferences securely.',
 };
 

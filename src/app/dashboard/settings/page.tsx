@@ -12,7 +12,7 @@ import { ProtectedRoute } from '@/components/protected-route'; // Component for 
  * Provides title and description for SEO and browser tab.
  */
 export const metadata: Metadata = {
-  title: 'Account Settings | AuthFlow',
+  title: 'Account Settings',
   description: 'Manage your AuthFlow account settings, profile, security, and notification preferences.',
 };
 

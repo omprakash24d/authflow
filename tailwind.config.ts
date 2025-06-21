@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
+        // The 'Inter' font is now applied globally via next/font in layout.tsx.
+        // Custom font families can still be defined here if needed for other sections.
         code: ['monospace', 'monospace'],
       },
       colors: {

@@ -2,26 +2,30 @@
 // This file defines the root layout for the entire application.
 // It wraps all pages and includes global providers like AuthProvider and ThemeProvider.
 
-import type { Metadata, Viewport } from 'next'; // Import Viewport
-import './globals.css'; // Imports global styles, including Tailwind CSS base and theme variables.
-import { Toaster } from '@/components/ui/toaster'; // Component for displaying toast notifications.
-import { AuthProvider } from '@/contexts/auth-context'; // Provides authentication state to the app.
-import { ThemeProvider } from '@/components/theme-provider'; // Manages light/dark theme.
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google'; // Import next/font
+import './globals.css';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/auth-context';
+import { ThemeProvider } from '@/components/theme-provider';
 import type { PropsWithChildren } from 'react';
+
+// Configure the Inter font from Google Fonts using next/font
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 /**
  * Metadata for the root layout.
- * This is the default metadata for the application unless overridden by specific pages.
+ * Provides a default title and a template for page-specific titles.
  */
 export const metadata: Metadata = {
-  title: 'AuthFlow', // Default title for the application
-  description: 'Comprehensive User and Authentication System by Firebase Studio', // Default description
-  manifest: '/site.webmanifest', // Link to the webmanifest file
-  icons: {
-    icon: '/images/favicon.ico',
-    shortcut: '/images/favicon-16x16.png',
-    apple: '/images/apple-touch-icon.png',
+  title: {
+    default: 'AuthFlow', // Default title for the application
+    template: '%s | AuthFlow', // Template for titles on other pages
   },
+  description: 'Comprehensive User and Authentication System by Firebase Studio',
 };
 
 /**
@@ -29,35 +33,29 @@ export const metadata: Metadata = {
  * Sets the theme color for the browser UI.
  */
 export const viewport: Viewport = {
-  themeColor: [ // Theme color for browsers and PWA
+  themeColor: [
     { media: '(prefers-color-scheme: light)', color: 'white' },
     { media: '(prefers-color-scheme: dark)', color: 'black' },
   ],
 };
 
-
 /**
  * RootLayout component.
- * This component sets up the basic HTML structure (html, head, body) and
- * wraps its children with necessary context providers.
+ * This component sets up the basic HTML structure and wraps its children with
+ * necessary context providers and applies the optimized font.
  * @param {PropsWithChildren<{}>} props - Props containing children elements.
  * @returns JSX.Element
  */
 export default function RootLayout({ children }: PropsWithChildren<{}>) {
   return (
-    // `suppressHydrationWarning` is often used with next-themes to prevent warnings
-    // related to server-rendered class names for themes differing from client-side.
+    // `suppressHydrationWarning` is used with next-themes to prevent warnings.
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Preconnect to Google Fonts for performance. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Link to the Inter font stylesheet. */}
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        {/* Other head elements like favicons, meta tags can be added here or in page-specific metadata. */}
+        {/* next/font handles font optimization, so manual <link> tags are no longer needed. */}
       </head>
-      <body className="font-body antialiased"> {/* Sets default font and enables anti-aliasing. */}
-        {/* ThemeProvider manages dark/light mode switching. Default is now 'light'. */}
+      {/* Apply the font class from next/font and enable anti-aliasing. */}
+      <body className={`${inter.className} antialiased`}>
+        {/* ThemeProvider manages dark/light mode switching. */}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           {/* AuthProvider manages user authentication state across the app. */}
           <AuthProvider>
