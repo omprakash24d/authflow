@@ -5,8 +5,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebase/admin-config';
-
-const SESSION_COOKIE_NAME = 'firebaseIdToken';
+import { SESSION_COOKIE_NAME } from '@/lib/constants/auth';
 
 /**
  * POST handler for logging out a user by clearing their session cookie.
@@ -24,7 +23,8 @@ export async function POST(request: NextRequest) {
   if (sessionCookieValue) {
     try {
       const decodedClaims = await admin.auth().verifySessionCookie(sessionCookieValue);
-      // Optional: Revoke all refresh tokens for this user.
+      // Optional: Uncomment the following line to revoke all refresh tokens for this user.
+      // This is a more forceful sign-out that invalidates sessions on all devices.
       // await admin.auth().revokeRefreshTokens(decodedClaims.sub);
       // console.log(`Successfully revoked refresh tokens for user: ${decodedClaims.sub}`);
     } catch (error) {

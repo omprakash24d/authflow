@@ -1,7 +1,8 @@
 // src/app/(auth)/forgot-password/page.tsx
 // This file defines the "Forgot Password" page for the AuthFlow system.
 // It allows users who have forgotten their password to request a reset link via email.
-// The actual form logic and UI are encapsulated in the `ForgotPasswordForm` component.
+// The primary logic and UI are encapsulated in the `ForgotPasswordForm` component,
+// which is rendered by this page.
 
 import type { Metadata } from 'next';
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form';

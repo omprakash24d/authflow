@@ -1,6 +1,7 @@
 // src/app/api/auth/delete-user-data/route.ts
 // This API route handles the secure deletion of a user's data from Firestore.
-// It's a critical, protected endpoint in the account deletion process.
+// It's a critical, protected endpoint that runs before deleting the user from Firebase Auth
+// to ensure no orphaned data remains.
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { firebaseAdminAuth, firebaseAdminFirestore } from '@/lib/firebase/admin-config';
@@ -8,8 +9,8 @@ import { ApiErrors } from '@/lib/constants/messages';
 
 /**
  * DELETE handler for removing a user's data from Firestore.
- * This is the first step in account deletion, performed before deleting the user from Firebase Auth.
- * It ensures no orphaned data remains in the database.
+ * This is the first step in account deletion, performed before deleting the user from Firebase Auth itself.
+ * It uses a Firestore batch write to ensure atomicity of deletions.
  *
  * @param {NextRequest} request - The incoming NextRequest object, containing the session cookie.
  * @returns {NextResponse} A NextResponse object indicating success or failure of the data deletion.
@@ -24,7 +25,7 @@ export async function DELETE(request: NextRequest) {
     const auth = firebaseAdminAuth();
     const db = firebaseAdminFirestore();
 
-    // Verify the session cookie to securely get the user's UID.
+    // Verify the session cookie to securely get the user's UID. This is crucial for security.
     const decodedToken = await auth.verifySessionCookie(sessionCookie, true);
     const uid = decodedToken.uid;
 
@@ -35,7 +36,8 @@ export async function DELETE(request: NextRequest) {
     
     if (!userProfileSnap.exists) {
       // If the user profile document doesn't exist, it's not a critical error.
-      // It might mean the user's sign-up was incomplete. Log it and proceed.
+      // This could happen if a user's sign-up was incomplete. Log it and proceed.
+      // Deleting the Auth record is the most important part.
       console.warn(`User profile for UID ${uid} not found during data deletion. Proceeding to delete Auth record.`);
       return NextResponse.json({ status: 'success', message: 'User profile not found in database; nothing to delete.' }, { status: 200 });
     }
@@ -44,6 +46,7 @@ export async function DELETE(request: NextRequest) {
     const username = userData?.username;
 
     // Use a Firestore write batch to perform multiple deletions atomically.
+    // This means either all deletions succeed, or none do, preventing partial data removal.
     const batch = db.batch();
 
     // 1. Queue deletion of the main user profile document from the 'users' collection.
@@ -54,11 +57,11 @@ export async function DELETE(request: NextRequest) {
       const usernameDocRef = db.collection('usernames').doc(username.toLowerCase());
       batch.delete(usernameDocRef);
     } else {
-        // Log if a username was expected but not found.
+        // Log if a username was expected but not found. This can help debug data inconsistencies.
         console.warn(`Username not found in profile for UID ${uid} during data deletion.`);
     }
 
-    // Atomically commit all queued deletions.
+    // Atomically commit all queued deletions to Firestore.
     await batch.commit();
 
     return NextResponse.json({ status: 'success', message: 'User data deleted successfully from database.' }, { status: 200 });

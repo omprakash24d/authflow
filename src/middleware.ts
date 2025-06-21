@@ -1,10 +1,11 @@
 // src/middleware.ts
 // This Next.js middleware handles route protection and redirection based on user authentication status.
-// It inspects an HTTP-only session cookie (`firebaseIdToken`) to determine if a user is authenticated.
+// It inspects an HTTP-only session cookie to determine if a user is authenticated.
 // The middleware runs on specified paths before the request is handled by the page or API route.
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { SESSION_COOKIE_NAME } from '@/lib/constants/auth';
 
 // Configuration for paths:
 // PROTECTED_PATHS: Routes that require an authenticated user.
@@ -12,7 +13,6 @@ import type { NextRequest } from 'next/server';
 //             Authenticated users accessing these will be redirected (e.g., to dashboard).
 const PROTECTED_PATHS: string[] = ['/dashboard']; // Add other protected base paths as needed (e.g., '/settings', '/profile')
 const AUTH_PATHS: string[] = ['/', '/signin', '/signup', '/forgot-password']; // Paths for authentication flow or public landing
-const SESSION_COOKIE_NAME = 'firebaseIdToken'; // The name of the session cookie set by `/api/auth/session-login`
 
 /**
  * Helper function to create a redirect response.

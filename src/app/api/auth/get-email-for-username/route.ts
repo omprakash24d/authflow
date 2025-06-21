@@ -1,6 +1,7 @@
 // src/app/api/auth/get-email-for-username/route.ts
 // This API route allows looking up a user's email address given their username.
-// It queries the Firestore 'usernames' collection and is rate-limited to prevent abuse.
+// It queries the Firestore 'usernames' collection, which maps lowercase usernames to user data.
+// It's rate-limited to prevent abuse like username enumeration attacks.
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { firebaseAdminFirestore } from '@/lib/firebase/admin-config';
@@ -46,14 +47,14 @@ export async function GET(request: NextRequest) {
 
     if (!usernameDoc.exists) {
       // SECURITY NOTE: To prevent username enumeration, do not confirm that the username was not found.
-      // Instead, return a generic error that mimics a credentials failure.
+      // Instead, return a generic error that mimics a credentials failure on the client-side.
       console.warn(`Username lookup failed for: "${username.toLowerCase()}" (Not Found)`);
       return NextResponse.json({ error: ApiErrors.invalidUserLookup }, { status: 404 });
     }
 
     const userData = usernameDoc.data();
     if (!userData || !userData.email) {
-      // This indicates a data integrity issue.
+      // This indicates a data integrity issue where the username document exists but is missing the email.
       console.error(`Firestore document for username "${username.toLowerCase()}" is missing the 'email' field.`);
       return NextResponse.json({ error: 'Internal server error: User data is incomplete.' }, { status: 500 });
     }

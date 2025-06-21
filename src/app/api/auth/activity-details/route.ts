@@ -8,7 +8,9 @@ import admin from '@/lib/firebase/admin-config'; // Firebase Admin SDK for sessi
 /**
  * GET handler for fetching user activity details.
  * This endpoint verifies the user's session cookie to ensure they are authenticated.
- * On success, it returns the user's IP address. Location data is mocked.
+ * On success, it returns the user's IP address. 
+ * NOTE: Real geolocation would require integrating a third-party service (e.g., MaxMind, ip-api.com).
+ * For this example, location data is mocked and should not be used in production without such a service.
  *
  * @param {NextRequest} request - The incoming Next.js request object.
  * @returns {NextResponse} A NextResponse object containing activity details or an error response.
@@ -25,13 +27,12 @@ export async function GET(request: NextRequest) {
     // The `true` argument ensures the cookie has not been revoked.
     await admin.auth().verifySessionCookie(sessionCookie, true);
 
-    // Attempt to get the IP address from the request.
-    // `request.ip` is the preferred method for Vercel Edge Functions.
-    // `x-forwarded-for` is a fallback for common proxy headers.
+    // Attempt to get the IP address from the request headers.
+    // `request.ip` is the preferred method for modern hosting platforms like Vercel.
+    // `x-forwarded-for` is a common fallback for standard proxy headers.
     const ipAddress = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'IP Not Available';
     
-    // NOTE: Real geolocation would require a third-party service (e.g., MaxMind, ip-api.com).
-    // For this example, location data is mocked.
+    // For this example, location data is mocked. Replace with a real service for production.
     const location = 'Location data unavailable';
 
     // Return the IP address and mocked location data.

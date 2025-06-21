@@ -7,16 +7,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebase/admin-config';
 import { rateLimiter } from '@/lib/rate-limiter';
+import { SESSION_COOKIE_NAME, SESSION_DURATION_MS } from '@/lib/constants/auth';
 
 // Initialize a rate limiter to prevent brute-force login attempts against this endpoint.
 const limiter = rateLimiter({
   uniqueTokenPerInterval: 10, // Allows 10 session creation attempts per IP per minute.
   interval: 60000, // 1 minute interval.
 });
-
-// The expiration time for the session cookie (e.g., 14 days).
-// This could be moved to an environment variable for easier configuration.
-const SESSION_DURATION_MS = 60 * 60 * 24 * 14 * 1000; // 14 days in milliseconds
 
 /**
  * POST handler for creating a session cookie.
@@ -50,7 +47,7 @@ export async function POST(request: NextRequest) {
     
     // Set the session cookie in the response headers with secure attributes.
     response.cookies.set({
-      name: 'firebaseIdToken',
+      name: SESSION_COOKIE_NAME,
       value: sessionCookie,
       maxAge: SESSION_DURATION_MS / 1000, // maxAge is in seconds
       httpOnly: true, // Prevents client-side JavaScript from accessing the cookie.
