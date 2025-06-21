@@ -69,9 +69,8 @@ export function SignInForm() {
     },
   });
 
-  // Effect to handle query params (e.g., from sign-up redirect) and "Remember Me" functionality.
+  // Effect to check if redirected from sign-up with a 'verificationEmailSent' flag.
   useEffect(() => {
-    // Check if redirected from sign-up with a 'verificationEmailSent' flag.
     if (searchParams.get('verificationEmailSent') === 'true') {
       setShowVerificationMessageFromSignUp(true);
       // Clean up the URL by removing the query parameter.
@@ -82,14 +81,18 @@ export function SignInForm() {
         : pathname;
       router.replace(newPath, { scroll: false }); // `replace` avoids adding to history
     }
+  }, [searchParams, router, pathname]);
 
-    // Check localStorage for a remembered identifier (email/username).
+  // Effect to handle the "Remember Me" functionality on initial component mount.
+  useEffect(() => {
     const rememberedIdentifier = localStorage.getItem(REMEMBER_ME_STORAGE_KEY);
     if (rememberedIdentifier) {
       form.setValue('identifier', rememberedIdentifier); // Pre-fill the form field
       setRememberMe(true); // Check the "Remember Me" box
     }
-  }, [searchParams, router, pathname, form, setShowVerificationMessageFromSignUp, setRememberMe]);
+    // This effect should only run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   /**

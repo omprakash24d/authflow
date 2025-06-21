@@ -89,8 +89,8 @@ AuthFlow aims to provide developers with a production-ready authentication syste
     <td align="center"><strong>Account Settings</strong></td>
   </tr>
   <tr>
-    <td><img src="public/images/authflow_dashboard.png" alt="AuthFlow Dashboard"></td>
-    <td><img src="public/images/authflow_settings.png" alt="AuthFlow Settings Page"></td>
+    <td><img src="public/images/dashboard.png" alt="AuthFlow Dashboard"></td>
+    <td><img src="public/images/setting.png" alt="AuthFlow Settings Page"></td>
   </tr>
 </table>
 
