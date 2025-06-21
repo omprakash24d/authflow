@@ -2,32 +2,32 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://authflow.indhinditech.com/</loc>
-    <lastmod>2024-07-27</lastmod>
+    <lastmod>2025-06-21</lastmod>
     <priority>1.00</priority>
   </url>
   <url>
     <loc>https://authflow.indhinditech.com/signin</loc>
-    <lastmod>2024-07-27</lastmod>
+    <lastmod>2025-06-21</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://authflow.indhinditech.com/signup</loc>
-    <lastmod>2024-07-27</lastmod>
+    <lastmod>2025-06-21</lastmod>
     <priority>0.80</priority>
   </url>
   <url>
     <loc>https://authflow.indhinditech.com/forgot-password</loc>
-    <lastmod>2024-07-27</lastmod>
+    <lastmod>2025-06-21</lastmod>
     <priority>0.64</priority>
   </url>
   <url>
     <loc>https://authflow.indhinditech.com/terms-of-service</loc>
-    <lastmod>2024-07-27</lastmod>
+    <lastmod>2025-06-21</lastmod>
     <priority>0.50</priority>
   </url>
   <url>
     <loc>https://authflow.indhinditech.com/privacy-policy</loc>
-    <lastmod>2024-07-27</lastmod>
+    <lastmod>2025-06-21</lastmod>
     <priority>0.50</priority>
   </url>
 </urlset>

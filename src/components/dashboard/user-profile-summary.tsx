@@ -15,7 +15,7 @@ import type { UserProfileData } from './dashboard-page-content'; // Import share
 /**
  * Props for the UserProfileSummary component.
  * @property user - The currently authenticated Firebase user object.
- * @property profileData - The fetched profile data (first/last name) from Firestore.
+ * @property profileData - The fetched profile data (first/last name, username) from Firestore.
  * @property loadingProfile - Boolean indicating if the profile data is still being loaded.
  * @property profileError - An error message string if fetching the profile data failed.
  */
@@ -29,7 +29,7 @@ interface UserProfileSummaryProps {
 /**
  * UserProfileSummary component.
  * Renders key details from the user's Firebase Auth profile and additional
- * details (first/last name) from their Firestore profile document.
+ * details (first/last name, username) from their Firestore profile document.
  * @param {UserProfileSummaryProps} props - The component's props.
  * @returns JSX.Element
  */
@@ -54,11 +54,12 @@ export function UserProfileSummary({ user, profileData, loadingProfile, profileE
 
   /**
    * Helper function to render the value of a profile field.
-   * It handles loading and error states for a clean UI.
-   * @param {string | null} value - The value of the profile field (e.g., first name).
+   * It handles loading and error states for a clean UI, and accepts a fallback value.
+   * @param {string | null | undefined} value - The primary value of the profile field (e.g., from Firestore).
+   * @param {string | null | undefined} fallbackValue - An optional fallback value (e.g., from Firebase Auth profile).
    * @returns JSX.Element
    */
-  const renderProfileValue = (value: string | null) => {
+  const renderProfileValue = (value: string | null | undefined, fallbackValue: string | null | undefined = null) => {
     if (loadingProfile) return <Loader2 className="inline-block h-4 w-4 animate-spin" />;
     if (profileError) {
       return (
@@ -68,7 +69,8 @@ export function UserProfileSummary({ user, profileData, loadingProfile, profileE
         </span>
       );
     }
-    return value || <span className="text-muted-foreground">Not set</span>;
+    // Use the primary value, or the fallback, or "Not set".
+    return value || fallbackValue || <span className="text-muted-foreground">Not set</span>;
   };
 
   return (
@@ -80,19 +82,19 @@ export function UserProfileSummary({ user, profileData, loadingProfile, profileE
         {/* Username */}
         <div className="space-y-1">
           <dt className="font-medium text-muted-foreground">Username</dt>
-          <dd>{user.displayName || <span className="text-muted-foreground">Not set</span>}</dd>
+          <dd>{renderProfileValue(profileData?.username, user.displayName)}</dd>
         </div>
         
         {/* First Name */}
         <div className="space-y-1">
           <dt className="font-medium text-muted-foreground">First Name</dt>
-          <dd>{renderProfileValue(profileData?.firstName ?? null)}</dd>
+          <dd>{renderProfileValue(profileData?.firstName)}</dd>
         </div>
 
         {/* Last Name */}
         <div className="space-y-1">
           <dt className="font-medium text-muted-foreground">Last Name</dt>
-          <dd>{renderProfileValue(profileData?.lastName ?? null)}</dd>
+          <dd>{renderProfileValue(profileData?.lastName)}</dd>
         </div>
         
         {/* Email */}
@@ -113,7 +115,7 @@ export function UserProfileSummary({ user, profileData, loadingProfile, profileE
               ) : (
                   <>
                       <XCircle className="h-4 w-4 text-red-500" />
-                      <span className="text-red-600 dark:text-red-400 font-medium">No</span>
+                      <span className="text-red-600 dark:red-400 font-medium">No</span>
                   </>
               )}
           </dd>

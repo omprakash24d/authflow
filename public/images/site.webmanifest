@@ -18,5 +18,5 @@
     "display": "standalone",
     "start_url": "/index.html",
     "orientation": "portrait",
-    "description": "A brief description of your application."
+    "description": "A comprehensive User and Authentication System built with Firebase and Next.js. Secure, scalable, and feature-rich for your application needs."
 }

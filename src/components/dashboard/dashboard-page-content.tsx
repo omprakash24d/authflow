@@ -26,6 +26,7 @@ import { Separator } from '../ui/separator';
 export type UserProfileData = {
   firstName: string | null;
   lastName: string | null;
+  username: string | null;
 };
 
 /**
@@ -70,11 +71,12 @@ export default function DashboardPageContent() {
           setProfileData({
             firstName: data.firstName || null,
             lastName: data.lastName || null,
+            username: data.username || null,
           });
         } else {
           // If no document exists, set profile data to nulls.
            console.warn(`No Firestore profile document found for user UID: ${user.uid}`);
-          setProfileData({ firstName: null, lastName: null });
+          setProfileData({ firstName: null, lastName: null, username: null });
         }
       } catch (error) {
         console.error("Error fetching user profile from Firestore:", error);
