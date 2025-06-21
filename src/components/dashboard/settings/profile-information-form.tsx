@@ -6,7 +6,7 @@
 
 'use client'; // Client component due to form handling, state, and Firebase interactions.
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -21,7 +21,6 @@ import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // M
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { FormAlert } from '@/components/ui/form-alert'; // For displaying form-level errors
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authenticated user
@@ -114,77 +113,67 @@ export function ProfileInformationForm() {
     },
   });
 
-  const { formState } = profileForm;
+  const { formState, trigger, reset } = profileForm;
 
   // useEffect to fetch and populate user profile data when the component mounts or user/firestore changes.
   useEffect(() => {
-    // Defines an async function to fetch profile data.
-    // Accepts non-null Firestore and FirebaseUser instances as arguments to satisfy TypeScript.
     const fetchUserProfile = async (fs: Firestore, currentFirebaseUser: FirebaseUser) => {
       try {
-        // Set initial photo preview from Firebase Auth user profile if available.
         if (currentFirebaseUser.photoURL) {
           setProfilePhotoPreview(currentFirebaseUser.photoURL);
         }
-        // Fetch detailed profile from 'users' collection in Firestore.
         const userProfileRef = doc(fs, 'users', currentFirebaseUser.uid);
         const docSnap = await getDoc(userProfileRef);
-        let fetchedUsername = currentFirebaseUser.displayName || ''; // Fallback to Auth display name
+        let fetchedUsername = currentFirebaseUser.displayName || '';
 
         if (docSnap.exists()) {
           const profileData = docSnap.data();
-          // Reset form with fetched data.
-          profileForm.reset({
+          reset({
             firstName: profileData.firstName || '',
             lastName: profileData.lastName || '',
             username: profileData.username || currentFirebaseUser.displayName || '',
           });
           fetchedUsername = profileData.username || currentFirebaseUser.displayName || '';
-          // If Firestore has a different photoURL (e.g., from a previous custom upload), prefer it.
           if (profileData.photoURL && profileData.photoURL !== currentFirebaseUser.photoURL) {
              setProfilePhotoPreview(profileData.photoURL);
           }
         } else {
-          // If no profile document in Firestore, reset form with Auth display name or empty.
-          profileForm.reset({
-            firstName: '', // Or attempt to derive from displayName if desired logic existed
+          reset({
+            firstName: '',
             lastName: '',
             username: currentFirebaseUser.displayName || '',
           });
           }
-        setInitialUsername(fetchedUsername); // Store initial username for change detection
+        setInitialUsername(fetchedUsername);
       } catch (error: any) {
         console.error("Error fetching user profile for settings:", error);
         setProfileError("Could not load your profile data from the database.");
       } finally {
-        setInitialDataLoaded(true); // Mark initial data loading as complete
+        setInitialDataLoaded(true);
       }
     };
 
-    if (!user) { // If no authenticated user, nothing to load
+    if (!user) {
       setInitialDataLoaded(true);
       return;
     }
 
-    if (!firestore) { // If Firestore service is not available
+    if (!firestore) {
       setIsFirestoreAvailable(false);
       setProfileError("Database service is not available. Profile data cannot be loaded or saved.");
       setInitialDataLoaded(true);
       return;
     }
 
-    // Firestore is available
     setIsFirestoreAvailable(true);
-    // Clear previous "service unavailable" error if it was set, now that Firestore is available.
     if (profileError === "Database service is not available. Profile data cannot be loaded or saved.") {
       setProfileError(null);
     }
     
-    // Call fetchUserProfile with the confirmed non-null user and firestore instances.
     fetchUserProfile(firestore, user);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, firestore]); // Dependencies for useEffect
+  }, [user, firestore]);
 
   /**
    * Handles submission of the profile information form.
@@ -192,36 +181,32 @@ export function ProfileInformationForm() {
    * @param {ProfileSettingsFormValues} values - The validated form values.
    */
   async function onSubmitProfile(values: ProfileSettingsFormValues) {
-    // Ensure user and auth service are available
     if (!user || !auth?.currentUser) {
       setProfileError("User not authenticated. Please sign in again.");
       toast({ title: "Authentication Error", description: "User not authenticated.", variant: "destructive" });
       return;
     }
-    // Ensure Firestore service is available
     if (!firestore) {
       setProfileError("Database service is not available. Profile cannot be saved.");
-      setProfileSaving(false); // Reset saving state if already true
       return;
     }
 
     setProfileSaving(true);
     setProfileError(null);
 
-    const currentUser = auth.currentUser; // Get current user from Firebase Auth
+    const currentUser = auth.currentUser;
     const newUsername = values.username.trim();
-    let authDisplayNameUpdated = false; // Flag to track if Auth profile update was attempted/succeeded
+    let authDisplayNameUpdated = false;
 
-    // Prepare username updates (checks availability, prepares Firestore batch ops)
     const usernameUpdateResult = await prepareUsernameUpdates(
       newUsername,
       initialUsername,
       currentUser.uid,
       currentUser.email,
-      firestore // Firestore is confirmed non-null here
+      firestore
     );
 
-    if (!usernameUpdateResult.success) { // If username check failed (e.g., taken)
+    if (!usernameUpdateResult.success) {
       setProfileError(usernameUpdateResult.error || "Failed to process username change.");
       toast({ title: "Username Error", description: usernameUpdateResult.error || "Failed to process username change.", variant: "destructive" });
       setProfileSaving(false);
@@ -229,43 +214,26 @@ export function ProfileInformationForm() {
     }
 
     try {
-      // Update Firebase Auth profile (displayName)
-      await updateProfile(currentUser, {
-          displayName: newUsername,
-      });
-      authDisplayNameUpdated = true; // Mark Auth profile as updated
-    } catch (authError: any) {
-      console.error("Error updating Firebase Auth profile:", authError);
-      const authErrorMessage = getFirebaseAuthErrorMessage(authError.code);
-      setProfileError(`Failed to update profile in authentication: ${authErrorMessage}. Other changes might be pending.`);
-      toast({ title: "Auth Update Error", description: `Failed to update profile: ${authErrorMessage}`, variant: "destructive" });
-      setProfileSaving(false);
-      return; // Stop if core Auth profile update fails
-    }
+      await updateProfile(currentUser, { displayName: newUsername });
+      authDisplayNameUpdated = true;
 
-    // Proceed to update Firestore data
-    try {
-      const batch = writeBatch(firestore); // Create a Firestore batch
+      const batch = writeBatch(firestore);
       const userProfileRef = doc(firestore, 'users', currentUser.uid) as DocumentReference<DocumentData>;
-
-      // Data for the 'users' collection document
       const profileUpdateData: any = {
         firstName: values.firstName,
         lastName: values.lastName,
         username: newUsername,
-        email: currentUser.email, // Keep email synced, though it's changed via Security section
+        email: currentUser.email,
         updatedAt: serverTimestamp(),
       };
-      batch.set(userProfileRef, profileUpdateData, { merge: true }); // Merge to avoid overwriting unrelated fields
+      batch.set(userProfileRef, profileUpdateData, { merge: true });
 
-      // If username changed, add operations from `prepareUsernameUpdates` to the batch
       if (usernameUpdateResult.batchOperations) {
         usernameUpdateResult.batchOperations(batch);
       }
 
-      await batch.commit(); // Commit all Firestore changes atomically
+      await batch.commit();
 
-      // If username was successfully changed, update initialUsername for subsequent edits
       if (usernameUpdateResult.usernameChanged) {
         setInitialUsername(newUsername);
       }
@@ -274,27 +242,35 @@ export function ProfileInformationForm() {
         title: 'Profile Updated',
         description: 'Your profile information has been successfully saved.',
       });
-      profileForm.reset(values); // Reset form state to make it not "dirty"
+      reset(values);
 
-    } catch (firestoreError: any) { // Handle Firestore update errors
-      console.error("Error updating profile in Firestore:", firestoreError);
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
       let specificErrorMessage = "An error occurred while saving your profile to the database.";
-      if (firestoreError.code === 'permission-denied' || (firestoreError.message && firestoreError.message.toLowerCase().includes('permission denied'))) {
-        specificErrorMessage = `Saving profile details to the database failed due to permissions. (Details: ${firestoreError.message})`;
-         // If Auth display name was updated but Firestore failed, inform the user
-         if (authDisplayNameUpdated) {
-          specificErrorMessage = `Auth display name was updated to "${newUsername}", but ${specificErrorMessage}`;
-        }
+      if (error.code === 'permission-denied') {
+        specificErrorMessage = `Saving profile details to the database failed due to permissions. (Details: ${error.message})`;
       } else {
-        specificErrorMessage = getFirebaseAuthErrorMessage(firestoreError.code) || specificErrorMessage;
+        specificErrorMessage = getFirebaseAuthErrorMessage(error.code) || specificErrorMessage;
       }
+      
+      // *** ATOMIC REVERT on error ***
+      // If Auth displayName was updated but Firestore failed, revert the Auth update.
+      if (authDisplayNameUpdated && initialUsername) {
+        specificErrorMessage = `Your profile could not be saved to the database. Reverting changes. Details: ${error.message}`;
+        await updateProfile(currentUser, { displayName: initialUsername });
+      }
+      
       setProfileError(specificErrorMessage);
+      toast({
+        title: "Profile Update Failed",
+        description: specificErrorMessage,
+        variant: "destructive"
+      })
     } finally {
-      setProfileSaving(false); // Reset saving state
+      setProfileSaving(false);
     }
   }
 
-  // Display a loader while initial data is being fetched
   if (!initialDataLoaded) {
     return (
       <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /> Loading profile...</div>
@@ -302,18 +278,13 @@ export function ProfileInformationForm() {
   }
 
   return (
-    <section>
-      {/* Display general profile errors */}
+    <>
       <FormAlert title="Profile Error" message={profileError} variant="destructive" className="mb-4" />
-
-      {/* Display error if Firestore is unavailable and profileError isn't already showing it */}
       {!isFirestoreAvailable && !profileError && (
          <FormAlert title="Configuration Error" message="Database service is not available. Profile data cannot be loaded or saved." variant="destructive" className="mb-4" />
       )}
-
       <Form {...profileForm}>
         <form onSubmit={profileForm.handleSubmit(onSubmitProfile)} className="space-y-4">
-          {/* First Name and Last Name Fields */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField
               control={profileForm.control}
@@ -342,7 +313,6 @@ export function ProfileInformationForm() {
               )}
             />
           </div>
-          {/* Username Field */}
           <FormField
             control={profileForm.control}
             name="username"
@@ -356,24 +326,20 @@ export function ProfileInformationForm() {
               </FormItem>
             )}
           />
-          {/* Email Display (read-only) */}
           <div>
-            <Label htmlFor="emailDisplay">Email Address</Label>
-            <Input id="emailDisplay" type="email" value={user?.email || 'N/A'} disabled className="bg-muted/50" />
+            <FormLabel>Email Address</FormLabel>
+            <Input type="email" value={user?.email || 'N/A'} disabled className="mt-2 bg-muted/50" />
             <p className="text-xs text-muted-foreground mt-1">
               Your email address is managed in the Security section.
             </p>
           </div>
-
-          {/* Profile Photo Upload Section */}
           <div className="space-y-2">
-            <Label>Profile Photo</Label>
+            <FormLabel>Profile Photo</FormLabel>
             <div className="flex items-center gap-4">
-              {/* Photo Preview */}
               <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center text-muted-foreground overflow-hidden">
                 {profilePhotoPreview ? (
                   <Image
-                    src={profilePhotoPreview} // Can be data URL or existing photoURL
+                    src={profilePhotoPreview}
                     alt="Profile preview"
                     width={80}
                     height={80}
@@ -381,22 +347,20 @@ export function ProfileInformationForm() {
                     data-ai-hint="person avatar"
                   />
                 ) : (
-                  <ImageIcon size={32} /> // Placeholder icon
+                  <ImageIcon size={32} />
                 )}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
+             <p className="text-xs text-muted-foreground">
                 Profile photo upload is not implemented in this version.
             </p>
           </div>
-
-          {/* Save Button */}
           <Button type="submit" disabled={profileSaving || !isFirestoreAvailable || !user || !formState.isDirty}>
             {(profileSaving) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Profile Changes
           </Button>
         </form>
       </Form>
-    </section>
+    </>
   );
 }
