@@ -12,10 +12,11 @@ import {
   signInWithPopup, 
   type UserCredential, 
   type User as FirebaseUser, 
-  getAdditionalUserInfo // To check if it's a new user
+  getAdditionalUserInfo, // To check if it's a new user
+  updateProfile
 } from 'firebase/auth';
 import { auth, firestore } from '@/lib/firebase/config'; // Firebase auth and firestore instances
-import { doc, writeBatch, serverTimestamp, type Firestore, type UserInfo } from 'firebase/firestore'; // Firestore functions
+import { doc, getDoc, writeBatch, serverTimestamp, type Firestore } from 'firebase/firestore'; // Firestore functions
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
@@ -34,79 +35,6 @@ const MicrosoftIcon = () => (
 );
 
 type SocialProviderName = 'Google' | 'GitHub' | 'Microsoft';
-
-/**
- * Creates or updates a user's profile in Firestore after a successful social login.
- * This function handles creating documents in both the 'users' and 'usernames' collections.
- * @param db - The non-null Firestore instance.
- * @param user - The Firebase user object from the social login.
- * @param providerId - The provider ID (e.g., 'google.com').
- * @param isNewUser - Boolean indicating if this is a new user registration.
- */
-async function updateOrCreateUserProfileFromSocial(
-  db: Firestore, 
-  user: FirebaseUser,
-  providerId: string, 
-  isNewUser: boolean
-) {
-  try {
-    const userProfileRef = doc(db, 'users', user.uid);
-    // Use email as key for username document if available, otherwise a unique ID fallback.
-    // Social providers might not always return an email or a suitable username.
-    const usernameKey = user.email ? user.email.toLowerCase() : `social_${user.uid}`;
-    const usernameDocRef = doc(db, 'usernames', usernameKey);
-
-    const batch = writeBatch(db); // Use a batch for atomic writes
-
-    // Attempt to parse first and last name from displayName
-    let firstName = '';
-    let lastName = '';
-    if (user.displayName) {
-        const nameParts = user.displayName.split(' ');
-        firstName = nameParts[0] || '';
-        lastName = nameParts.slice(1).join(' ') || '';
-    }
-    
-    // Prepare profile data to set/merge in Firestore
-    const profileDataToSet: any = {
-        firstName,
-        lastName,
-        email: user.email, // May be null depending on provider and user permissions
-        // Use email for username field by default, or a fallback like 'user_UID_prefix'
-        username: user.email || `user_${user.uid.substring(0,8)}`, 
-        photoURL: user.photoURL || null, // Profile picture URL from provider
-        providerId: providerId, // e.g., 'google.com', 'github.com'
-        updatedAt: serverTimestamp(),
-    };
-    if (isNewUser) { // If it's a new user, set createdAt
-        profileDataToSet.createdAt = serverTimestamp();
-    }
-    batch.set(userProfileRef, profileDataToSet, { merge: true }); // Merge to avoid overwriting existing data
-    
-    // Set username document if email exists (used for username login lookup)
-    if (user.email) {
-        const usernameDataToSet: any = {
-        uid: user.uid,
-        email: user.email,
-        username: user.email, // Store the email also as the username value here
-        updatedAt: serverTimestamp(),
-        };
-        if (isNewUser) {
-        usernameDataToSet.createdAt = serverTimestamp();
-        }
-        batch.set(usernameDocRef, usernameDataToSet, { merge: true });
-    } else {
-          console.warn(`User ${user.uid} lacks an email from social provider, skipping username document creation.`);
-    }
-    
-    await batch.commit(); // Commit Firestore writes
-  } catch (dbError: any) {
-    // Handle Firestore errors gracefully but inform the user. The login itself can still proceed.
-    console.error(`Error updating/creating Firestore profile for social login:`, dbError);
-    // Throw the error to be caught by the calling function, which will show a toast.
-    throw new Error("Your profile details couldn't be fully synced with the database, but you are logged in.");
-  }
-}
 
 /**
  * SocialLogins component.
@@ -193,18 +121,97 @@ export function SocialLogins() {
       const result: UserCredential = await signInWithPopup(auth, provider);
       const user = result.user; // Firebase user object
       const additionalInfo = getAdditionalUserInfo(result); // Info like isNewUser
+      const isNewUser = additionalInfo?.isNewUser ?? false;
 
       if (!user) { // Should not happen if signInWithPopup was successful
         throw new Error("User object not found after social sign-in.");
       }
 
-      if (firestore) { // If Firestore is available, manage user profile data
-        await updateOrCreateUserProfileFromSocial(
-          firestore, 
-          user, 
-          result.providerId, 
-          additionalInfo?.isNewUser ?? false
-        );
+      // If Firestore is available, manage user profile data.
+      if (firestore) {
+        if (isNewUser) {
+          // New user: Generate a unique username and create their profile documents.
+          let baseUsername = '';
+          if (user.email) {
+            baseUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+          } else if (user.displayName) {
+            baseUsername = user.displayName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+          }
+          if (!baseUsername) {
+            baseUsername = `user_${user.uid.substring(0, 8)}`;
+          }
+
+          // Ensure username meets length constraints
+          baseUsername = baseUsername.slice(0, 20);
+          if (baseUsername.length < 3) {
+            baseUsername = `${baseUsername}${Math.random().toString(36).substring(2, 5)}`;
+          }
+
+          let finalUsername = baseUsername;
+          let isUnique = false;
+          let attempts = 0;
+
+          // Find a unique username by checking Firestore and appending numbers if needed.
+          while (!isUnique && attempts < 10) {
+            const usernameDocRef = doc(firestore, "usernames", finalUsername);
+            const docSnap = await getDoc(usernameDocRef);
+            if (!docSnap.exists()) {
+              isUnique = true;
+            } else {
+              finalUsername = `${baseUsername}${Math.floor(100 + Math.random() * 900)}`;
+            }
+            attempts++;
+          }
+
+          if (!isUnique) {
+            throw new Error("Could not generate a unique username. Please try again.");
+          }
+
+          // Update the user's main Firebase Auth profile with the unique displayName.
+          await updateProfile(user, { displayName: finalUsername });
+
+          // Save the profile and username details to Firestore in a batch.
+          const batch = writeBatch(firestore);
+          const userProfileRef = doc(firestore, 'users', user.uid);
+          const usernameRef = doc(firestore, 'usernames', finalUsername);
+
+          let firstName = '', lastName = '';
+          if (result.user.displayName) { // Use the original displayName from provider for first/last name
+              const nameParts = result.user.displayName.split(' ');
+              firstName = nameParts[0] || '';
+              lastName = nameParts.slice(1).join(' ') || '';
+          }
+
+          batch.set(userProfileRef, {
+              firstName,
+              lastName,
+              username: finalUsername,
+              email: user.email,
+              photoURL: user.photoURL,
+              providerId: result.providerId,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+          });
+          batch.set(usernameRef, {
+              uid: user.uid,
+              email: user.email,
+              username: finalUsername,
+              createdAt: serverTimestamp(),
+          });
+          
+          await batch.commit();
+
+        } else {
+          // Existing user: Just update their profile with potentially new info (e.g., photo).
+          const userProfileRef = doc(firestore, 'users', user.uid);
+          const batch = writeBatch(firestore);
+          batch.update(userProfileRef, {
+              photoURL: user.photoURL,
+              providerId: result.providerId,
+              updatedAt: serverTimestamp(),
+          });
+          await batch.commit();
+        }
       } else { // Firestore is NOT available
           console.warn("Firestore client not available, skipping profile/username document creation for social login.");
           toast({

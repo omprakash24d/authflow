@@ -34,7 +34,7 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 
 -   **Email/Password Authentication**: Secure sign-up and sign-in with email and password.
 -   **Username or Email Login**: Users can sign in using either their registered email or username.
--   **Social Logins**: Integrated with Google, GitHub, and Microsoft for easy OAuth sign-in.
+-   **Social Logins**: Integrated with Google, GitHub, and Microsoft for easy OAuth sign-in. New social users are assigned a unique, auto-generated username which they can change in their settings.
 -   **Password Reset**: "Forgot Password" functionality via email.
 -   **Email Verification**: Users are prompted to verify their email address after sign-up.
 -   **Session Management**: Uses HTTP-only cookies for secure session handling.
@@ -72,24 +72,24 @@ AuthFlow aims to provide developers with a production-ready authentication syste
     <td align="center"><strong>Sign In Page</strong></td>
   </tr>
   <tr>
-    <td><img src="public/images/authflow_home.png" alt="AuthFlow Home Page"></td>
-    <td><img src="public/images/authflow_signin.png" alt="AuthFlow Sign In Page"></td>
+    <td><img src="/public/images/authflow_home.png" alt="AuthFlow Home Page"></td>
+    <td><img src="/public/images/authflow_signin.png" alt="AuthFlow Sign In Page"></td>
   </tr>
   <tr>
     <td align="center"><strong>Sign Up Page</strong></td>
     <td align="center"><strong>Forgot Password Page</strong></td>
   </tr>
   <tr>
-    <td><img src="public/images/authflow_signup.png" alt="AuthFlow Sign Up Page"></td>
-    <td><img src="public/images/authflow_forgot_password.png" alt="AuthFlow Forgot Password Page"></td>
+    <td><img src="/public/images/authflow_signup.png" alt="AuthFlow Sign Up Page"></td>
+    <td><img src="/public/images/authflow_forgot_password.png" alt="AuthFlow Forgot Password Page"></td>
   </tr>
   <tr>
     <td align="center"><strong>Dashboard</strong></td>
     <td align="center"><strong>Account Settings</strong></td>
   </tr>
   <tr>
-    <td><img src="public/images/authflow_dashboard.png" alt="AuthFlow Dashboard"></td>
-    <td><img src="public/images/authflow_settings.png" alt="AuthFlow Settings Page"></td>
+    <td><img src="/public/images/authflow_dashboard.png" alt="AuthFlow Dashboard"></td>
+    <td><img src="/public/images/authflow_settings.png" alt="AuthFlow Settings Page"></td>
   </tr>
 </table>
 
