@@ -1,4 +1,3 @@
-
 // src/lib/validators/auth.ts
 // This file defines Zod schemas for validating authentication-related forms.
 // Zod is a TypeScript-first schema declaration and validation library.
@@ -21,8 +20,8 @@ const passwordValidation = z
 export const emailValidation = z
   .string()
   .email({ message: 'Invalid email address format.' }) // Standard email format check
-  .refine(email => !/[+=]/.test(email.split('@')[0]), { // Disallow email subaddressing with + or =
-    message: 'Email subaddresses (using + or =) are not permitted.',
+  .refine(email => !/[+]/.test(email.split('@')[0]), { // Disallow email subaddressing with +
+    message: 'Email subaddresses (using +) are not permitted.',
   });
 
 // Schema for the Sign Up form.
