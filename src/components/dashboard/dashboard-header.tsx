@@ -43,16 +43,16 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
   const displayName = user.displayName || user.email || "User"; // Fallback display name
 
   return (
-    <div className="flex flex-col items-center text-center space-y-4">
+    <div className="flex items-center space-x-4">
       {/* User Avatar */}
-      <Avatar className="h-24 w-24"> {/* Large avatar */}
+      <Avatar className="h-20 w-20"> {/* Slightly smaller avatar */}
         {/* AvatarImage attempts to load user.photoURL. If it fails or is null, AvatarFallback is shown. */}
         <AvatarImage src={user.photoURL || undefined} alt={displayName} data-ai-hint="person avatar" />
         <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
       </Avatar>
       {/* Welcome Message */}
       <div>
-        <h2 className="text-3xl font-bold font-headline">Welcome back, {displayName}!</h2>
+        <h2 className="text-2xl font-bold font-headline">Welcome back, {displayName}!</h2>
         <p className="text-muted-foreground">This is your personalized dashboard.</p>
       </div>
     </div>
