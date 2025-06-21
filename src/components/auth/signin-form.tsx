@@ -20,6 +20,7 @@ import {
 import { auth } from '@/lib/firebase/config'; // Firebase auth instance
 import { SignInSchema, type SignInFormValues } from '@/lib/validators/auth'; // Zod schema for validation
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // Maps Firebase error codes to user-friendly messages
+import { AuthErrors, ApiErrors } from '@/lib/constants/messages'; // Centralized error messages
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,8 +36,6 @@ import { FormAlert } from '@/components/ui/form-alert'; // Generic form-level al
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
 import { Loader2, MailCheck } from 'lucide-react'; // Icons
 
-// Custom error message for unverified emails.
-const UNVERIFIED_EMAIL_ERROR_MESSAGE = "Your email address is not verified. Please check your inbox for the verification link we sent you. If you don't see it, be sure to check your spam or junk folder. You can also click below to resend the verification link.";
 const REMEMBER_ME_STORAGE_KEY = 'authFlowRememberedIdentifier'; // localStorage key for "Remember Me"
 
 /**
@@ -104,8 +103,8 @@ export function SignInForm() {
    */
   async function handleSignIn(emailToUse: string, passwordToUse: string, currentIdentifier: string) {
     if (!auth) { // Check if Firebase Auth service is available
-        setFormError("Authentication service is not available. Sign-in failed.");
-        toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
+        setFormError(AuthErrors.serviceUnavailable);
+        toast({ title: 'Service Unavailable', description: AuthErrors.serviceUnavailable, variant: 'destructive' });
         setIsLoading(false);
         throw new Error("Auth service unavailable"); 
     }
@@ -115,7 +114,7 @@ export function SignInForm() {
 
     // Check if email is verified
     if (firebaseUser && !firebaseUser.emailVerified) {
-      setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE); // Set specific error message
+      setFormError(AuthErrors.unverifiedEmail); // Set specific error message
       setUnverifiedUser(firebaseUser); // Store the unverified user for resend option
       toast({
         title: 'Email Not Verified',
@@ -138,7 +137,7 @@ export function SignInForm() {
       });
 
       if (!response.ok) { // Handle API errors
-        let errorData = { error: 'Failed to create session. Server response not in expected format.' };
+        let errorData = { error: AuthErrors.sessionCreationError };
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
             try {
@@ -185,8 +184,8 @@ export function SignInForm() {
     let emailToUse = values.identifier;
 
     if (!auth) { 
-      setFormError("Authentication service is not available. Please try again later.");
-      toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
+      setFormError(AuthErrors.serviceUnavailable);
+      toast({ title: 'Service Unavailable', description: AuthErrors.serviceUnavailable, variant: 'destructive' });
       setIsLoading(false);
       return;
     }
@@ -197,7 +196,7 @@ export function SignInForm() {
         const usernameLookupResponse = await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`);
         if (!usernameLookupResponse.ok) {
           const errorData = await usernameLookupResponse.json().catch(() => ({}));
-          const specificMessage = errorData.error || 'Invalid username or credentials.';
+          const specificMessage = errorData.error || ApiErrors.invalidUserLookup;
           setFormError(specificMessage);
           toast({ title: 'Sign In Failed', description: specificMessage, variant: 'destructive' });
           setIsLoading(false);
@@ -205,8 +204,8 @@ export function SignInForm() {
         }
         const { email } = await usernameLookupResponse.json();
         if (!email) {
-          setFormError('Could not find email for the provided username.');
-          toast({ title: 'Sign In Failed', description: 'Could not find email for the provided username.', variant: 'destructive' });
+          setFormError(AuthErrors.couldNotFindEmailForUsername);
+          toast({ title: 'Sign In Failed', description: AuthErrors.couldNotFindEmailForUsername, variant: 'destructive' });
           setIsLoading(false);
           return;
         }
@@ -235,7 +234,7 @@ export function SignInForm() {
       }
       
       // Display the error message if it's not the specific unverified email message (handled by handleSignIn).
-      if (errorMessage !== UNVERIFIED_EMAIL_ERROR_MESSAGE) {
+      if (errorMessage !== AuthErrors.unverifiedEmail) {
          setFormError(errorMessage);
          toast({
             title: 'Sign In Failed',
@@ -268,7 +267,7 @@ export function SignInForm() {
         description: 'A new verification email has been sent to your address. Please check your inbox.',
       });
       // Keep the unverified email message visible or re-set it.
-      setFormError(UNVERIFIED_EMAIL_ERROR_MESSAGE); 
+      setFormError(AuthErrors.unverifiedEmail); 
     } catch (error: any) {
       console.error("Error resending verification email:", error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code);
@@ -302,13 +301,13 @@ export function SignInForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Display general form errors (not unverified email error, handled by EmailVerificationAlert) */}
-          {formError && formError !== UNVERIFIED_EMAIL_ERROR_MESSAGE && (
+          {formError && formError !== AuthErrors.unverifiedEmail && (
             <FormAlert title="Error" message={formError} variant="destructive" />
           )}
           {/* Display alert for unverified email and resend option */}
-          {formError === UNVERIFIED_EMAIL_ERROR_MESSAGE && unverifiedUser && (
+          {formError === AuthErrors.unverifiedEmail && unverifiedUser && (
             <EmailVerificationAlert
-              message={UNVERIFIED_EMAIL_ERROR_MESSAGE}
+              message={AuthErrors.unverifiedEmail}
               onResend={handleResendVerificationEmail}
               isResending={isResendingVerification}
               showResendButton={!!unverifiedUser}

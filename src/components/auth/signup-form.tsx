@@ -1,4 +1,3 @@
-
 // src/components/auth/signup-form.tsx
 // This component renders the sign-up form. It handles user input for registration details,
 // validation, AI-powered password breach checking, interaction with Firebase for account creation
@@ -17,6 +16,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Firestore 
 import { SignUpSchema, type SignUpFormValues } from '@/lib/validators/auth'; // Zod schema for validation
 import { checkPasswordBreach } from '@/ai/flows/password-breach-detector'; // AI flow for password check
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // Maps Firebase errors to messages
+import { AuthErrors } from '@/lib/constants/messages'; // Centralized error messages
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,8 +77,8 @@ export function SignUpForm() {
 
     // Check if Firebase Auth service is available
     if (!auth) {
-      setFormError("Authentication service is not available. Please try again later or contact support.");
-      toast({ title: 'Service Unavailable', description: "Authentication service is not available.", variant: 'destructive' });
+      setFormError(AuthErrors.serviceUnavailable);
+      toast({ title: 'Service Unavailable', description: AuthErrors.serviceUnavailable, variant: 'destructive' });
       setIsLoading(false);
       return;
     }

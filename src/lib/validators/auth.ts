@@ -4,6 +4,7 @@
 // These schemas are used with React Hook Form for client-side and potentially server-side validation.
 
 import { z } from 'zod';
+import { ValidationErrors } from '@/lib/constants/messages';
 
 // --- Reusable Validation Schemas & Constants ---
 
@@ -18,12 +19,12 @@ import { z } from 'zod';
  */
 const passwordValidation = z
   .string()
-  .min(8, { message: 'Password must be at least 8 characters long.' })
-  .regex(/[a-z]/, { message: 'Password must contain at least one lowercase letter.' })
-  .regex(/[A-Z]/, { message: 'Password must contain at least one uppercase letter.' })
-  .regex(/[0-9]/, { message: 'Password must contain at least one number.' })
+  .min(8, { message: ValidationErrors.passwordMinLength })
+  .regex(/[a-z]/, { message: ValidationErrors.passwordLowercase })
+  .regex(/[A-Z]/, { message: ValidationErrors.passwordUppercase })
+  .regex(/[0-9]/, { message: ValidationErrors.passwordNumber })
   // Regex for common special characters.
-  .regex(/[\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~]/, { message: 'Password must contain at least one special character.' });
+  .regex(/[\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~]/, { message: ValidationErrors.passwordSpecialChar });
 
 /**
  * Reusable email validation schema.
@@ -31,9 +32,9 @@ const passwordValidation = z
  */
 export const emailValidation = z
   .string()
-  .email({ message: 'Invalid email address format.' }) // Standard email format check
+  .email({ message: ValidationErrors.invalidEmailFormat }) // Standard email format check
   .refine(email => !/[+]/.test(email.split('@')[0]), { // Disallow email subaddressing with +
-    message: 'Email subaddresses (using +) are not permitted.',
+    message: ValidationErrors.emailSubaddressingNotPermitted,
   });
 
 /**
@@ -41,11 +42,11 @@ export const emailValidation = z
  * Enforces length, character set, and reserved names.
  */
 const usernameValidation = z.string()
-  .min(3, 'Username must be at least 3 characters.')
-  .max(30, 'Username must be 30 characters or less.')
-  .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.') // Alphanumeric and underscores
-  .refine(val => val.toLowerCase() !== 'admin', { message: 'Username "admin" is not allowed for security reasons.' }) // Disallow "admin" case-insensitively
-  .refine(val => !val.includes('@'), { message: 'Username cannot contain the "@" symbol.'});
+  .min(3, ValidationErrors.usernameMinLength)
+  .max(30, ValidationErrors.usernameMaxLength)
+  .regex(/^[a-zA-Z0-9_]+$/, ValidationErrors.usernameInvalidChars) // Alphanumeric and underscores
+  .refine(val => val.toLowerCase() !== 'admin', { message: ValidationErrors.usernameIsAdmin }) // Disallow "admin" case-insensitively
+  .refine(val => !val.includes('@'), { message: ValidationErrors.usernameContainsAt});
 
 
 // --- Form-Specific Schemas ---
@@ -55,17 +56,17 @@ const usernameValidation = z.string()
  * Validates all fields required for creating a new user account.
  */
 export const SignUpSchema = z.object({
-  firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
-  lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
+  firstName: z.string().min(1, ValidationErrors.firstNameRequired).max(64, ValidationErrors.firstNameMaxLength),
+  lastName: z.string().min(1, ValidationErrors.lastNameRequired).max(64, ValidationErrors.lastNameMaxLength),
   username: usernameValidation,
   email: emailValidation,
   password: passwordValidation,
   confirmPassword: passwordValidation,
   termsAccepted: z.boolean().refine(val => val === true, { // Checkbox for terms and conditions
-    message: 'You must accept the Terms of Service and Privacy Policy.',
+    message: ValidationErrors.termsNotAccepted,
   }),
 }).refine(data => data.password === data.confirmPassword, { // Cross-field validation: ensure passwords match
-  message: 'Passwords do not match.',
+  message: ValidationErrors.passwordsDoNotMatch,
   path: ['confirmPassword'], // Error message will be associated with the confirmPassword field
 });
 
@@ -79,8 +80,8 @@ export type SignUpFormValues = z.infer<typeof SignUpSchema>;
  */
 export const SignInSchema = z.object({
   // 'identifier' can be either an email or a username. Specific logic to handle this is in the form component.
-  identifier: z.string().min(1, 'Email or username is required.'),
-  password: z.string().min(1, 'Password is required.'), // Basic check; actual validation is done by Firebase
+  identifier: z.string().min(1, ValidationErrors.usernameRequired),
+  password: z.string().min(1, ValidationErrors.passwordRequired), // Basic check; actual validation is done by Firebase
 });
 
 // TypeScript type inferred from the SignInSchema.
@@ -92,8 +93,8 @@ export type SignInFormValues = z.infer<typeof SignInSchema>;
  * Validates fields for updating user profile information.
  */
 export const ProfileSettingsSchema = z.object({
-  firstName: z.string().min(1, 'First name is required.').max(64, 'First name must be 64 characters or less.'),
-  lastName: z.string().min(1, 'Last name is required.').max(64, 'Last name must be 64 characters or less.'),
+  firstName: z.string().min(1, ValidationErrors.firstNameRequired).max(64, ValidationErrors.firstNameMaxLength),
+  lastName: z.string().min(1, ValidationErrors.lastNameRequired).max(64, ValidationErrors.lastNameMaxLength),
   username: usernameValidation,
 });
 
@@ -106,11 +107,11 @@ export type ProfileSettingsFormValues = z.infer<typeof ProfileSettingsSchema>;
  * Validates current password, new password, and confirmation.
  */
 export const ChangePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required.'),
+  currentPassword: z.string().min(1, ValidationErrors.currentPasswordRequired),
   newPassword: passwordValidation, // New password must meet strength criteria
   confirmNewPassword: passwordValidation, // Confirmation must also meet criteria (though mainly for matching)
 }).refine(data => data.newPassword === data.confirmNewPassword, { // Ensure new passwords match
-  message: 'New passwords do not match.',
+  message: ValidationErrors.newPasswordsDoNotMatch,
   path: ['confirmNewPassword'],
 });
 
@@ -123,7 +124,7 @@ export type ChangePasswordFormValues = z.infer<typeof ChangePasswordSchema>;
  * Validates current password (for re-authentication) and the new email address.
  */
 export const ChangeEmailSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required."), // For re-authentication
+  currentPassword: z.string().min(1, ValidationErrors.currentPasswordRequired), // For re-authentication
   newEmail: emailValidation, // New email must be valid
 });
 

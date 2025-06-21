@@ -19,6 +19,7 @@ import { updateProfile, type User as FirebaseUser } from 'firebase/auth'; // Fir
 import Image from 'next/image'; // Next.js Image component for optimized images
 import { ProfileSettingsSchema, type ProfileSettingsFormValues } from '@/lib/validators/auth'; // Zod schema for validation
 import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // Maps Firebase errors to messages
+import { AuthErrors, ProfileErrors } from '@/lib/constants/messages'; // Centralized error messages
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,11 +59,11 @@ async function prepareUsernameUpdates(
     const newUsernameRef = doc(db, 'usernames', newUsernameLower);
     const newUsernameSnap = await getDoc(newUsernameRef);
     if (newUsernameSnap.exists() && newUsernameSnap.data()?.uid !== userId) {
-      return { success: false, error: `Username "${newUsername}" is already taken.`, usernameChanged: true };
+      return { success: false, error: ProfileErrors.usernameTaken(newUsername), usernameChanged: true };
     }
   } catch (error: any) {
     console.error("Error checking username availability:", error);
-    return { success: false, error: "Failed to verify username availability. Please try again.", usernameChanged: true };
+    return { success: false, error: ProfileErrors.verifyUsernameError, usernameChanged: true };
   }
 
   // If username is available or belongs to the current user, prepare batch operations.
@@ -151,7 +152,7 @@ export function ProfileInformationForm() {
         setInitialUsername(fetchedUsername);
       } catch (error: any) {
         console.error("Error fetching user profile for settings:", error);
-        setProfileError("Could not load your profile data from the database.");
+        setProfileError(ProfileErrors.loadProfileError);
       } finally {
         setInitialDataLoaded(true);
       }
@@ -164,13 +165,13 @@ export function ProfileInformationForm() {
 
     if (!firestore) {
       setIsFirestoreAvailable(false);
-      setProfileError("Database service is not available. Profile data cannot be loaded or saved.");
+      setProfileError(ProfileErrors.dbServiceUnavailable);
       setInitialDataLoaded(true);
       return;
     }
 
     setIsFirestoreAvailable(true);
-    if (profileError === "Database service is not available. Profile data cannot be loaded or saved.") {
+    if (profileError === ProfileErrors.dbServiceUnavailable) {
       setProfileError(null);
     }
     
@@ -196,7 +197,7 @@ export function ProfileInformationForm() {
     if (!selectedFile || !user || !storage || !firestore || !auth?.currentUser) {
       toast({
         title: "Upload Failed",
-        description: "Prerequisites for upload not met. Please try again.",
+        description: AuthErrors.photoUploadPrereqsNotMet,
         variant: "destructive",
       });
       return;
@@ -244,12 +245,12 @@ export function ProfileInformationForm() {
    */
   async function onSubmitProfile(values: ProfileSettingsFormValues) {
     if (!user || !auth?.currentUser) {
-      setProfileError("User not authenticated. Please sign in again.");
-      toast({ title: "Authentication Error", description: "User not authenticated.", variant: "destructive" });
+      setProfileError(AuthErrors.userNotAuthenticated);
+      toast({ title: "Authentication Error", description: AuthErrors.userNotAuthenticated, variant: "destructive" });
       return;
     }
     if (!firestore) {
-      setProfileError("Database service is not available. Profile cannot be saved.");
+      setProfileError(ProfileErrors.dbServiceUnavailable);
       return;
     }
 
@@ -308,9 +309,9 @@ export function ProfileInformationForm() {
 
     } catch (error: any) {
       console.error("Error updating profile:", error);
-      let specificErrorMessage = "An error occurred while saving your profile to the database.";
+      let specificErrorMessage = ProfileErrors.saveProfileError;
       if (error.code === 'permission-denied') {
-        specificErrorMessage = `Saving profile details to the database failed due to permissions. (Details: ${error.message})`;
+        specificErrorMessage = ProfileErrors.permissionDenied(error.message);
       } else {
         specificErrorMessage = getFirebaseAuthErrorMessage(error.code) || specificErrorMessage;
       }
@@ -318,7 +319,7 @@ export function ProfileInformationForm() {
       // *** ATOMIC REVERT on error ***
       // If Auth displayName was updated but Firestore failed, revert the Auth update.
       if (authDisplayNameUpdated && initialUsername) {
-        specificErrorMessage = `Your profile could not be saved to the database. Reverting changes. Details: ${error.message}`;
+        specificErrorMessage = ProfileErrors.revertChangesError(error.message);
         await updateProfile(currentUser, { displayName: initialUsername });
       }
       
@@ -343,7 +344,7 @@ export function ProfileInformationForm() {
     <>
       <FormAlert title="Profile Error" message={profileError} variant="destructive" className="mb-4" />
       {!isFirestoreAvailable && !profileError && (
-         <FormAlert title="Configuration Error" message="Database service is not available. Profile data cannot be loaded or saved." variant="destructive" className="mb-4" />
+         <FormAlert title="Configuration Error" message={ProfileErrors.dbServiceUnavailable} variant="destructive" className="mb-4" />
       )}
       <Form {...profileForm}>
         <form onSubmit={profileForm.handleSubmit(onSubmitProfile)} className="space-y-4">

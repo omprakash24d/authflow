@@ -13,6 +13,7 @@ import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // M
 import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; // Utility for re-authentication
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authenticated user
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
+import { AuthErrors } from '@/lib/constants/messages';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -75,8 +76,8 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   async function onSubmit(values: ChangePasswordFormValues) {
     // Ensure user is authenticated
     if (!user) { 
-      setFormError('User not authenticated.');
-      toast({ title: 'Error', description: 'User not authenticated.', variant: 'destructive'});
+      setFormError(AuthErrors.userNotAuthenticated);
+      toast({ title: 'Error', description: AuthErrors.userNotAuthenticated, variant: 'destructive'});
       return;
     }
 

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast'; // For displaying notifications
 import { deleteUser } from 'firebase/auth'; // Firebase function to delete a user
 import { LogOut, Settings, Trash2, Loader2 } from 'lucide-react'; // Icons
+import { ApiErrors } from '@/lib/constants/messages'; // Centralized error messages
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,7 +59,7 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to delete account data from the database.' }));
+        const errorData = await response.json().catch(() => ({ error: ApiErrors.deleteUserDataFailed }));
         throw new Error(errorData.error);
       }
       

@@ -5,6 +5,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { firebaseAdminFirestore } from '@/lib/firebase/admin-config'; // Firebase Admin SDK for Firestore access
 import { rateLimiter } from '@/lib/rate-limiter'; // Import the rate limiter utility
+import { ApiErrors } from '@/lib/constants/messages';
 
 // Initialize a rate limiter for this endpoint.
 // Allows 20 requests per minute to prevent username enumeration attacks.
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       // Instead, return a generic error that mimics a credentials failure.
       // The client-side will interpret this as "Invalid username or credentials".
       console.warn(`Username lookup failed for: "${username.toLowerCase()}" (Not Found)`);
-      return NextResponse.json({ error: 'Invalid user lookup.' }, { status: 404 });
+      return NextResponse.json({ error: ApiErrors.invalidUserLookup }, { status: 404 });
     }
 
     const userData = usernameDoc.data();

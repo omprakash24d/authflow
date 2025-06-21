@@ -18,6 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { AuthFormWrapper } from '@/components/auth/auth-form-wrapper'; // Consistent wrapper for auth forms
 import { FormAlert } from '@/components/ui/form-alert'; // Component to display form-level success/error messages
 import { useToast } from '@/hooks/use-toast'; // Hook for displaying toast notifications
+import { AuthErrors, SuccessMessages } from '@/lib/constants/messages'; // Centralized messages
 import { Mail, Loader2 } from 'lucide-react'; // Icons
 
 // Zod schema for forgot password form validation.
@@ -57,8 +58,8 @@ export function ForgotPasswordForm() {
     setFormSuccess(null);
 
     if (!auth) {
-      setFormError("Authentication service is not available. Please try again later.");
-      toast({ title: 'Service Error', description: "Authentication service not available.", variant: 'destructive' });
+      setFormError(AuthErrors.serviceUnavailable);
+      toast({ title: 'Service Error', description: AuthErrors.serviceUnavailable, variant: 'destructive' });
       setIsLoading(false);
       return;
     }
@@ -66,7 +67,7 @@ export function ForgotPasswordForm() {
     try {
       // Attempt to send password reset email via Firebase.
       await sendPasswordResetEmail(auth, values.email);
-      setFormSuccess('If an account exists for this email, a password reset link has been sent. Please check your inbox.');
+      setFormSuccess(SuccessMessages.passwordResetEmailSent);
       toast({
         title: 'Password Reset Email Sent',
         description: 'Check your inbox for instructions to reset your password.',

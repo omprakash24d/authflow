@@ -15,6 +15,7 @@ import { getFirebaseAuthErrorMessage } from '@/lib/firebase/error-mapping'; // M
 import { reauthenticateCurrentUser } from '@/lib/firebase/auth-utils'; // Utility for re-authentication
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authenticated user
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
+import { AuthErrors, ProfileErrors, ValidationErrors } from '@/lib/constants/messages';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,13 +75,13 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
   async function onSubmit(values: ChangeEmailFormValues) {
     // Ensure user is authenticated
     if (!user) { 
-      setFormError('User not authenticated.');
-      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
+      setFormError(AuthErrors.userNotAuthenticated);
+      toast({ title: "Error", description: AuthErrors.userNotAuthenticated, variant: "destructive" });
       return;
     }
     // Ensure Firestore service is available for updating user profile records
      if (!firestore) {
-      setFormError('Database service is not available. Cannot update email profile data.');
+      setFormError(ProfileErrors.dbServiceUnavailable);
       toast({ title: "Configuration Error", description: "Database service unavailable.", variant: "destructive" });
       setIsLoading(false); // Reset loading state
       return;
@@ -88,7 +89,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
 
     // Prevent user from "changing" to the same email address.
     if (values.newEmail.toLowerCase() === user.email?.toLowerCase()) {
-      setFormError("The new email address cannot be the same as your current one.");
+      setFormError(ValidationErrors.newEmailSameAsCurrent);
       return;
     }
 

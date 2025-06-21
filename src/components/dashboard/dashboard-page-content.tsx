@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/auth-context'; // Hook to access authenticat
 import { Card, CardContent } from '@/components/ui/card'; // ShadCN Card components for layout
 import { firestore } from '@/lib/firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
+import { ProfileErrors } from '@/lib/constants/messages'; // Centralized messages
 
 // Import child components that make up the dashboard sections
 import { DashboardHeader } from './dashboard-header';
@@ -42,7 +43,7 @@ export default function DashboardPageContent() {
     const fetchUserProfile = async () => {
       if (!user || !firestore) {
         setLoadingProfile(false);
-        if (!firestore) setProfileError("Database service is not available.");
+        if (!firestore) setProfileError(ProfileErrors.dbServiceUnavailable);
         return;
       }
       setLoadingProfile(true);
@@ -61,7 +62,7 @@ export default function DashboardPageContent() {
         }
       } catch (error) {
         console.error("Error fetching user profile from Firestore:", error);
-        setProfileError("Could not load profile data.");
+        setProfileError(ProfileErrors.loadProfileError);
         setProfileData(null); // Set to null on error
       } finally {
         setLoadingProfile(false);
