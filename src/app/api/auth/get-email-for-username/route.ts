@@ -45,8 +45,11 @@ export async function GET(request: NextRequest) {
     const usernameDoc = await db.collection('usernames').doc(username.toLowerCase()).get();
 
     if (!usernameDoc.exists) {
-      // If no document found for the username, return a not found error.
-      return NextResponse.json({ error: 'Username not found.' }, { status: 404 });
+      // SECURITY: To prevent username enumeration, do not confirm that the username was not found.
+      // Instead, return a generic error that mimics a credentials failure.
+      // The client-side will interpret this as "Invalid username or credentials".
+      console.warn(`Username lookup failed for: "${username.toLowerCase()}" (Not Found)`);
+      return NextResponse.json({ error: 'Invalid user lookup.' }, { status: 404 });
     }
 
     const userData = usernameDoc.data();

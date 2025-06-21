@@ -16,8 +16,7 @@ AuthFlow is a robust and feature-rich user authentication starter system built w
 - [Installation](#installation)
 - [Environment Variables](#environment-variables)
 - [Run Locally](#run-locally)
-- [Running Tests](#running-tests)
-- [Usage & Integration](#usage--integration)
+- [Easy Integration Guide](#easy-integration-guide)
 - [API Reference](#api-reference)
 - [Deployment](#deployment)
 - [Roadmap](#roadmap)
@@ -195,122 +194,99 @@ GOOGLE_API_KEY=your_google_ai_api_key
     # npx genkit start -- tsx src/ai/dev.ts
     ```
 
-## Running Tests
+## Easy Integration Guide
 
-*To be added. Currently, no automated tests are configured for this project.*
+AuthFlow is designed as a **starter kit**, not a drop-in library. The easiest way to use it is to build your application on top of it. However, if you need to integrate its features into an existing Next.js project, this guide provides a clear, step-by-step process.
 
-## Usage & Integration
+### Step 1: Copy Core Files
 
-AuthFlow is designed to be relatively portable. Here's how you can integrate it into another Next.js (App Router) project:
+Copy the following directories and files from this project into your target project's `src` directory.
 
-### 1. Copy Core AuthFlow Directories and Files
+-   **Authentication Logic & Pages**:
+    -   `src/app/(auth)`: All sign-in, sign-up, forgot-password pages.
+    -   `src/app/api/auth`: Backend routes for session management.
+    -   `src/lib/firebase`: All Firebase configuration and utilities.
+    -   `src/lib/validators/auth.ts`: Form validation schemas.
+    -   `src/lib/rate-limiter.ts`: API security utility.
+    -   `src/contexts/auth-context.tsx`: Global authentication provider.
+    -   `src/middleware.ts`: Route protection middleware (copy to the root of `src`).
 
-Copy the following directories and files from this project into the `src` directory of your target project:
+-   **UI Components**:
+    -   `src/components/auth`: All components used on auth pages.
+    -   `src/components/auth-layout.tsx`: Layout for auth pages.
+    -   `src/components/logo.tsx`: App logo.
+    -   `src/components/protected-route.tsx`: Client-side route protection wrapper.
+    -   `src/components/ui`: Copy all ShadCN UI components. It's easier to copy the entire directory or ensure you have the necessary components (`Button`, `Input`, `Card`, `Form`, `Alert`, `Dialog`, etc.) installed via the ShadCN CLI.
+    -   `src/hooks/use-toast.ts` & `src/components/ui/toaster.tsx`: Toast notification system.
 
--   **`src/app/(auth)`**: Contains the pre-built sign-in, sign-up, and forgot-password pages.
--   **`src/app/api/auth`**: Contains the necessary API backend routes for session management and username-to-email lookups.
--   **`src/app/dashboard`**: Example protected dashboard pages. You can adapt or replace these.
--   **`src/components/auth`**: UI components used by the authentication pages (forms, wrappers, etc.).
--   **`src/components/auth-layout.tsx`**: Layout specifically for authentication pages.
--   **`src/components/dashboard`**: UI components for the example dashboard and settings pages.
--   **`src/components/protected-route.tsx`**: A client component to protect routes that require authentication.
--   **`src/components/logo.tsx`**: (Optional, if you want to use the AuthFlow logo or adapt it).
--   **`src/contexts/auth-context.tsx`**: The React context provider for managing authentication state.
--   **`src/lib/firebase`**: Firebase client and admin configurations, and auth utility functions.
--   **`src/lib/validators/auth.ts`**: Zod schemas for validating authentication forms.
--   **`src/middleware.ts`**: Next.js middleware for protecting routes and handling redirects based on auth state.
--   **`src/hooks/use-toast.ts` & `src/components/ui/toast.tsx`, `src/components/ui/toaster.tsx`**: (If you want to use the same toast notification system).
--   **Relevant ShadCN UI components** from `src/components/ui` that are used by the auth components (e.g., Button, Input, Card, Form, Alert, Dialog, Checkbox, Label, Separator, Avatar etc.). It might be easier to copy the entire `src/components/ui` directory or ensure you have these components set up in your target project using `npx shadcn-ui@latest add ...`.
--   **`src/ai` directory** (Optional): If you want to use the Genkit-based password breach detection or other AI features.
+-   **Example Protected Content (Optional but Recommended)**:
+    -   `src/app/dashboard`: Example protected dashboard.
+    -   `src/components/dashboard`: UI components for the dashboard.
 
-### 2. Install Dependencies
+-   **AI Features (Optional)**:
+    -   `src/ai`: All Genkit flows and configuration.
 
-Ensure your target project's `package.json` includes the following dependencies (or newer compatible versions):
+### Step 2: Install Dependencies
 
-```json
-"dependencies": {
-    "@genkit-ai/googleai": "^1.8.0",
-    "@genkit-ai/next": "^1.8.0",
-    "@hookform/resolvers": "^4.1.3",
-    "@radix-ui/react-accordion": "^1.2.3",
-    "@radix-ui/react-alert-dialog": "^1.1.6",
-    "@radix-ui/react-avatar": "^1.1.3",
-    "@radix-ui/react-checkbox": "^1.1.4",
-    "@radix-ui/react-dialog": "^1.1.6",
-    "@radix-ui/react-dropdown-menu": "^2.1.6",
-    "@radix-ui/react-label": "^2.1.2",
-    "@radix-ui/react-menubar": "^1.1.6",
-    "@radix-ui/react-popover": "^1.1.6",
-    "@radix-ui/react-progress": "^1.1.2",
-    "@radix-ui/react-radio-group": "^1.2.3",
-    "@radix-ui/react-scroll-area": "^1.2.3",
-    "@radix-ui/react-select": "^2.1.6",
-    "@radix-ui/react-separator": "^1.1.2",
-    "@radix-ui/react-slider": "^1.2.3",
-    "@radix-ui/react-slot": "^1.1.2",
-    "@radix-ui/react-switch": "^1.1.3",
-    "@radix-ui/react-tabs": "^1.1.3",
-    "@radix-ui/react-toast": "^1.2.6",
-    "@radix-ui/react-tooltip": "^1.1.8",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^3.6.0",
-    "dotenv": "^16.5.0",
-    "firebase": "^11.9.1",
-    "firebase-admin": "^12.1.1",
-    "genkit": "^1.8.0",
-    "lucide-react": "^0.475.0",
-    "next": "15.3.3",
-    "next-themes": "^0.3.0",
-    "react": "^18.3.1",
-    "react-day-picker": "^8.10.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.54.2",
-    "recharts": "^2.15.1",
-    "tailwind-merge": "^3.0.1",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.24.2"
+Merge the `dependencies` and `devDependencies` from AuthFlow's `package.json` into your project's `package.json`. Then, run `npm install` or `yarn install`.
+
+**Key Dependencies**: `firebase`, `firebase-admin`, `next-themes`, `react-hook-form`, `zod`, `lucide-react`, `shadcn-ui` components, `genkit` (optional).
+
+### Step 3: Configure `next.config.ts`
+
+Ensure your `next.config.ts` allows images from `placehold.co` (for placeholders), `firebasestorage.googleapis.com` (for user photos), and social provider domains.
+
+```ts
+// next.config.ts
+import type {NextConfig} from 'next';
+
+const nextConfig: NextConfig = {
+  // ... your other config
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'placehold.co' },
+      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
+      { protocol: 'https', hostname: 'avatars.githubusercontent.com' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+    ],
   },
-"devDependencies": {
-    "genkit-cli": "^1.8.0"
-  }
+};
+
+export default nextConfig;
 ```
-Run `npm install` or `yarn install`. Also ensure you have dev dependencies like `typescript`, `tailwindcss`, `postcss`, etc., configured in your target project.
 
-### 3. Update `src/app/layout.tsx`
+### Step 4: Configure Tailwind CSS & Global Styles
 
-Wrap your root layout's children with `ThemeProvider` (for dark/light mode, optional but used by AuthFlow styles) and `AuthProvider`. Also, include the `Toaster` component for notifications.
+AuthFlow relies on a specific Tailwind and CSS variable setup for its theming.
+
+1.  **Copy `tailwind.config.ts`**: Replace your `tailwind.config.ts` with AuthFlow's or carefully merge them.
+2.  **Copy `globals.css`**: Copy the contents of `src/app/globals.css` into your project's global stylesheet. This file contains the crucial HSL color variables that power the theme.
+3.  **Ensure `postcss.config.js` is set up for Tailwind.**
+
+### Step 5: Update Root Layout (`src/app/layout.tsx`)
+
+Wrap your root layout's `body` content with `ThemeProvider` and `AuthProvider`. This enables theme switching and provides global authentication state. Also, add the `<Toaster />` component to enable notifications.
 
 ```tsx
 // src/app/layout.tsx
 import type { Metadata } from 'next';
-import './globals.css'; // Ensure you have global styles similar to AuthFlow's
-import { Toaster } from '@/components/ui/toaster'; // Assuming you copied this
-import { AuthProvider } from '@/contexts/auth-context'; // Copied from AuthFlow
-import { ThemeProvider } from '@/components/theme-provider'; // Copied or your own
+import './globals.css';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/auth-context';
+import { ThemeProvider } from '@/components/theme-provider';
 import type { PropsWithChildren } from 'react';
 
-// Optional: Add fonts if AuthFlow's default font ('Inter') is desired
-// import { Inter } from 'next/font/google';
-// const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-
-export const metadata: Metadata = {
-  title: 'Your App Title',
-  description: 'Your app description',
-};
+// ... your metadata
 
 export default function RootLayout({ children }: PropsWithChildren<{}>) {
   return (
-    // Add inter.variable to html tag if using Inter font like AuthFlow
-    <html lang="en" suppressHydrationWarning /* className={inter.variable} */ >
-      <head>
-        {/* Add any specific head elements like fonts if needed */}
-      </head>
+    <html lang="en" suppressHydrationWarning>
+      <head>{/* Your head tags */}</head>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
             {children}
-            <Toaster /> {/* For AuthFlow notifications */}
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>
@@ -319,99 +295,13 @@ export default function RootLayout({ children }: PropsWithChildren<{}>) {
 }
 ```
 
-### 4. Configure `next.config.ts`
+### Step 6: Verify Key Integration Points
 
-Ensure your `next.config.ts` (or `next.config.js`) allows images from `placehold.co` (used by AuthFlow for image placeholders) and your Firebase Storage bucket if you plan to use profile photos.
+-   **Environment Variables**: Ensure your `.env.local` file is populated with all the necessary Firebase credentials as outlined in the "Environment Variables" section.
+-   **Middleware**: The `src/middleware.ts` file should now be in your project root. It will automatically protect the `/dashboard` route and handle redirects. You can add more paths to the `PROTECTED_PATHS` array as needed.
+-   **Protecting Routes**: To protect any new page you create, wrap its content in the `<ProtectedRoute>` component.
 
-```ts
-// next.config.ts
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true, // Recommended to resolve errors, but can be ignored
-  },
-  eslint: {
-    ignoreDuringBuilds: true, // Recommended to configure ESLint, but can be ignored
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co', // For placeholder images
-      },
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com', // General Firebase Storage domain
-        // You might want to make pathname more specific if you know your bucket structure,
-        // e.g., pathname: '/v0/b/your-project-id.appspot.com/o/**',
-      },
-      // If your Firebase Storage URLs are in the format `your-project-id.appspot.com`
-      // you might need to add it specifically. REPLACE with your actual bucket hostname.
-      // {
-      //   protocol: 'https',
-      //   hostname: 'your-project-id.appspot.com',
-      //   pathname: '/**',
-      // },
-    ],
-  },
-};
-
-export default nextConfig;
-```
-
-### 5. Tailwind CSS and Global Styles
-
-AuthFlow relies on Tailwind CSS and specific global styles (see `src/app/globals.css`). Ensure your target project has Tailwind CSS configured (`tailwind.config.ts`, `postcss.config.js`) and that you copy or adapt the theme variables from AuthFlow's `globals.css` into your project's global CSS file. This is crucial for the UI components to look correct. Pay attention to the HSL color variables for `--background`, `--foreground`, `--primary`, `--accent`, etc.
-
-Your `tailwind.config.ts` should also be set up to use these CSS variables, similar to AuthFlow's.
-
-### 6. Using AuthFlow Features
-
--   **Protecting Routes**: Use the `ProtectedRoute` client component to wrap pages or layouts that require authentication.
-    ```tsx
-    // Example: src/app/some-protected-page/page.tsx
-    import { ProtectedRoute } from '@/components/protected-route';
-    
-    export default function SomeProtectedPage() {
-      return (
-        <ProtectedRoute>
-          {/* Your protected content here */}
-        </ProtectedRoute>
-      );
-    }
-    ```
--   **Accessing Auth State**: Use the `useAuth` hook in your client components.
-    ```tsx
-    // Example client component
-    'use client';
-    import { useAuth } from '@/contexts/auth-context';
-    import { Button } from '@/components/ui/button'; // Example
-
-    function MyComponent() {
-      const { user, loading, signOut } = useAuth();
-
-      if (loading) return <p>Loading authentication state...</p>;
-      if (!user) return <p>Please sign in to see this content.</p>;
-
-      return (
-        <div>
-          <p>Welcome, {user.displayName || user.email}!</p>
-          <Button onClick={signOut}>Sign Out</Button>
-        </div>
-      );
-    }
-    ```
--   **Middleware**: The copied `src/middleware.ts` will automatically handle redirects for protected routes and auth pages based on session cookies. No further action is usually needed for this once copied and configured. It ensures that unauthenticated users trying to access `/dashboard` are sent to `/signin`, and authenticated users trying to access `/signin` are sent to `/dashboard`.
-
-### 7. Customization
-
--   **Logo**: Update `src/components/logo.tsx` or replace its usage in `src/components/auth-layout.tsx` and other relevant places.
--   **Styling**: Adjust Tailwind configuration (`tailwind.config.ts`) and global styles (`src/app/globals.css`) to match your project's branding.
--   **Text & Content**: Modify the text, descriptions, and links (e.g., Terms of Service, Privacy Policy) in the auth pages and components as needed.
--   **Dashboard**: The provided `/dashboard` pages and components are examples. Customize them to fit your application's needs.
-
-By following these steps, you should be able to integrate AuthFlow into a new Next.js project. Remember to test thoroughly, especially the authentication flows and environment variable configurations.
+By following these steps, you can successfully integrate AuthFlow's robust authentication system into your own Next.js application.
 
 ## API Reference
 
@@ -421,13 +311,10 @@ By following these steps, you should be able to integrate AuthFlow into a new Ne
 
 When deploying AuthFlow:
 
-1.  **Environment Variables**: Ensure all necessary environment variables (especially `NEXT_PUBLIC_FIREBASE_*` and `GOOGLE_APPLICATION_CREDENTIALS` or `FIREBASE_ADMIN_*`) are correctly set in your hosting environment. **Never commit your `.env.local` file or service account JSON file to your repository if it's public.**
-2.  **Firebase Admin SDK**:
-    -   If using `GOOGLE_APPLICATION_CREDENTIALS` pointing to a path, ensure the `serviceAccountKey.json` file is accessible by your deployed application (e.g., by including it in the deployment package or securely mounting it).
-    -   If using individual `FIREBASE_ADMIN_*` variables, ensure they are correctly set in the deployment environment. Remember the `FIREBASE_ADMIN_PRIVATE_KEY` needs newlines escaped if set as a single string.
+1.  **Hosting Provider**: Use a provider that supports Next.js, such as **Vercel** or **Firebase Hosting**.
+2.  **Environment Variables**: Ensure all necessary environment variables (especially `NEXT_PUBLIC_FIREBASE_*` and `GOOGLE_APPLICATION_CREDENTIALS` or `FIREBASE_ADMIN_*`) are correctly set in your hosting environment. **Never commit your `.env.local` file or service account JSON file to your repository if it's public.**
 3.  **Firebase Security Rules**: **CRITICAL**: Before going live, ensure your Firebase Authentication settings and Firestore/Storage security rules are properly configured for production to prevent unauthorized access. The default "test mode" rules are insecure.
 4.  **Build Command**: Use `npm run build` or `yarn build`.
-5.  **Next.js Output**: AuthFlow uses the Next.js App Router. Ensure your hosting provider supports Next.js (preferably version 13.4+ for stable App Router support). Firebase Hosting is a good option.
 
 ## Roadmap
 
