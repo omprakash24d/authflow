@@ -26,7 +26,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { AuthFormWrapper } from './auth-form-wrapper'; // Consistent wrapper for auth forms
 import { SocialLogins } from './social-logins'; // Component for Google, GitHub, etc. sign-in
@@ -34,7 +33,7 @@ import { PasswordInput } from './password-input'; // Custom password input with 
 import { EmailVerificationAlert } from './email-verification-alert'; // Alert for unverified emails
 import { FormAlert } from '@/components/ui/form-alert'; // Generic form-level alert
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
-import { Loader2, MailCheck } from 'lucide-react'; // Icons
+import { Loader2 } from 'lucide-react'; // Icons
 
 const REMEMBER_ME_STORAGE_KEY = 'authFlowRememberedIdentifier'; // localStorage key for "Remember Me"
 
@@ -49,7 +48,7 @@ export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false); // For general form submission loading
   const [isResendingVerification, setIsResendingVerification] = useState(false); // For "Resend Verification" loading
   const [formError, setFormError] = useState<string | null>(null); // For general form errors
-  const [showVerificationMessageFromSignUp, setShowVerificationMessageFromSignUp] = useState(false); // If redirected from sign-up
+  const [postSignUpMessage, setPostSignUpMessage] = useState<string | null>(null); // If redirected from sign-up
   const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null); // Stores Firebase user if email is unverified
   const [rememberMe, setRememberMe] = useState(false); // State for "Remember Me" checkbox
 
@@ -71,7 +70,7 @@ export function SignInForm() {
   // Effect to check if redirected from sign-up with a 'verificationEmailSent' flag.
   useEffect(() => {
     if (searchParams.get('verificationEmailSent') === 'true') {
-      setShowVerificationMessageFromSignUp(true);
+      setPostSignUpMessage("If you just signed up, please check your inbox and click the verification link to activate your account before signing in.");
       // Clean up the URL by removing the query parameter.
       const newSearchParams = new URLSearchParams(searchParams.toString());
       newSearchParams.delete('verificationEmailSent');
@@ -179,7 +178,7 @@ export function SignInForm() {
   async function onSubmit(values: SignInFormValues) {
     setIsLoading(true);
     setFormError(null);
-    setShowVerificationMessageFromSignUp(false);
+    setPostSignUpMessage(null);
     setUnverifiedUser(null);
 
     let emailToUse = values.identifier;
@@ -315,15 +314,14 @@ export function SignInForm() {
             />
           )}
           {/* Display message if redirected from sign-up after verification email was sent */}
-          {showVerificationMessageFromSignUp && !formError && (
-            <Alert variant="default" className="bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300">
-              <MailCheck className="h-5 w-5 text-green-500 dark:text-green-400" />
-              <AlertTitle className="font-semibold">Verification Email Sent During Sign Up</AlertTitle>
-              <AlertDescription>
-                If you just signed up, please check your inbox and click the verification link to activate your account before signing in.
-              </AlertDescription>
-            </Alert>
+          {postSignUpMessage && (
+            <FormAlert
+              title="Verification Email Sent"
+              message={postSignUpMessage}
+              variant="success"
+            />
           )}
+
 
           {/* Form Fields */}
           <FormField
