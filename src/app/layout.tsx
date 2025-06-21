@@ -1,38 +1,41 @@
 // src/app/layout.tsx
 // This file defines the root layout for the entire application.
-// It wraps all pages and includes global providers like AuthProvider and ThemeProvider.
+// It's the top-level component that wraps all pages and includes global providers
+// like AuthProvider and ThemeProvider, ensuring they are available everywhere.
 
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google'; // Import next/font
+import { Inter } from 'next/font/google'; // Import next/font for font optimization
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/auth-context';
 import { ThemeProvider } from '@/components/theme-provider';
 import type { PropsWithChildren } from 'react';
 
-// Configure the Inter font from Google Fonts using next/font
-// Exporting it as a CSS variable allows for more flexible use in Tailwind CSS.
+// Configure the Inter font from Google Fonts using next/font.
+// This handles font optimization automatically (e.g., self-hosting, removing unused glyphs).
+// Exporting it as a CSS variable allows for more flexible use within Tailwind CSS.
 const inter = Inter({
   subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
+  display: 'swap', // 'swap' ensures text is visible with a fallback font while Inter loads.
+  variable: '--font-inter', // Defines a CSS variable for the font family.
 });
 
 /**
- * Metadata for the root layout.
- * Provides a default title and a template for page-specific titles.
+ * Root metadata for the application.
+ * This provides a default title and a template for page-specific titles,
+ * which is beneficial for SEO and browser tab clarity.
  */
 export const metadata: Metadata = {
   title: {
-    default: 'AuthFlow', // Default title for the application
-    template: '%s | AuthFlow', // Template for titles on other pages
+    default: 'AuthFlow', // Default title for the application (e.g., on the homepage).
+    template: '%s | AuthFlow', // Template for titles on other pages (e.g., "Sign In | AuthFlow").
   },
   description: 'Comprehensive User and Authentication System by Firebase Studio',
 };
 
 /**
  * Viewport configuration for the application.
- * Sets the theme color for the browser UI.
+ * Sets the theme color for the browser UI, which can adapt to light/dark mode.
  */
 export const viewport: Viewport = {
   themeColor: [
@@ -43,26 +46,31 @@ export const viewport: Viewport = {
 
 /**
  * RootLayout component.
- * This component sets up the basic HTML structure and wraps its children with
- * necessary context providers and applies the optimized font.
- * @param {PropsWithChildren<{}>} props - Props containing children elements.
+ * This is the main layout component that structures the entire HTML document.
+ * It sets up the basic HTML structure, applies the application's font, and
+ * wraps all child components (pages) with necessary global context providers.
+ *
+ * @param {PropsWithChildren<{}>} props - Props object.
+ * @param {React.ReactNode} props.children - The active page component being rendered by Next.js.
  * @returns JSX.Element
  */
 export default function RootLayout({ children }: PropsWithChildren<{}>) {
   return (
-    // `suppressHydrationWarning` is used with next-themes to prevent warnings.
+    // `suppressHydrationWarning` is used with next-themes to prevent warnings
+    // caused by the server rendering a different theme than the client's initial render.
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* next/font handles font optimization, so manual <link> tags are no longer needed. */}
+        {/* Additional head tags like favicons can be placed here. */}
+        {/* next/font handles font optimization, so manual <link> tags are not needed for Google Fonts. */}
       </head>
-      {/* Apply the font variable to the body and default to font-sans. */}
+      {/* Apply the font variable to the body and default to font-sans. `antialiased` provides smoother text rendering. */}
       <body className={`${inter.variable} font-sans antialiased`}>
-        {/* ThemeProvider manages dark/light mode switching. */}
+        {/* ThemeProvider manages dark/light mode switching across the app. */}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {/* AuthProvider manages user authentication state across the app. */}
+          {/* AuthProvider manages user authentication state globally. */}
           <AuthProvider>
-            {children} {/* Renders the active page content. */}
-            <Toaster /> {/* Renders toast notifications. */}
+            {children} {/* Renders the active page content here. */}
+            <Toaster /> {/* Renders toast notifications, available globally. */}
           </AuthProvider>
         </ThemeProvider>
       </body>

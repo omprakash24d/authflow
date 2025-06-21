@@ -23,12 +23,14 @@ interface ErrorProps {
 /**
  * Global Error component for the application.
  * Displays a user-friendly error message and provides an option to retry.
+ * This component acts as a catch-all for unexpected client-side and server-side rendering errors.
+ * 
  * @param {ErrorProps} props - The component's props.
  * @returns JSX.Element
  */
 export default function Error({ error, reset }: ErrorProps) {
   useEffect(() => {
-    // Log the error to an error reporting service or console.
+    // Log the error to an error reporting service or console for debugging.
     // In a production environment, you would integrate with services like Sentry, LogRocket, etc.
     console.error("Caught an error in error.tsx:", error);
   }, [error]);
@@ -37,6 +39,7 @@ export default function Error({ error, reset }: ErrorProps) {
     <div
       className="flex min-h-screen flex-col items-center justify-center bg-background p-8 text-center"
       role="alert" // ARIA role for accessibility
+      aria-live="assertive" // Ensures screen readers announce the error immediately.
     >
       <AlertTriangle className="mb-4 h-16 w-16 text-destructive" /> {/* Error Icon */}
       <h2 className="mb-4 text-3xl font-bold font-headline text-destructive">
@@ -45,15 +48,15 @@ export default function Error({ error, reset }: ErrorProps) {
       <p className="mb-8 max-w-md text-lg text-foreground/80">
         We encountered an unexpected issue. Please try again, or if the problem persists, contact support.
       </p>
-      {error.message && (
-        // Displaying the error message can be helpful for debugging but might be too technical for users.
-        // Consider whether to show this in production or only in development.
+      {process.env.NODE_ENV === 'development' && error.message && (
+        // Displaying the error message is helpful for debugging but might be too technical for end-users.
+        // It's good practice to only show this in development.
         <p className="mb-4 text-sm text-muted-foreground bg-muted p-2 rounded-md">
           Error details: {error.message}
         </p>
       )}
       {error.digest && (
-        // The digest is a server-generated hash for server-side errors, useful for correlation.
+        // The digest is a server-generated hash for server-side errors, useful for correlation in logs.
         <p className="mb-4 text-xs text-muted-foreground">
           Error Digest: {error.digest}
         </p>
@@ -65,6 +68,7 @@ export default function Error({ error, reset }: ErrorProps) {
           () => reset()
         }
         size="lg"
+        aria-label="Try to recover from the error"
       >
         Try Again
       </Button>

@@ -1,13 +1,13 @@
 // src/app/dashboard/page.tsx
-// This file defines the main Dashboard page, accessible only to authenticated users.
-// Authentication is handled by the layout (`/dashboard/layout.tsx`).
+// This file defines the main Dashboard page, which is the default landing page
+// for authenticated users.
 
 import type { Metadata } from 'next';
 import DashboardPageContent from '@/components/dashboard/dashboard-page-content';
 
 /**
  * Metadata for the Dashboard page.
- * Provides title and description for SEO and browser tab.
+ * Provides title and description for SEO and browser tab identification.
  */
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -16,11 +16,14 @@ export const metadata: Metadata = {
 
 /**
  * DashboardPage component.
- * Renders the main content of the dashboard.
+ * This is the entry point for the `/dashboard` route. It renders the main content
+ * of the dashboard. The overall layout, including the sidebar and route protection,
+ * is handled by the `src/app/dashboard/layout.tsx` file.
+ * 
  * @returns JSX.Element
  */
 export default function DashboardPage() {
-  // The `ProtectedRoute` wrapper is now in the layout file for this route group,
-  // so it doesn't need to be here.
+  // Renders the component containing the actual dashboard UI.
+  // This separation of concerns keeps the page file clean and focused on routing and metadata.
   return <DashboardPageContent />;
 }

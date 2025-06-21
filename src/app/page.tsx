@@ -1,13 +1,13 @@
 // src/app/page.tsx
 // This file defines the main landing page (homepage) of the application.
-// It typically displays content for unauthenticated users, guiding them to sign up or sign in.
+// It serves as the entry point for the root URL ('/').
 
 import type { Metadata } from 'next';
 import HomePageContent from '@/components/home/home-page-content';
 
 /**
  * Metadata for the Home page.
- * Provides title and description for SEO and browser tab.
+ * Provides title and description for SEO and browser tab identification.
  */
 export const metadata: Metadata = {
   title: 'Secure & Scalable User Authentication System',
@@ -16,7 +16,10 @@ export const metadata: Metadata = {
 
 /**
  * Page component for the root route ('/').
- * Renders the `HomePageContent` component, which contains the actual UI for the landing page.
+ * This component's primary role is to render the `HomePageContent`, which contains
+ * the actual UI for the landing page. This separation of concerns keeps the page
+ * file clean and focused on its purpose within the routing structure.
+ * 
  * @returns JSX.Element
  */
 export default function Page() {
