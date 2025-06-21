@@ -1,3 +1,4 @@
+
 // src/components/auth/signup-form.tsx
 // This component renders the sign-up form. It handles user input for registration details,
 // validation, AI-powered password breach checking, interaction with Firebase for account creation
@@ -88,7 +89,6 @@ export function SignUpForm() {
       const user = userCredential.user;
 
       // Update Firebase Auth user profile with username (displayName)
-      // Note: photoURL could be added here if collected during sign-up
       await updateProfile(user, {
         displayName: registrationValues.username,
       });
@@ -99,10 +99,10 @@ export function SignUpForm() {
             // Create a document in 'usernames' collection to map username to UID and email (for username login)
             const usernameDocRef = doc(firestore, 'usernames', registrationValues.username.toLowerCase());
             await setDoc(usernameDocRef, {
-            uid: user.uid,
-            email: user.email, // Store email for potential lookup
-            username: registrationValues.username, // Store the cased username
-            createdAt: serverTimestamp(), // Timestamp of creation
+              uid: user.uid,
+              email: user.email, // Store email for potential lookup
+              username: registrationValues.username, // Store the cased username for display purposes
+              createdAt: serverTimestamp(), // Timestamp of creation
             });
 
             // Create/update a document in 'users' collection with detailed profile information
@@ -112,7 +112,7 @@ export function SignUpForm() {
                 lastName: registrationValues.lastName,
                 email: user.email,
                 username: registrationValues.username,
-                // photoURL: user.photoURL, // Can be set if available from Auth profile
+                photoURL: user.photoURL, // Initially null, but good practice to include
                 createdAt: serverTimestamp(),
             }, { merge: true }); // Merge true to avoid overwriting existing fields if any
         } catch (dbError: any) {
@@ -120,7 +120,7 @@ export function SignUpForm() {
             console.error("Firestore error during sign up:", dbError);
             toast({
                 title: "Profile Save Warning",
-                description: "Account created, but there was an issue saving some profile details to the database. You can update them in settings later.",
+                description: "Your account was created, but there was an issue saving profile details to the database. You can update them in your account settings.",
                 variant: "default", 
                 duration: 7000,
             });
@@ -130,7 +130,7 @@ export function SignUpForm() {
         console.warn("Firestore client not available, skipping username/profile document creation.");
         toast({
             title: "Firestore Unavailable",
-            description: "Account created, but profile and username details could not be saved to the database at this time. Please try updating them in settings later.",
+            description: "Your account was created, but profile details could not be saved to the database at this time. Please try updating them in your settings later.",
             variant: "default",
             duration: 7000,
         });
