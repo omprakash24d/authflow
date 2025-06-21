@@ -4,6 +4,14 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { firebaseAdminFirestore } from '@/lib/firebase/admin-config'; // Firebase Admin SDK for Firestore access
+import { rateLimiter } from '@/lib/rate-limiter'; // Import the rate limiter utility
+
+// Initialize a rate limiter for this endpoint.
+// Allows 20 requests per minute to prevent username enumeration attacks.
+const limiter = rateLimiter({
+  uniqueTokenPerInterval: 20,
+  interval: 60000, // 1 minute
+});
 
 /**
  * GET handler for fetching a user's email by their username.
@@ -12,6 +20,12 @@ import { firebaseAdminFirestore } from '@/lib/firebase/admin-config'; // Firebas
  * @returns A NextResponse object with the user's email or an error.
  */
 export async function GET(request: NextRequest) {
+  // Check if the request is rate-limited.
+  const rateLimitResponse = limiter.check(request);
+  if (rateLimitResponse) {
+    return rateLimitResponse; // If rate-limited, return the 429 response.
+  }
+
   const { searchParams } = new URL(request.url);
   const username = searchParams.get('username');
 

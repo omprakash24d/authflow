@@ -6,6 +6,14 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebase/admin-config'; // Firebase Admin SDK for creating session cookies
+import { rateLimiter } from '@/lib/rate-limiter'; // Import the rate limiter utility
+
+// Initialize a rate limiter for this endpoint.
+// Allows 10 requests per minute from a single IP address to prevent brute-force login attempts.
+const limiter = rateLimiter({
+  uniqueTokenPerInterval: 10,
+  interval: 60000, // 1 minute
+});
 
 /**
  * POST handler for creating a session cookie.
@@ -14,6 +22,12 @@ import admin from '@/lib/firebase/admin-config'; // Firebase Admin SDK for creat
  * @returns A NextResponse object, setting the session cookie on success, or an error response.
  */
 export async function POST(request: NextRequest) {
+  // Check if the request is rate-limited.
+  const rateLimitResponse = limiter.check(request);
+  if (rateLimitResponse) {
+    return rateLimitResponse; // If rate-limited, return the 429 response immediately.
+  }
+  
   const authorization: string | null = request.headers.get('Authorization');
   if (!authorization || !authorization.startsWith('Bearer ')) {
     // If no token or malformed header, return an unauthorized error.
