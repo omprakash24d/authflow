@@ -61,30 +61,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Signs out the current user from both server-side session and client-side state.
+   * This function is carefully ordered to prevent race conditions.
    * Memoized with `useCallback` to prevent unnecessary re-renders in consumer components.
    */
   const signOut = useCallback(async (): Promise<void> => {
     try {
-      // Step 1: Clear the server-side session cookie by calling our API endpoint.
-      const logoutResponse = await fetch('/api/auth/session-logout', { method: 'POST' });
-      if (!logoutResponse.ok) {
-          // Log if the API call fails, but proceed with client-side logout regardless.
-          console.warn('AuthContext: Failed to clear server session cookie. The user will be logged out on the client, but the cookie might persist until it expires.');
+      // Step 1: Tell the server to destroy the session cookie.
+      // We must `await` this to ensure the cookie is cleared before any redirect.
+      await fetch('/api/auth/session-logout', { method: 'POST' });
+
+      // Step 2: Sign out from the Firebase client-side SDK.
+      // This is now safe to do as the server session is gone.
+      if (auth) {
+        await firebaseSignOut(auth);
       }
     } catch (error) {
-      console.error('AuthContext: Error calling sign-out API.', error);
-    }
-
-    // Step 2: Sign out from the Firebase client-side SDK if available.
-    if (auth) {
-      await firebaseSignOut(auth);
-    }
-    
-    // Step 3: Redirect to the homepage with a full page reload.
-    // This ensures all application state is completely reset, which is a robust
-    // approach for sign-out. `onAuthStateChanged` will handle the user state update.
-    if (typeof window !== 'undefined') {
-      window.location.assign('/');
+      console.error('AuthContext: Error during the sign-out process.', error);
+      // Even on error, we proceed to redirect to ensure a consistent logged-out state on the client.
+    } finally {
+      // Step 3: Redirect to the homepage with a full page reload.
+      // This ensures all application state is completely reset.
+      if (typeof window !== 'undefined') {
+        window.location.assign('/');
+      }
     }
   }, []);
 

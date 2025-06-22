@@ -3,23 +3,23 @@
 // While client-side Firebase sign-out clears the client's auth state, this endpoint
 // ensures the secure, HTTP-only session cookie is also invalidated.
 
-import { type NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 import admin from '@/lib/firebase/admin-config';
 import { SESSION_COOKIE_NAME } from '@/lib/constants/auth';
 
 /**
  * POST handler for logging out a user by clearing their session cookie.
  * This effectively invalidates the user's server-side session.
+ * It uses the modern `cookies()` API from `next/headers` for reliable cookie deletion.
  *
- * @param {NextRequest} request - The incoming NextRequest object.
- * @returns {NextResponse} A NextResponse object that clears the session cookie.
+ * @returns {NextResponse} A NextResponse object confirming the logout.
  */
-export async function POST(request: NextRequest) {
-  const sessionCookieValue: string | undefined = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+export async function POST() {
+  const sessionCookieValue = cookies().get(SESSION_COOKIE_NAME)?.value;
 
   // For enhanced security, you can optionally revoke all active refresh tokens for the user,
   // which would sign them out of all devices. This is a more forceful logout.
-  // The basic implementation here simply clears the cookie for the current session.
   if (sessionCookieValue) {
     try {
       const decodedClaims = await admin.auth().verifySessionCookie(sessionCookieValue);
@@ -34,18 +34,24 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Create a success response.
-  const response = NextResponse.json({ status: 'success', message: 'Logged out successfully.' }, { status: 200 });
-  
-  // Set the cookie with an immediate expiration date (`maxAge: 0`) to effectively delete it from the browser.
-  response.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: '', // Set value to empty string.
-    maxAge: 0, // Expire immediately.
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    sameSite: 'lax',
-  });
-  return response;
+  // Clear the cookie by setting its expiration date to a past time (the epoch).
+  // This is the most reliable way to instruct the browser to delete the cookie.
+  // The 'path' must match the path of the cookie to be deleted.
+  try {
+    cookies().set({
+      name: SESSION_COOKIE_NAME,
+      value: '',
+      expires: new Date(0), // Set expiry to epoch time
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+    });
+  } catch (error) {
+    console.error("Failed to set cookie for logout:", error);
+    return NextResponse.json({ status: 'error', message: 'Failed to clear session.' }, { status: 500 });
+  }
+
+  // Return a success response.
+  return NextResponse.json({ status: 'success', message: 'Logged out successfully.' }, { status: 200 });
 }
