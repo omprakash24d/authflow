@@ -27,7 +27,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { FormAlert } from '@/components/ui/form-alert'; // For displaying form-level errors
 import { useAuth } from '@/contexts/auth-context'; // Hook to access authenticated user
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
-import { Loader2, Image as ImageIcon, Upload } from 'lucide-react'; // Icons
+import { Loader2, Image as ImageIcon } from 'lucide-react'; // Icons
 
 /**
  * Prepares Firestore batch operations for updating or creating username documents.
@@ -191,37 +191,6 @@ export function ProfileInformationForm() {
     fileInputRef.current?.click();
   };
 
-  // Handles the logic for uploading the selected photo to Firebase Storage.
-  const handlePhotoUpload = async () => {
-    if (!selectedFile || !user || !storage || !firestore || !auth?.currentUser) {
-      toast({ title: "Upload Failed", description: AuthErrors.photoUploadPrereqsNotMet, variant: "destructive" });
-      return;
-    }
-
-    setIsSaving(true);
-    setProfileError(null);
-    const photoPath = `profile_photos/${user.uid}/${selectedFile.name}`;
-    const photoStorageRef = storageRef(storage, photoPath);
-
-    try {
-      const uploadResult = await uploadBytes(photoStorageRef, selectedFile);
-      const downloadURL = await getDownloadURL(uploadResult.ref);
-      await updateProfile(auth.currentUser, { photoURL: downloadURL });
-      const userProfileRef = doc(firestore, 'users', user.uid);
-      await setDoc(userProfileRef, { photoURL: downloadURL }, { merge: true });
-
-      setProfilePhotoPreview(downloadURL); // The new URL is a gs:// or https:// URL, not a blob.
-      setSelectedFile(null);
-      toast({ title: "Photo Uploaded!", description: "Your new profile photo has been saved." });
-    } catch (error: any) {
-      console.error("Error uploading profile photo:", error);
-      const errorMessage = getFirebaseAuthErrorMessage(error.code) || "Failed to upload photo. Please try again.";
-      setProfileError(errorMessage);
-      toast({ title: "Upload Failed", description: errorMessage, variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   /**
    * Handles submission of the profile information form.
@@ -242,55 +211,79 @@ export function ProfileInformationForm() {
     setProfileError(null);
 
     const currentUser = auth.currentUser;
-    const newUsername = values.username.trim();
+    let newPhotoURL: string | null = null;
     let authDisplayNameUpdated = false;
 
-    // Prepare username changes (check for uniqueness, etc.)
-    const usernameUpdateResult = await prepareUsernameUpdates(newUsername, initialUsername, currentUser.uid, currentUser.email, firestore);
-    if (!usernameUpdateResult.success) {
-      setProfileError(usernameUpdateResult.error || "Failed to process username change.");
-      toast({ title: "Username Error", description: usernameUpdateResult.error || "Failed to process username change.", variant: "destructive" });
-      setIsSaving(false);
-      return;
-    }
-
     try {
-      // Update Auth profile first. This is often the most critical part.
-      await updateProfile(currentUser, { displayName: newUsername });
+       // Step 1: Handle photo upload if a new file is selected.
+      if (selectedFile) {
+        if (!storage) {
+          throw new Error(AuthErrors.photoUploadPrereqsNotMet);
+        }
+        const photoPath = `profile_photos/${user.uid}/${selectedFile.name.replace(/\s/g, '_')}`;
+        const photoStorageRef = storageRef(storage, photoPath);
+        const uploadResult = await uploadBytes(photoStorageRef, selectedFile);
+        newPhotoURL = await getDownloadURL(uploadResult.ref);
+      }
+
+      // Step 2: Prepare username updates
+      const newUsername = values.username.trim();
+      const usernameUpdateResult = await prepareUsernameUpdates(newUsername, initialUsername, currentUser.uid, currentUser.email, firestore);
+      if (!usernameUpdateResult.success) {
+        throw new Error(usernameUpdateResult.error || "Failed to process username change.");
+      }
+
+      // Step 3: Update Firebase Auth Profile (displayName and new photoURL if available)
+      const authProfileUpdate: { displayName: string; photoURL?: string } = {
+        displayName: newUsername,
+      };
+      if (newPhotoURL) {
+        authProfileUpdate.photoURL = newPhotoURL;
+      } else { // Keep existing photo if no new one is uploaded
+        authProfileUpdate.photoURL = currentUser.photoURL ?? undefined;
+      }
+      await updateProfile(currentUser, authProfileUpdate);
       authDisplayNameUpdated = true;
 
+      // Step 4: Prepare and commit Firestore batch update
       const batch = writeBatch(firestore);
       const userProfileRef = doc(firestore, 'users', currentUser.uid) as DocumentReference<DocumentData>;
-      batch.set(userProfileRef, {
+      const firestoreUpdateData: any = {
         firstName: values.firstName,
         lastName: values.lastName,
         username: newUsername,
-        email: currentUser.email,
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      };
+      if (newPhotoURL) {
+        firestoreUpdateData.photoURL = newPhotoURL;
+      }
+      batch.set(userProfileRef, firestoreUpdateData, { merge: true });
 
-      // Apply username document changes if any are needed
       if (usernameUpdateResult.batchOperations) {
         usernameUpdateResult.batchOperations(batch);
       }
-
       await batch.commit();
 
+      // Step 5: Update local state and provide user feedback
       if (usernameUpdateResult.usernameChanged) {
         setInitialUsername(newUsername);
       }
+      if(newPhotoURL) {
+        setProfilePhotoPreview(newPhotoURL);
+        setSelectedFile(null); // Clear staged file
+      }
 
       toast({ title: 'Profile Updated', description: 'Your profile information has been successfully saved.' });
-      reset(values); // Reset the form with new defaults, marking it as "not dirty".
+      reset(values); // Reset form with new defaults, marking it as "not dirty".
 
     } catch (error: any) {
       console.error("Error updating profile:", error);
-      let specificErrorMessage = getFirebaseAuthErrorMessage(error.code) || ProfileErrors.saveProfileError;
+      let specificErrorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message || ProfileErrors.saveProfileError;
       
-      // Atomic Revert: If Auth displayName was updated but Firestore failed, revert the Auth update.
       if (authDisplayNameUpdated && initialUsername) {
-        specificErrorMessage = ProfileErrors.revertChangesError(error.message);
+        // Attempt to revert Auth profile if Firestore fails
         await updateProfile(currentUser, { displayName: initialUsername });
+        specificErrorMessage = ProfileErrors.revertChangesError(error.message);
       }
       
       setProfileError(specificErrorMessage);
@@ -301,7 +294,7 @@ export function ProfileInformationForm() {
   }
 
   // Determine if the form can be submitted.
-  const canSubmit = isSaving || !user || !firestore || !formState.isDirty;
+  const canSubmit = isSaving || !user || !firestore || (!formState.isDirty && !selectedFile);
 
   return (
     <>
@@ -373,7 +366,7 @@ export function ProfileInformationForm() {
                   <ImageIcon size={32} />
                 )}
               </div>
-              <div className="flex flex-col gap-2">
+              <div>
                   <Button
                     type="button"
                     variant="outline"
@@ -381,19 +374,8 @@ export function ProfileInformationForm() {
                     disabled={isSaving}
                   >
                     <ImageIcon className="mr-2 h-4 w-4" />
-                    Choose Photo
+                    {selectedFile ? 'Change Photo' : 'Choose Photo'}
                   </Button>
-                  {selectedFile && (
-                    <Button
-                      type="button"
-                      onClick={handlePhotoUpload}
-                      disabled={isSaving}
-                      className="bg-accent hover:bg-accent/90"
-                    >
-                      {isSaving && selectedFile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                      Upload Photo
-                    </Button>
-                  )}
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -403,9 +385,9 @@ export function ProfileInformationForm() {
                   />
                 </div>
             </div>
-             {selectedFile ? (
+            {selectedFile ? (
               <p className="text-xs text-muted-foreground">
-                New photo selected: <strong>{selectedFile.name}</strong>. Click "Upload Photo" to save it.
+                New photo selected: <strong>{selectedFile.name}</strong>. Click "Save Changes" to upload it.
               </p>
             ) : (
                <p className="text-xs text-muted-foreground">
@@ -414,8 +396,8 @@ export function ProfileInformationForm() {
             )}
           </div>
           <Button type="submit" disabled={canSubmit}>
-            {isSaving && !selectedFile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Profile Changes
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
           </Button>
         </form>
       </Form>
