@@ -130,3 +130,18 @@ export const ChangeEmailSchema = z.object({
 
 // TypeScript type inferred from the ChangeEmailSchema.
 export type ChangeEmailFormValues = z.infer<typeof ChangeEmailSchema>;
+
+
+/**
+ * Zod schema for the MFA Verification form (both sign-in and enrollment).
+ * Validates the 6-digit TOTP code.
+ */
+export const MfaVerificationSchema = z.object({
+  code: z
+    .string()
+    .min(1, { message: ValidationErrors.mfaCodeRequired })
+    .length(6, { message: ValidationErrors.mfaCodeInvalid }),
+});
+
+// TypeScript type inferred from the MfaVerificationSchema.
+export type MfaVerificationFormValues = z.infer<typeof MfaVerificationSchema>;

@@ -35,11 +35,12 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 -   **Email/Password Authentication**: Secure sign-up and sign-in with email and password.
 -   **Username or Email Login**: Users can sign in using either their registered email or username.
 -   **Social Logins**: Integrated with Google, GitHub, and Microsoft for easy OAuth sign-in. New social users are assigned a unique, auto-generated username which they can change in their settings.
+-   **Multi-Factor Authentication (MFA/2FA)**: Users can secure their accounts with Time-based One-Time Passwords (TOTP) using authenticator apps like Google Authenticator or Authy.
 -   **Password Reset**: "Forgot Password" functionality via email.
 -   **Email Verification**: Users are prompted to verify their email address after sign-up.
 -   **Session Management**: Uses HTTP-only cookies for secure session handling.
 -   **Route Protection**: Middleware and client-side checks to protect routes requiring authentication.
--   **User Profile Management**: Basic UI for users to view and update their profile information (first name, last name, username).
+-   **User Profile Management**: Basic UI for users to view and update their profile information (first name, last name, username, and profile photo).
 -   **Security Features**:
     -   Password strength indicator.
     -   AI-powered password breach detection (using Genkit and HaveIBeenPwned API).
@@ -56,10 +57,11 @@ AuthFlow aims to provide developers with a production-ready authentication syste
 ## Tech Stack
 
 -   **Framework**: Next.js (App Router)
--   **Authentication**: Firebase Authentication
+-   **Authentication**: Firebase Authentication (including MFA)
 -   **Database**: Firebase Firestore (for user profiles and username lookups)
 -   **Styling**: Tailwind CSS
 -   **UI Components**: ShadCN UI
+-   **QR Code Generation**: `qrcode` (for MFA setup)
 -   **AI (Optional)**: Genkit with Google AI (for password breach detection)
 -   **Language**: TypeScript
 -   **Form Handling**: React Hook Form with Zod for validation
@@ -112,6 +114,7 @@ Follow these steps to get a local copy of AuthFlow up and running.
     -   In your Firebase project, go to "Authentication" > "Sign-in method".
     -   Enable "Email/Password".
     -   Enable desired social providers (Google, GitHub, Microsoft). For each, you'll need to follow Firebase's instructions for providing necessary app IDs and secrets from the respective provider platforms.
+    -   **For MFA**: No extra provider needs to be enabled, but ensure your project is on a plan that supports it if required by Firebase policies.
 3.  **Set up Firestore**:
     -   Go to "Firestore Database" and create a database. Start in "test mode" for easy local development, but **ensure you set up proper security rules before going to production.**
     -   AuthFlow uses Firestore to store user profiles (e.g., first name, last name) and a separate collection for username-to-email mapping to allow login with username.
@@ -232,7 +235,7 @@ Copy the following directories and files from this project into your target proj
 
 Merge the `dependencies` and `devDependencies` from AuthFlow's `package.json` into your project's `package.json`. Then, run `npm install` or `yarn install`.
 
-**Key Dependencies**: `firebase`, `firebase-admin`, `next-themes`, `react-hook-form`, `zod`, `lucide-react`, `shadcn-ui` components, `genkit` (optional).
+**Key Dependencies**: `firebase`, `firebase-admin`, `next-themes`, `react-hook-form`, `zod`, `lucide-react`, `shadcn-ui` components, `qrcode`, `genkit` (optional).
 
 ### Step 3: Configure `next.config.ts`
 
@@ -320,10 +323,10 @@ When deploying AuthFlow:
 
 ## Roadmap
 
--   [ ] Implement multi-factor authentication (MFA).
+-   [x] Implement multi-factor authentication (MFA).
 -   [ ] Add account linking for multiple social providers.
 -   [ ] Build out a more comprehensive admin dashboard for user management.
--   [ ] Add full implementation for profile photo uploads to Firebase Storage.
+-   [x] Add full implementation for profile photo uploads to Firebase Storage.
 
 ## Contributing
 

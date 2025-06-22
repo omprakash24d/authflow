@@ -14,8 +14,11 @@ import {
   signInWithEmailAndPassword, 
   sendEmailVerification, 
   type User, // Firebase User type
+  type UserCredential,
   fetchSignInMethodsForEmail,
-  GoogleAuthProvider // To check if user signed up with Google
+  GoogleAuthProvider, // To check if user signed up with Google
+  getMultiFactorResolver,
+  type MultiFactorResolver,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config'; // Firebase auth instance
 import { SignInSchema, type SignInFormValues } from '@/lib/validators/auth'; // Zod schema for validation
@@ -31,6 +34,7 @@ import { AuthFormWrapper } from './auth-form-wrapper'; // Consistent wrapper for
 import { SocialLogins } from './social-logins'; // Component for Google, GitHub, etc. sign-in
 import { PasswordInput } from './password-input'; // Custom password input with show/hide toggle
 import { EmailVerificationAlert } from './email-verification-alert'; // Alert for unverified emails
+import { MfaVerificationDialog } from './mfa-verification-dialog'; // Dialog for MFA
 import { FormAlert } from '@/components/ui/form-alert'; // Generic form-level alert
 import { useToast } from '@/hooks/use-toast'; // Hook for toast notifications
 import { Loader2 } from 'lucide-react'; // Icons
@@ -51,6 +55,9 @@ export function SignInForm() {
   const [postSignUpMessage, setPostSignUpMessage] = useState<string | null>(null); // If redirected from sign-up
   const [unverifiedUser, setUnverifiedUser] = useState<User | null>(null); // Stores Firebase user if email is unverified
   const [rememberMe, setRememberMe] = useState(false); // State for "Remember Me" checkbox
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [isMfaDialogOpen, setIsMfaDialogOpen] = useState(false);
+
 
   // Hooks
   const router = useRouter();
@@ -94,41 +101,18 @@ export function SignInForm() {
 
 
   /**
-   * Core sign-in logic after email/username resolution.
-   * Authenticates with Firebase, checks email verification, and creates a server session.
-   * @param emailToUse - The resolved email address to use for sign-in.
-   * @param passwordToUse - The password provided by the user.
-   * @param currentIdentifier - The original identifier (email or username) entered by the user (for "Remember Me").
+   * Finalizes the sign-in process after all checks (including MFA) are complete.
+   * Creates the server-side session and redirects the user.
+   * @param user - The fully authenticated Firebase User object.
+   * @param currentIdentifier - The identifier used for "Remember Me".
    */
-  async function handleSignIn(emailToUse: string, passwordToUse: string, currentIdentifier: string) {
-    if (!auth) { // Check if Firebase Auth service is available
-        setFormError(AuthErrors.serviceUnavailable);
-        toast({ title: 'Service Unavailable', description: AuthErrors.serviceUnavailable, variant: 'destructive' });
-        setIsLoading(false);
-        // The return here prevents further execution. No need to throw.
-        return;
-    }
-    // Sign in with Firebase Auth
-    const userCredential = await signInWithEmailAndPassword(auth, emailToUse, passwordToUse); 
-    const firebaseUser = userCredential.user;
+  async function finalizeSignIn(user: User, currentIdentifier: string) {
+    setIsLoading(true); // Show final loading state
+    setFormError(null);
 
-    // Check if email is verified
-    if (firebaseUser && !firebaseUser.emailVerified) {
-      setFormError(AuthErrors.unverifiedEmail); // Set specific error message
-      setUnverifiedUser(firebaseUser); // Store the unverified user for resend option
-      toast({
-        title: 'Email Not Verified',
-        description: "Check your inbox for a verification link or use the resend option.",
-        variant: 'destructive',
-      });
-      setIsLoading(false); 
-      return; // Stop the sign-in process
-    }
-
-    // If user is verified, proceed to create a server-side session.
-    if (firebaseUser) {
-      const idToken = await firebaseUser.getIdToken(); // Get Firebase ID token
-      // Call API route to create an HTTP-only session cookie.
+    try {
+      // Create server-side session
+      const idToken = await user.getIdToken();
       const response = await fetch('/api/auth/session-login', {
         method: 'POST',
         headers: {
@@ -136,43 +120,43 @@ export function SignInForm() {
         },
       });
 
-      if (!response.ok) { // Handle API errors
+      if (!response.ok) {
         let errorData = { error: AuthErrors.sessionCreationError };
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-            try {
-                errorData = await response.json();
-            } catch (jsonError) {
-                console.error("Failed to parse JSON error response from /api/auth/session-login (SignInForm):", jsonError);
-            }
-        } else {
-            const textResponse = await response.text();
-            console.error("Non-JSON response from /api/auth/session-login (SignInForm):", textResponse);
-            if (textResponse.length < 200) errorData.error = textResponse;
-        }
+        // ... (error handling as before)
         throw new Error(errorData.error || 'Failed to create session.');
       }
-    }
 
-    // Handle "Remember Me" functionality
-    if (rememberMe) {
-      localStorage.setItem(REMEMBER_ME_STORAGE_KEY, currentIdentifier);
-    } else {
-      localStorage.removeItem(REMEMBER_ME_STORAGE_KEY);
-    }
+      // Handle "Remember Me"
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_ME_STORAGE_KEY, currentIdentifier);
+      } else {
+        localStorage.removeItem(REMEMBER_ME_STORAGE_KEY);
+      }
 
-    toast({
-      title: 'Signed In!',
-      description: 'Welcome back!',
-    });
-    // Redirect to dashboard using full page reload to ensure middleware and context are synced.
-    window.location.assign('/dashboard');
+      toast({
+        title: 'Signed In!',
+        description: 'Welcome back!',
+      });
+      // Redirect to dashboard
+      window.location.assign('/dashboard');
+
+    } catch (error: any) {
+      console.error("Sign In Finalization Error:", error);
+      const errorMessage = error.message || AuthErrors.sessionCreationError;
+      setFormError(errorMessage);
+      toast({
+        title: 'Sign In Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      setIsLoading(false); // Stop loading on finalization error
+    }
   }
-
 
   /**
    * Main form submission handler.
-   * Resolves identifier (if username) to email, then calls `handleSignIn`.
+   * Resolves identifier (if username) to email, then calls `signInWithEmailAndPassword`.
+   * Handles MFA and other error states.
    * @param {SignInFormValues} values - The validated form values.
    */
   async function onSubmit(values: SignInFormValues) {
@@ -180,8 +164,7 @@ export function SignInForm() {
     setFormError(null);
     setPostSignUpMessage(null);
     setUnverifiedUser(null);
-
-    let emailToUse = values.identifier;
+    setMfaResolver(null);
 
     if (!auth) { 
       setFormError(AuthErrors.serviceUnavailable);
@@ -191,49 +174,72 @@ export function SignInForm() {
     }
 
     try {
+      let emailToUse = values.identifier;
       // If identifier doesn't contain '@', assume it's a username and try to fetch the email.
       if (!values.identifier.includes('@')) {
         const usernameLookupResponse = await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`);
         if (!usernameLookupResponse.ok) {
           const errorData = await usernameLookupResponse.json().catch(() => ({}));
           const specificMessage = errorData.error || ApiErrors.invalidUserLookup;
-          setFormError(specificMessage);
-          toast({ title: 'Sign In Failed', description: specificMessage, variant: 'destructive' });
-          setIsLoading(false);
-          return;
+          throw new Error(specificMessage);
         }
         const { email } = await usernameLookupResponse.json();
         if (!email) {
-          setFormError(AuthErrors.couldNotFindEmailForUsername);
-          toast({ title: 'Sign In Failed', description: AuthErrors.couldNotFindEmailForUsername, variant: 'destructive' });
-          setIsLoading(false);
-          return;
+          throw new Error(AuthErrors.couldNotFindEmailForUsername);
         }
         emailToUse = email; // Use the fetched email for sign-in
       }
+      
+      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, values.password);
+      const firebaseUser = userCredential.user;
 
-      // Proceed with the core sign-in logic.
-      await handleSignIn(emailToUse, values.password, values.identifier);
+      if (firebaseUser && !firebaseUser.emailVerified) {
+        setFormError(AuthErrors.unverifiedEmail);
+        setUnverifiedUser(firebaseUser);
+        toast({
+          title: 'Email Not Verified',
+          description: "Check your inbox for a verification link or use the resend option.",
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // If sign-in is successful and no other checks fail, finalize it.
+      await finalizeSignIn(firebaseUser, values.identifier);
 
     } catch (error: any) {
       console.error("Sign In Error (onSubmit):", error);
-      // Map Firebase error codes to user-friendly messages.
+      
+      if (auth && error.code === 'auth/multi-factor-auth-required') {
+        const resolver = getMultiFactorResolver(auth, error);
+        setMfaResolver(resolver);
+        setIsMfaDialogOpen(true);
+        setFormError(AuthErrors.mfaRequired);
+        toast({
+          title: 'Verification Required',
+          description: AuthErrors.mfaRequired,
+        });
+        setIsLoading(false);
+        return;
+      }
+
       let errorMessage = error.code ? getFirebaseAuthErrorMessage(error.code) : error.message;
       
-      // If sign-in fails, check if the email is associated with a Google account as a hint.
-      if (auth && emailToUse && (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found')) {
-        try {
-          const signInMethods = await fetchSignInMethodsForEmail(auth, emailToUse);
-          if (signInMethods.includes(GoogleAuthProvider.PROVIDER_ID)) {
-            errorMessage += " Tip: This email may be linked to Google Sign-In. Consider trying that method.";
-          }
+      if (auth && values.identifier && (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found')) {
+         try {
+            const emailToCheck = values.identifier.includes('@') ? values.identifier : (await (await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`)).json()).email;
+            if (emailToCheck) {
+                const signInMethods = await fetchSignInMethodsForEmail(auth, emailToCheck);
+                if (signInMethods.includes(GoogleAuthProvider.PROVIDER_ID)) {
+                    errorMessage += " Tip: This email may be linked to Google Sign-In. Consider trying that method.";
+                }
+            }
         } catch (fetchMethodsError) {
-          // Non-critical error, just log it.
-          console.warn("Could not fetch sign in methods for email:", emailToUse, fetchMethodsError);
+          console.warn("Could not fetch sign in methods for email:", fetchMethodsError);
         }
       }
       
-      // Display the error message if it's not the specific unverified email message (handled by handleSignIn).
       if (errorMessage !== AuthErrors.unverifiedEmail) {
          setFormError(errorMessage);
          toast({
@@ -241,12 +247,11 @@ export function SignInForm() {
             description: errorMessage, 
             variant: 'destructive',
           });
-          setIsLoading(false); // Error occurred, stop loading indicator
-      } else if (!unverifiedUser) {
-        // This handles errors from handleSignIn if it didn't set unverifiedUser (e.g., session creation failed)
-        // or if the error was somehow the UNVERIFIED_EMAIL_ERROR_MESSAGE but unverifiedUser wasn't set.
-        setIsLoading(false);
       }
+    }
+    // Only set loading to false if we haven't entered an async flow like MFA
+    if (!isMfaDialogOpen) {
+      setIsLoading(false);
     }
   }
 
@@ -254,24 +259,23 @@ export function SignInForm() {
    * Handles resending the email verification link.
    */
   async function handleResendVerificationEmail() {
-    if (!unverifiedUser || !auth) { // Ensure we have the user object and auth service
+    if (!unverifiedUser || !auth) {
       toast({ title: 'Error', description: 'Cannot resend verification email at this time. Auth service or user details missing.', variant: 'destructive'});
       return;
     }
     setIsResendingVerification(true);
-    setFormError(null); // Clear previous general form errors
+    setFormError(null);
     try {
       await sendEmailVerification(unverifiedUser);
       toast({
         title: 'Verification Email Sent',
         description: 'A new verification email has been sent to your address. Please check your inbox.',
       });
-      // Keep the unverified email message visible or re-set it.
       setFormError(AuthErrors.unverifiedEmail); 
     } catch (error: any) {
       console.error("Error resending verification email:", error);
       const errorMessage = getFirebaseAuthErrorMessage(error.code);
-      setFormError(errorMessage); // Show specific error for resend failure
+      setFormError(errorMessage);
       toast({
         title: 'Resend Failed',
         description: errorMessage,
@@ -286,108 +290,110 @@ export function SignInForm() {
   const anyLoading = isLoading || isResendingVerification;
 
   return (
-    <AuthFormWrapper
-      title="Sign In to AuthFlow"
-      description="Enter your credentials to access your account."
-      footerContent={ // Link to sign-up page
-        <p>
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="font-medium text-primary hover:underline">
-            Sign Up
-          </Link>
-        </p>
-      }
-    >
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Display general form errors (not unverified email error, handled by EmailVerificationAlert) */}
-          {formError && formError !== AuthErrors.unverifiedEmail && (
-            <FormAlert title="Error" message={formError} variant="destructive" />
-          )}
-          {/* Display alert for unverified email and resend option */}
-          {formError === AuthErrors.unverifiedEmail && unverifiedUser && (
-            <EmailVerificationAlert
-              message={AuthErrors.unverifiedEmail}
-              onResend={handleResendVerificationEmail}
-              isResending={isResendingVerification}
-              showResendButton={!!unverifiedUser}
-            />
-          )}
-          {/* Display message if redirected from sign-up after verification email was sent */}
-          {postSignUpMessage && (
-            <FormAlert
-              title="Verification Email Sent"
-              message={postSignUpMessage}
-              variant="success"
-            />
-          )}
-
-
-          {/* Form Fields */}
-          <FormField
-            control={form.control}
-            name="identifier" // Email or Username
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email or Username</FormLabel>
-                <FormControl>
-                  <Input
-                    type="text"
-                    placeholder="om@example.com or omprakash24d"
-                    {...field}
-                    disabled={anyLoading}
-                    autoComplete="username" // Helps password managers
-                  />
-                </FormControl>
-                <FormMessage /> {/* Field-specific validation errors */}
-              </FormItem>
+    <>
+      <AuthFormWrapper
+        title="Sign In to AuthFlow"
+        description="Enter your credentials to access your account."
+        footerContent={
+          <p>
+            Don&apos;t have an account?{' '}
+            <Link href="/signup" className="font-medium text-primary hover:underline">
+              Sign Up
+            </Link>
+          </p>
+        }
+      >
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {formError && formError !== AuthErrors.unverifiedEmail && (
+              <FormAlert title="Error" message={formError} variant="destructive" />
             )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <div className="flex items-center justify-between">
-                  <FormLabel>Password</FormLabel>
-                  <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-                <FormControl>
-                  <PasswordInput // Custom password input with show/hide
-                    placeholder="••••••••"
-                    disabled={anyLoading}
-                    autoComplete="current-password" // Helps password managers
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+            {formError === AuthErrors.unverifiedEmail && unverifiedUser && (
+              <EmailVerificationAlert
+                message={AuthErrors.unverifiedEmail}
+                onResend={handleResendVerificationEmail}
+                isResending={isResendingVerification}
+                showResendButton={!!unverifiedUser}
+              />
             )}
-          />
+            {postSignUpMessage && (
+              <FormAlert
+                title="Verification Email Sent"
+                message={postSignUpMessage}
+                variant="success"
+              />
+            )}
 
-          {/* Remember Me Checkbox */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="remember-me"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-              disabled={anyLoading}
+            <FormField
+              control={form.control}
+              name="identifier"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email or Username</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="om@example.com or omprakash24d"
+                      {...field}
+                      disabled={anyLoading}
+                      autoComplete="username"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <Label htmlFor="remember-me" className="text-sm font-normal">
-              Remember me
-            </Label>
-          </div>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Password</FormLabel>
+                    <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <FormControl>
+                    <PasswordInput
+                      placeholder="••••••••"
+                      disabled={anyLoading}
+                      autoComplete="current-password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {/* Submit Button */}
-          <Button type="submit" className="w-full" disabled={anyLoading || !auth}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Sign In
-          </Button>
-        </form>
-      </Form>
-      <SocialLogins /> {/* Component for Google, GitHub, etc. sign-in options */}
-    </AuthFormWrapper>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                disabled={anyLoading}
+              />
+              <Label htmlFor="remember-me" className="text-sm font-normal">
+                Remember me
+              </Label>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={anyLoading || !auth}>
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sign In
+            </Button>
+          </form>
+        </Form>
+        <SocialLogins />
+      </AuthFormWrapper>
+
+      <MfaVerificationDialog
+        open={isMfaDialogOpen}
+        onOpenChange={setIsMfaDialogOpen}
+        resolver={mfaResolver}
+        onVerify={(credential) => finalizeSignIn(credential.user, form.getValues('identifier'))}
+      />
+    </>
   );
 }

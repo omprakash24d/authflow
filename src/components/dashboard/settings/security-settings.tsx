@@ -4,11 +4,15 @@
 
 'use client'; // Client component due to state for dialog visibility.
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChangePasswordDialog } from '@/components/dashboard/settings/change-password-dialog'; // Dialog for password change
 import { ChangeEmailDialog } from '@/components/dashboard/settings/change-email-dialog'; // Dialog for email change
+import { MfaEnrollmentDialog } from '@/components/dashboard/settings/mfa-enrollment-dialog';
+import { MfaUnenrollDialog } from '@/components/dashboard/settings/mfa-unenroll-dialog';
 import { useToast } from '@/hooks/use-toast'; // For "Coming Soon" messages
+import { useAuth } from '@/contexts/auth-context';
+import { ShieldCheck, ShieldOff } from 'lucide-react';
 
 /**
  * SecuritySettings component.
@@ -17,14 +21,44 @@ import { useToast } from '@/hooks/use-toast'; // For "Coming Soon" messages
  * @returns JSX.Element
  */
 export function SecuritySettings() {
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  // State to control visibility of the Change Password dialog
+  
+  // State to control visibility of the dialogs
   const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false);
-  // State to control visibility of the Change Email dialog
   const [isChangeEmailDialogOpen, setIsChangeEmailDialogOpen] = useState(false);
+  const [isMfaEnrollDialogOpen, setIsMfaEnrollDialogOpen] = useState(false);
+  const [isMfaUnenrollDialogOpen, setIsMfaUnenrollDialogOpen] = useState(false);
+
+  // Memoize the MFA status to avoid re-calculating on every render
+  const isMfaEnabled = useMemo(() => {
+    if (authLoading || !user) return false;
+    return user.multiFactor?.enrolledFactors?.length > 0;
+  }, [user, authLoading]);
+
+  // Handler to refresh user token to get latest MFA state
+  const refreshUserMfaState = async () => {
+    await user?.getIdToken(true);
+    // The onAuthStateChanged listener in AuthContext will update the user object automatically
+  };
+
+  const handleMfaEnrollSuccess = () => {
+    refreshUserMfaState();
+    setIsMfaEnrollDialogOpen(false);
+  };
+  
+  const handleMfaUnenrollSuccess = () => {
+    refreshUserMfaState();
+    setIsMfaUnenrollDialogOpen(false);
+  };
+
+  // Do not render buttons if auth state is loading
+  if (authLoading) {
+    return <p className="text-sm text-muted-foreground">Loading security settings...</p>;
+  }
 
   return (
-    <div className="space-y-3"> {/* Vertical spacing for buttons */}
+    <div className="space-y-3">
       {/* Button to open Change Password Dialog */}
       <Button variant="outline" className="w-full justify-start" onClick={() => setIsChangePasswordDialogOpen(true)}>
         Change Password
@@ -35,14 +69,18 @@ export function SecuritySettings() {
         Change Email Address
       </Button>
       
-      {/* Placeholder for Two-Factor Authentication */}
-      <Button 
-        variant="outline" 
-        className="w-full justify-start" 
-        onClick={() => toast({ title: 'Coming Soon', description: 'Two-Factor Authentication (2FA) will be added in a future update.' })}
-      >
-        Enable Two-Factor Authentication (2FA)
-      </Button>
+      {/* 2FA Management */}
+      {isMfaEnabled ? (
+        <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive" onClick={() => setIsMfaUnenrollDialogOpen(true)}>
+          <ShieldOff className="mr-2 h-4 w-4" />
+          Disable Two-Factor Authentication
+        </Button>
+      ) : (
+        <Button variant="outline" className="w-full justify-start" onClick={() => setIsMfaEnrollDialogOpen(true)}>
+          <ShieldCheck className="mr-2 h-4 w-4" />
+          Enable Two-Factor Authentication (2FA)
+        </Button>
+      )}
       
       {/* Placeholder for viewing login history */}
       <Button 
@@ -61,6 +99,16 @@ export function SecuritySettings() {
       <ChangeEmailDialog 
         open={isChangeEmailDialogOpen} 
         onOpenChange={setIsChangeEmailDialogOpen} 
+      />
+      <MfaEnrollmentDialog
+        open={isMfaEnrollDialogOpen}
+        onOpenChange={setIsMfaEnrollDialogOpen}
+        onSuccess={handleMfaEnrollSuccess}
+      />
+      <MfaUnenrollDialog
+        open={isMfaUnenrollDialogOpen}
+        onOpenChange={setIsMfaUnenrollDialogOpen}
+        onSuccess={handleMfaUnenrollSuccess}
       />
     </div>
   );

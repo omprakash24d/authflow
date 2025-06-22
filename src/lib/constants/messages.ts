@@ -32,6 +32,10 @@ export const ValidationErrors = {
   lastNameRequired: 'Last name is required.',
   lastNameMaxLength: 'Last name must be 64 characters or less.',
   termsNotAccepted: 'You must accept the Terms of Service and Privacy Policy.',
+  
+  // MFA
+  mfaCodeRequired: 'Verification code is required.',
+  mfaCodeInvalid: 'The verification code must be 6 digits.',
 };
 
 export const AuthErrors = {
@@ -43,6 +47,12 @@ export const AuthErrors = {
   sessionCreationError: 'Failed to create session. Server response not in expected format.',
   photoUploadPrereqsNotMet: "Prerequisites for upload not met. Please try again.",
   requiresRecentLogin: "This operation is sensitive and requires recent authentication. Please sign out and sign back in, then try again.",
+  
+  // MFA Errors
+  mfaRequired: "This account requires Two-Factor Authentication. Please enter the code from your authenticator app.",
+  mfaSetupFailed: "Could not set up Two-Factor Authentication. Please try again.",
+  mfaNotEnrolled: "Two-Factor Authentication is not enabled on this account.",
+  mfaInvalidCode: "The verification code is invalid. Please try again.",
 };
 
 export const ProfileErrors = {
