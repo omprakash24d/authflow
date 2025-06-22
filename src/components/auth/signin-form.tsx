@@ -17,6 +17,7 @@ import {
   type UserCredential,
   fetchSignInMethodsForEmail,
   GoogleAuthProvider, // To check if user signed up with Google
+  GithubAuthProvider, // To check if user signed up with GitHub
   getMultiFactorResolver,
   type MultiFactorResolver,
 } from 'firebase/auth';
@@ -122,7 +123,18 @@ export function SignInForm() {
 
       if (!response.ok) {
         let errorData = { error: AuthErrors.sessionCreationError };
-        // ... (error handling as before)
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          try {
+            errorData = await response.json();
+          } catch (jsonError) {
+            console.error("Failed to parse JSON error response from /api/auth/session-login:", jsonError);
+          }
+        } else {
+           const textResponse = await response.text();
+           console.error("Non-JSON response from /api/auth/session-login:", textResponse);
+           if (textResponse.length < 200) errorData.error = textResponse; // Use text if short
+        }
         throw new Error(errorData.error || 'Failed to create session.');
       }
 
@@ -231,8 +243,21 @@ export function SignInForm() {
             const emailToCheck = values.identifier.includes('@') ? values.identifier : (await (await fetch(`/api/auth/get-email-for-username?username=${encodeURIComponent(values.identifier)}`)).json()).email;
             if (emailToCheck) {
                 const signInMethods = await fetchSignInMethodsForEmail(auth, emailToCheck);
+                
+                const linkedProviders: string[] = [];
                 if (signInMethods.includes(GoogleAuthProvider.PROVIDER_ID)) {
-                    errorMessage += " Tip: This email may be linked to Google Sign-In. Consider trying that method.";
+                  linkedProviders.push('Google');
+                }
+                if (signInMethods.includes(GithubAuthProvider.PROVIDER_ID)) {
+                  linkedProviders.push('GitHub');
+                }
+                // Microsoft's provider ID is 'microsoft.com'
+                if (signInMethods.includes('microsoft.com')) {
+                  linkedProviders.push('Microsoft');
+                }
+    
+                if (linkedProviders.length > 0) {
+                  errorMessage += ` Tip: This email may be linked to ${linkedProviders.join(' or ')} Sign-In. Consider trying that method.`;
                 }
             }
         } catch (fetchMethodsError) {
