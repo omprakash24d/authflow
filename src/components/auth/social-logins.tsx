@@ -132,20 +132,29 @@ export function SocialLogins() {
         if (isNewUser) {
           // New user: Generate a unique username and create their profile documents.
           let baseUsername = '';
-          if (user.email) {
-            baseUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
-          } else if (user.displayName) {
-            baseUsername = user.displayName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-          }
-          if (!baseUsername) {
-            baseUsername = `user_${user.uid.substring(0, 8)}`;
-          }
+            // Prefer generating from display name if it exists and is meaningful
+            if (user.displayName && user.displayName.trim().length > 1) {
+                baseUsername = user.displayName
+                    .toLowerCase()
+                    // Replace spaces and dots with underscores
+                    .replace(/[\s.]+/g, '_')
+                    // Remove any characters that are not letters, numbers, or underscores
+                    .replace(/[^a-z0-9_]/g, '')
+                    // Prevent multiple underscores in a row
+                    .replace(/__+/g, '_');
+            } else if (user.email) {
+                baseUsername = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+            }
 
-          // Ensure username meets length constraints
-          baseUsername = baseUsername.slice(0, 20);
-          if (baseUsername.length < 3) {
-            baseUsername = `${baseUsername}${Math.random().toString(36).substring(2, 5)}`;
-          }
+            if (!baseUsername || baseUsername.length < 3) {
+                baseUsername = `user_${user.uid.substring(0, 8)}`;
+            }
+            // Ensure username meets length constraints
+            baseUsername = baseUsername.slice(0, 20);
+            // Final check for length after slicing, just in case
+            if (baseUsername.length < 3) {
+                baseUsername = `${baseUsername}${Math.random().toString(36).substring(2, 5)}`;
+            }
 
           let finalUsername = baseUsername;
           let isUnique = false;

@@ -121,6 +121,7 @@ export function ProfileInformationForm() {
   useEffect(() => {
     const fetchUserProfile = async (fs: Firestore, currentFirebaseUser: FirebaseUser) => {
       try {
+        // Always prioritize the photo URL from the main Auth object, as it's the most current source.
         setProfilePhotoPreview(currentFirebaseUser.photoURL || null);
 
         const userProfileRef = doc(fs, 'users', currentFirebaseUser.uid);
@@ -136,9 +137,6 @@ export function ProfileInformationForm() {
           };
           reset(defaultValues);
           fetchedUsername = defaultValues.username;
-          if (profileData.photoURL && profileData.photoURL !== currentFirebaseUser.photoURL) {
-             setProfilePhotoPreview(profileData.photoURL);
-          }
         } else {
           // If no profile doc, use Auth profile as default
           reset({
