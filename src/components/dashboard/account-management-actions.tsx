@@ -49,7 +49,8 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
    * Handles the account deletion process. This is a critical security-sensitive operation.
    * 1. Calls a secure API endpoint to delete user data from Firestore.
    * 2. If Firestore deletion is successful, proceeds to delete the user from Firebase Authentication.
-   * 3. Provides detailed error feedback to the user, especially for re-authentication requirements.
+   * 3. Explicitly clears the server-side session cookie.
+   * 4. Redirects the user to the homepage.
    */
   const handleDeleteAccount = async () => {
     if (!user) return;
@@ -57,7 +58,6 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
 
     try {
       // Step 1: Call the API route to delete user data from Firestore.
-      // This is a critical first step to prevent orphaned data.
       const response = await fetch('/api/auth/delete-user-data', {
         method: 'DELETE',
       });
@@ -68,15 +68,20 @@ export function AccountManagementActions({ user, signOut }: AccountManagementAct
       }
       
       // Step 2: After successfully deleting database records, delete the user from Firebase Authentication.
+      // This also handles signing the user out on the client-side.
       await deleteUser(user);
+
+      // Step 3: Explicitly clear the server-side session cookie.
+      // This is crucial to ensure the server session is destroyed along with the account.
+      await fetch('/api/auth/session-logout', { method: 'POST' });
       
       toast({
         title: "Account Deleted",
         description: "Your account and all associated data have been successfully deleted. You will now be redirected.",
       });
       
-      // Step 3: Call signOut to handle session cleanup and redirect the user.
-      await signOut();
+      // Step 4: Redirect to the homepage with a full page reload to clear all application state.
+      window.location.assign('/');
 
     } catch (error: any) {
       console.error("Error deleting account:", error);
