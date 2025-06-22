@@ -51,6 +51,15 @@ export function MfaEnrollmentDialog({ open, onOpenChange, onSuccess }: MfaEnroll
       if (open && user) {
         setIsLoading(true);
         setFormError(null);
+
+        // FIX: Check if user.multiFactor is available before using it.
+        if (!user.multiFactor) {
+          setFormError("MFA is not available for this account. This might be a temporary issue or a configuration problem.");
+          console.error("MFA Error: user.multiFactor is undefined. Ensure MFA is enabled in your Firebase project.");
+          setIsLoading(false);
+          return;
+        }
+
         try {
           const multiFactorSession = await user.multiFactor.getSession();
           const secret = await TotpMultiFactorGenerator.generateSecret(multiFactorSession);
