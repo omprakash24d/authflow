@@ -19,6 +19,8 @@ import { UserProfileSummary } from './user-profile-summary';
 import { LoginActivitySummary } from './login-activity-summary';
 import { AccountManagementActions } from './account-management-actions';
 import { Separator } from '../ui/separator';
+import { StatsCards } from './stats-cards';
+import { RecentActivityChart } from './recent-activity-chart';
 
 /**
  * Type definition for the user profile data fetched from Firestore.
@@ -99,12 +101,14 @@ export default function DashboardPageContent() {
   return (
     // Main container for the dashboard page content.
     <div className="p-4 sm:p-6 lg:p-8">
-      <Card className="w-full max-w-2xl mx-auto shadow-lg">
+      <Card className="w-full max-w-4xl mx-auto shadow-lg">
         <CardContent className="p-6">
           {/* Pass user object and profile loading/data states to the header. */}
           <DashboardHeader user={user} profileData={profileData} loadingProfile={loadingProfile} />
           <Separator className="my-8" />
           <div className="space-y-8">
+            <StatsCards />
+            <RecentActivityChart />
             {/* Pass all relevant states to the profile summary component. */}
             <UserProfileSummary user={user} profileData={profileData} loadingProfile={loadingProfile} profileError={profileError} />
             <LoginActivitySummary user={user} />
