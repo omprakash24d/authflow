@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -39,6 +39,11 @@ export function MfaUnenrollDialog({ open, onOpenChange, onSuccess }: MfaUnenroll
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Determine if the user has a password provider. This action is only available for password-based accounts.
+  const hasPasswordProvider = useMemo(() => {
+    return user?.providerData.some(p => p.providerId === 'password');
+  }, [user]);
+
   const form = useForm<UnenrollMfaFormValues>({
     resolver: zodResolver(UnenrollMfaSchema),
     defaultValues: { password: '' },
@@ -47,6 +52,11 @@ export function MfaUnenrollDialog({ open, onOpenChange, onSuccess }: MfaUnenroll
   const onSubmit = async (values: UnenrollMfaFormValues) => {
     if (!user) {
       setFormError(AuthErrors.userNotAuthenticated);
+      return;
+    }
+    // Double-check provider status before submission
+    if (!hasPasswordProvider) {
+      setFormError("This action is not available for accounts created via social sign-in.");
       return;
     }
     const mfaFactor = user.multiFactor?.enrolledFactors?.[0];
@@ -92,12 +102,16 @@ export function MfaUnenrollDialog({ open, onOpenChange, onSuccess }: MfaUnenroll
         <DialogHeader>
           <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
           <DialogDescription>
-            This action will remove the extra layer of security from your account. Please enter your password to confirm.
+            {hasPasswordProvider 
+              ? "This action will remove the extra layer of security from your account. Please enter your password to confirm."
+              : "This action requires a password and is not available for accounts created via social sign-in."
+            }
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormAlert title="Error" message={formError} variant="destructive" />
+            
             <FormField
               control={form.control}
               name="password"
@@ -108,7 +122,7 @@ export function MfaUnenrollDialog({ open, onOpenChange, onSuccess }: MfaUnenroll
                     <PasswordInput
                       placeholder="••••••••"
                       {...field}
-                      disabled={isLoading}
+                      disabled={isLoading || !hasPasswordProvider}
                       autoComplete="current-password"
                     />
                   </FormControl>
@@ -122,7 +136,7 @@ export function MfaUnenrollDialog({ open, onOpenChange, onSuccess }: MfaUnenroll
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" variant="destructive" disabled={isLoading}>
+              <Button type="submit" variant="destructive" disabled={isLoading || !hasPasswordProvider}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Disable 2FA
               </Button>

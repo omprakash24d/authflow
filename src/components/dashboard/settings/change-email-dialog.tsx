@@ -4,7 +4,7 @@
 
 'use client'; // Client component due to form handling, state, and Firebase interactions.
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { verifyBeforeUpdateEmail } from 'firebase/auth'; // Firebase function to update email with verification
@@ -56,6 +56,11 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
   const [isLoading, setIsLoading] = useState(false); // Loading state for form submission
   const [formError, setFormError] = useState<string | null>(null); // For displaying form-level errors
 
+  // Determine if the user has a password provider. This action is only available for password-based accounts.
+  const hasPasswordProvider = useMemo(() => {
+    return user?.providerData.some(p => p.providerId === 'password');
+  }, [user]);
+
   // Initialize react-hook-form with Zod resolver
   const form = useForm<ChangeEmailFormValues>({
     resolver: zodResolver(ChangeEmailSchema),
@@ -73,21 +78,22 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
    * @param {ChangeEmailFormValues} values - The validated form values.
    */
   async function onSubmit(values: ChangeEmailFormValues) {
-    // Ensure user is authenticated
     if (!user) { 
       setFormError(AuthErrors.userNotAuthenticated);
       toast({ title: "Error", description: AuthErrors.userNotAuthenticated, variant: "destructive" });
       return;
     }
-    // Ensure Firestore service is available for updating user profile records
-     if (!firestore) {
+    if (!firestore) {
       setFormError(ProfileErrors.dbServiceUnavailable);
       toast({ title: "Configuration Error", description: "Database service unavailable.", variant: "destructive" });
-      setIsLoading(false); // Reset loading state
+      setIsLoading(false);
+      return;
+    }
+    if (!hasPasswordProvider) {
+      setFormError("This action is not available for accounts created via social sign-in.");
       return;
     }
 
-    // Prevent user from "changing" to the same email address.
     if (values.newEmail.toLowerCase() === user.email?.toLowerCase()) {
       form.setError('newEmail', { type: 'manual', message: ValidationErrors.newEmailSameAsCurrent });
       return;
@@ -97,39 +103,27 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
     setFormError(null);
 
     try {
-      // Step 1: Re-authenticate the user with their current password.
-      // This is a security measure required by Firebase for sensitive operations.
       await reauthenticateCurrentUser(user, values.currentPassword); 
-      
-      // Step 2: Initiate email update process with Firebase.
-      // This sends a verification link to the new email address. The email is not
-      // actually changed in Firebase Auth until the user clicks this link.
       await verifyBeforeUpdateEmail(user, values.newEmail);
 
-      // Step 3 (Optional but good practice): Update user's profile in Firestore
-      // to reflect that an email change is pending.
-      // `firestore` is confirmed non-null by the check above.
       const userProfileRef = doc(firestore, 'users', user.uid);
       await setDoc(userProfileRef,
         {
-          // `email` field in Firestore might remain the old one until verification.
-          // Or, store the new email in a separate field like `emailChangePendingTo`.
           emailChangePendingTo: values.newEmail, 
-          updatedAt: serverTimestamp() // Timestamp the update
+          updatedAt: serverTimestamp()
         },
-        { merge: true } // Merge to avoid overwriting other profile data
+        { merge: true }
       );
       
       toast({
         title: 'Verification Email Sent',
         description: `A verification email has been sent to ${values.newEmail}. Please check your inbox and verify to complete the email change. Your current email remains active until then.`,
-        duration: 9000, // Longer duration for important messages
+        duration: 9000,
       });
 
-      handleDialogClose(false); // Use the handler to close and reset
+      handleDialogClose(false);
     } catch (error: any) {
       console.error('Change Email Error:', error);
-      // Map Firebase error codes to user-friendly messages.
       const errorMessage = getFirebaseAuthErrorMessage(error.code || (error.message.includes("User not found") ? 'auth/user-not-found' : undefined));
       setFormError(errorMessage);
       toast({
@@ -142,17 +136,13 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
     }
   }
 
-  /**
-   * Handles closing the dialog. Resets form and state.
-   * @param {boolean} isOpen - The new open state of the dialog.
-   */
   const handleDialogClose = (isOpen: boolean) => {
-    if (!isOpen) { // If dialog is being closed
+    if (!isOpen) {
       form.reset();
       setFormError(null);
-      setIsLoading(false); // Ensure loading is reset
+      setIsLoading(false);
     }
-    onOpenChange(isOpen); // Propagate open state change
+    onOpenChange(isOpen);
   };
 
   return (
@@ -161,14 +151,16 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
         <DialogHeader>
           <DialogTitle>Change Email Address</DialogTitle>
           <DialogDescription>
-            Enter your current password and your new email address. A verification link will be sent to your new email.
+            {hasPasswordProvider
+              ? "Enter your current password and your new email address. A verification link will be sent to your new email."
+              : "This action requires a password and is not available for accounts created via social sign-in."
+            }
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
             <FormAlert title="Error" message={formError} variant="destructive" />
             
-            {/* Current Password Field */}
             <FormField
               control={form.control}
               name="currentPassword"
@@ -178,17 +170,16 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
                   <FormControl>
                     <PasswordInput
                         placeholder="••••••••"
-                        disabled={isLoading}
+                        disabled={isLoading || !hasPasswordProvider}
                         autoComplete="current-password"
                         {...field}
                       />
                   </FormControl>
-                  <FormMessage /> {/* Field-specific validation errors */}
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* New Email Field */}
             <FormField
               control={form.control}
               name="newEmail"
@@ -196,9 +187,9 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
                 <FormItem>
                   <FormLabel>New Email Address</FormLabel>
                   <FormControl>
-                     <div className="relative"> {/* For email icon */}
+                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input type="email" placeholder="new.email@example.com" className="pl-10" {...field} disabled={isLoading} autoComplete="email" />
+                        <Input type="email" placeholder="new.email@example.com" className="pl-10" {...field} disabled={isLoading || !hasPasswordProvider} autoComplete="email" />
                       </div>
                   </FormControl>
                   <FormMessage />
@@ -211,7 +202,7 @@ export function ChangeEmailDialog({ open, onOpenChange }: ChangeEmailDialogProps
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={isLoading || !firestore}> {/* Disable if loading or Firestore unavailable */}
+              <Button type="submit" disabled={isLoading || !firestore || !hasPasswordProvider}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Send Verification Email
               </Button>

@@ -4,7 +4,7 @@
 
 'use client'; // Client component due to form handling, state, and Firebase interactions.
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { updatePassword } from 'firebase/auth'; // Firebase function to update password
@@ -54,6 +54,11 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   const [isLoading, setIsLoading] = useState(false); // Loading state for form submission
   const [formError, setFormError] = useState<string | null>(null); // For displaying form-level errors
 
+  // Determine if the user has a password provider. This action is only available for password-based accounts.
+  const hasPasswordProvider = useMemo(() => {
+    return user?.providerData.some(p => p.providerId === 'password');
+  }, [user]);
+
   // Initialize react-hook-form with Zod resolver
   const form = useForm<ChangePasswordFormValues>({
     resolver: zodResolver(ChangePasswordSchema),
@@ -74,10 +79,13 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
    * @param {ChangePasswordFormValues} values - The validated form values.
    */
   async function onSubmit(values: ChangePasswordFormValues) {
-    // Ensure user is authenticated
     if (!user) { 
       setFormError(AuthErrors.userNotAuthenticated);
       toast({ title: 'Error', description: AuthErrors.userNotAuthenticated, variant: 'destructive'});
+      return;
+    }
+    if (!hasPasswordProvider) {
+      setFormError("This action is not available for accounts created via social sign-in.");
       return;
     }
 
@@ -85,21 +93,16 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     setFormError(null);
 
     try {
-      // Step 1: Re-authenticate the user with their current password.
-      // This is a security measure required by Firebase for sensitive operations.
       await reauthenticateCurrentUser(user, values.currentPassword); 
-      
-      // Step 2: Update the password in Firebase Authentication.
       await updatePassword(user, values.newPassword);
 
       toast({
         title: 'Password Updated',
         description: 'Your password has been changed successfully.',
       });
-      handleDialogClose(false); // Use the handler to close and reset
+      handleDialogClose(false);
     } catch (error: any) {
       console.error('Change Password Error:', error);
-      // Map Firebase error codes to user-friendly messages.
       const errorMessage = getFirebaseAuthErrorMessage(error.code || (error.message.includes("User not found") ? 'auth/user-not-found' : undefined));
       setFormError(errorMessage);
       toast({
@@ -112,17 +115,13 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     }
   }
 
-  /**
-   * Handles closing the dialog. Resets form and state.
-   * @param {boolean} isOpen - The new open state of the dialog.
-   */
   const handleDialogClose = (isOpen: boolean) => {
-    if (!isOpen) { // If dialog is being closed
+    if (!isOpen) {
       form.reset();
       setFormError(null);
-      setIsLoading(false); // Ensure loading is reset
+      setIsLoading(false);
     }
-    onOpenChange(isOpen); // Propagate open state change
+    onOpenChange(isOpen);
   };
 
   return (
@@ -131,14 +130,16 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         <DialogHeader>
           <DialogTitle>Change Password</DialogTitle>
           <DialogDescription>
-            Enter your current password and a new password. Click save when you&apos;re done.
+            {hasPasswordProvider 
+              ? "Enter your current password and a new password. Click save when you're done."
+              : "Password management is not available for accounts created via social sign-in."
+            }
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
             <FormAlert title="Error" message={formError} variant="destructive" />
             
-            {/* Current Password Field */}
             <FormField
               control={form.control}
               name="currentPassword"
@@ -148,17 +149,16 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   <FormControl>
                     <PasswordInput
                       placeholder="••••••••"
-                      disabled={isLoading}
-                      autoComplete="current-password" // Helps password managers
+                      disabled={isLoading || !hasPasswordProvider}
+                      autoComplete="current-password"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage /> {/* Field-specific validation errors */}
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* New Password Field */}
             <FormField
               control={form.control}
               name="newPassword"
@@ -168,13 +168,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   <FormControl>
                      <PasswordInput
                       placeholder="••••••••"
-                      disabled={isLoading}
-                      autoComplete="new-password" // Helps password managers
+                      disabled={isLoading || !hasPasswordProvider}
+                      autoComplete="new-password"
                       {...field}
                     />
                   </FormControl>
-                  {/* Display password strength indicator if new password has input */}
-                  {watchedNewPassword && watchedNewPassword.length > 0 && (
+                  {watchedNewPassword && watchedNewPassword.length > 0 && hasPasswordProvider && (
                     <PasswordStrengthIndicator password={watchedNewPassword} />
                   )}
                   <FormMessage />
@@ -182,7 +181,6 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
               )}
             />
 
-            {/* Confirm New Password Field */}
             <FormField
               control={form.control}
               name="confirmNewPassword"
@@ -192,7 +190,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   <FormControl>
                     <PasswordInput
                       placeholder="••••••••"
-                      disabled={isLoading}
+                      disabled={isLoading || !hasPasswordProvider}
                       autoComplete="new-password"
                       {...field}
                     />
@@ -207,7 +205,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || !hasPasswordProvider}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Changes
               </Button>
